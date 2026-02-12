@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Commands;
+using PetAdoption.PetService.Application.DTOs;
 using PetAdoption.PetService.Application.Queries;
-using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Infrastructure.Mediator;
 
 namespace PetAdoption.PetService.Controllers;
@@ -19,7 +19,7 @@ public class PetsController : ControllerBase
 
     // GET /api/pets
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Pet>>> GetAll()
+    public async Task<ActionResult<IEnumerable<PetListItemDto>>> GetAll()
     {
         var pets = await _mediator.Send(new GetAllPetsQuery());
         return Ok(pets);
@@ -27,12 +27,12 @@ public class PetsController : ControllerBase
 
     // POST /api/pets/{id}/reserve
     [HttpPost("{id}/reserve")]
-    public async Task<IActionResult> Reserve(Guid id)
+    public async Task<ActionResult<ReservePetResponse>> Reserve(Guid id)
     {
         var result = await _mediator.Send(new ReservePetCommand(id));
         if (!result.Success)
-            return BadRequest(result.Message);
+            return BadRequest(result);
 
-        return Ok();
+        return Ok(result);
     }
 }

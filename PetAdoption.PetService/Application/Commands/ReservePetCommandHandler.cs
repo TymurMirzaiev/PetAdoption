@@ -1,10 +1,11 @@
-using PetAdoption.PetService.Domain;
+using PetAdoption.PetService.Application.DTOs;
+using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure;
 using PetAdoption.PetService.Infrastructure.Mediator;
 
 namespace PetAdoption.PetService.Application.Commands;
 
-public record ReservePetCommand : IRequest<ReservePetCommandResult>
+public record ReservePetCommand : IRequest<ReservePetResponse>
 {
     public ReservePetCommand(Guid petId)
     {
@@ -14,13 +15,7 @@ public record ReservePetCommand : IRequest<ReservePetCommandResult>
     public Guid PetId { get; }
 }
 
-public class ReservePetCommandResult
-{
-    public bool Success { get; set; }
-    public string Message { get; set; }
-}
-
-public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, ReservePetCommandResult>
+public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, ReservePetResponse>
 {
     private readonly IPetRepository _repo;
     private readonly IEventPublisher _eventPublisher;
@@ -31,11 +26,11 @@ public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, Reser
         _eventPublisher = eventPublisher;
     }
 
-    public async Task<ReservePetCommandResult> Handle(ReservePetCommand request, CancellationToken cancellationToken = default)
+    public async Task<ReservePetResponse> Handle(ReservePetCommand request, CancellationToken cancellationToken = default)
     {
-        var pet = await _repo.GetById(request.PetId); // Use async method
+        var pet = await _repo.GetById(request.PetId);
         if (pet == null)
-            return new ReservePetCommandResult { Success = false, Message = "Pet not found." };
+            return new ReservePetResponse(Success: false, Message: "Pet not found.");
 
         try
         {
@@ -43,12 +38,17 @@ public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, Reser
             await _repo.Update(pet);
 
             await _eventPublisher.PublishAsync(pet.DomainEvents);
+            pet.ClearDomainEvents();
 
-            return new ReservePetCommandResult { Success = true };
+            return new ReservePetResponse(
+                Success: true,
+                PetId: pet.Id,
+                Status: pet.Status.ToString()
+            );
         }
         catch (Exception ex)
         {
-            return new ReservePetCommandResult { Success = false, Message = ex.Message };
+            return new ReservePetResponse(Success: false, Message: ex.Message);
         }
     }
 }

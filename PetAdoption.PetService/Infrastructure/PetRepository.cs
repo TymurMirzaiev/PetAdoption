@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using PetAdoption.PetService.Domain;
+using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Infrastructure;
 

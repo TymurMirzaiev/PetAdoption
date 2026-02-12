@@ -1,20 +1,26 @@
-using PetAdoption.PetService.Domain;
-using PetAdoption.PetService.Infrastructure;
+using PetAdoption.PetService.Application.DTOs;
+using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.Mediator;
 
 namespace PetAdoption.PetService.Application.Queries;
 
-public class GetAllPetsQuery : IRequest<IEnumerable<Pet>>
+public class GetAllPetsQuery : IRequest<IEnumerable<PetListItemDto>>
 {
 }
 
-public class GetAllPetsQueryHandler : IRequestHandler<GetAllPetsQuery, IEnumerable<Pet>>
+public class GetAllPetsQueryHandler : IRequestHandler<GetAllPetsQuery, IEnumerable<PetListItemDto>>
 {
     private readonly IPetRepository _repo;
     public GetAllPetsQueryHandler(IPetRepository repo) => _repo = repo;
 
-    public Task<IEnumerable<Pet>> Handle(GetAllPetsQuery request, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<PetListItemDto>> Handle(GetAllPetsQuery request, CancellationToken cancellationToken = default)
     {
-        return _repo.GetAll();
+        var pets = await _repo.GetAll();
+        return pets.Select(p => new PetListItemDto(
+            p.Id,
+            p.Name,
+            p.Type,
+            p.Status.ToString()
+        ));
     }
 }

@@ -1,6 +1,4 @@
-using PetAdoption.PetService.Domain;
-
-namespace PetAdoption.PetService.Infrastructure;
+namespace PetAdoption.PetService.Domain.Interfaces;
 
 public interface IPetRepository
 {

@@ -1,13 +1,11 @@
 using System.Reflection;
-using Microsoft.EntityFrameworkCore;
+using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure;
 
+// Configure MongoDB mappings
+MongoDbConfiguration.Configure();
+
 var builder = WebApplication.CreateBuilder(args);
-
-var connectionString = builder.Configuration.GetConnectionString("PetDb");
-
-builder.Services.AddDbContext<PetDbContext>(options =>
-    options.UseSqlServer(connectionString));
 
 builder.Services.AddSingleton<IPetRepository, PetRepository>();
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();

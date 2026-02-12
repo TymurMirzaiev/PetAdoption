@@ -15,18 +15,18 @@ public class PetRepository : IPetRepository
         _pets = database.GetCollection<Pet>("Pets");
     }
 
-    public async Task<IEnumerable<Pet>> GetAll()
-    {
-        return await _pets.Find(_ => true).ToListAsync();
-    }
-
     public async Task<Pet?> GetById(Guid id)
     {
         return await _pets.Find(p => p.Id == id).FirstOrDefaultAsync();
     }
 
+    public async Task Add(Pet pet)
+    {
+        await _pets.InsertOneAsync(pet);
+    }
+
     public async Task Update(Pet pet)
     {
-        await _pets.ReplaceOneAsync(p => p.Id == pet.Id, pet, new ReplaceOptions { IsUpsert = true });
+        await _pets.ReplaceOneAsync(p => p.Id == pet.Id, pet);
     }
 }

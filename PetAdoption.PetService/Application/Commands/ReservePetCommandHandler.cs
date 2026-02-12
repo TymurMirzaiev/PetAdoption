@@ -1,4 +1,5 @@
 using PetAdoption.PetService.Application.DTOs;
+using PetAdoption.PetService.Domain.Exceptions;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure;
 using PetAdoption.PetService.Infrastructure.Mediator;
@@ -30,25 +31,26 @@ public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, Reser
     {
         var pet = await _repo.GetById(request.PetId);
         if (pet == null)
-            return new ReservePetResponse(Success: false, Message: "Pet not found.");
-
-        try
         {
-            pet.Reserve();
-            await _repo.Update(pet);
-
-            await _eventPublisher.PublishAsync(pet.DomainEvents);
-            pet.ClearDomainEvents();
-
-            return new ReservePetResponse(
-                Success: true,
-                PetId: pet.Id,
-                Status: pet.Status.ToString()
-            );
+            throw new DomainException(
+                PetDomainErrorCode.PetNotFound,
+                $"Pet with ID {request.PetId} was not found.",
+                new Dictionary<string, object>
+                {
+                    { "PetId", request.PetId }
+                });
         }
-        catch (Exception ex)
-        {
-            return new ReservePetResponse(Success: false, Message: ex.Message);
-        }
+
+        pet.Reserve();
+        await _repo.Update(pet);
+
+        await _eventPublisher.PublishAsync(pet.DomainEvents);
+        pet.ClearDomainEvents();
+
+        return new ReservePetResponse(
+            Success: true,
+            PetId: pet.Id,
+            Status: pet.Status.ToString()
+        );
     }
 }

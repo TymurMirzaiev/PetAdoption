@@ -1,0 +1,36 @@
+﻿version: '3.8'
+services:
+  petadoption.petservice:
+    image: petadoption.petservice
+    build:
+      context: .
+      dockerfile: PetAdoption.PetService/Dockerfile
+    ports:
+      - "8080:8080"
+      
+  mongo:
+    image: mongo:7.0
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: PetAdoptionDb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"         # RabbitMQ (AMQP) protocol
+      - "15672:15672"       # RabbitMQ Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

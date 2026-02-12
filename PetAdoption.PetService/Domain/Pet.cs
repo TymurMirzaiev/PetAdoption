@@ -10,6 +10,7 @@ public class Pet : IAggregateRoot, IEntity
     public PetName Name { get; private set; }
     public PetType Type { get; private set; }
     public PetStatus Status { get; private set; }
+    public int Version { get; private set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
 
@@ -98,4 +99,6 @@ public class Pet : IAggregateRoot, IEntity
         _domainEvents.Add(domainEvent);
 
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    internal void IncrementVersion() => Version++;
 }

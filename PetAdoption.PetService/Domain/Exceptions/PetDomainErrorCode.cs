@@ -23,6 +23,11 @@ public enum PetDomainErrorCode
     /// </summary>
     PetNotFound = 1003,
 
+    /// <summary>
+    /// Pet was modified by another operation (optimistic concurrency conflict).
+    /// </summary>
+    ConcurrencyConflict = 1004,
+
     // Value object validation errors (2000-2999)
 
     /// <summary>

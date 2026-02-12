@@ -4,9 +4,9 @@ using PetAdoption.PetService.Infrastructure.Mediator;
 
 namespace PetAdoption.PetService.Application.Commands;
 
-public record ReservePetCommand : IRequest<ReservePetResponse>
+public record AdoptPetCommand : IRequest<AdoptPetResponse>
 {
-    public ReservePetCommand(Guid petId)
+    public AdoptPetCommand(Guid petId)
     {
         PetId = petId;
     }
@@ -14,23 +14,23 @@ public record ReservePetCommand : IRequest<ReservePetResponse>
     public Guid PetId { get; }
 }
 
-public record ReservePetResponse(
+public record AdoptPetResponse(
     bool Success,
     string? Message = null,
     Guid? PetId = null,
     string? Status = null
 );
 
-public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, ReservePetResponse>
+public class AdoptPetCommandHandler : IRequestHandler<AdoptPetCommand, AdoptPetResponse>
 {
     private readonly IPetRepository _repository;
 
-    public ReservePetCommandHandler(IPetRepository repository)
+    public AdoptPetCommandHandler(IPetRepository repository)
     {
         _repository = repository;
     }
 
-    public async Task<ReservePetResponse> Handle(ReservePetCommand request, CancellationToken cancellationToken = default)
+    public async Task<AdoptPetResponse> Handle(AdoptPetCommand request, CancellationToken cancellationToken = default)
     {
         var pet = await _repository.GetById(request.PetId);
         if (pet == null)
@@ -44,10 +44,10 @@ public class ReservePetCommandHandler : IRequestHandler<ReservePetCommand, Reser
                 });
         }
 
-        pet.Reserve();
+        pet.Adopt();
         await _repository.Update(pet);
 
-        return new ReservePetResponse(
+        return new AdoptPetResponse(
             Success: true,
             PetId: pet.Id,
             Status: pet.Status.ToString()

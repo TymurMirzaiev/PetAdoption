@@ -30,6 +30,16 @@ public static class MongoDbConfiguration
             cm.SetIgnoreExtraElements(true);
         });
 
+        // Configure OutboxEvent entity mapping
+        BsonClassMap.RegisterClassMap<OutboxEvent>(cm =>
+        {
+            cm.AutoMap();
+            cm.MapIdMember(e => e.Id)
+                .SetIdGenerator(GuidGenerator.Instance)
+                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.SetIgnoreExtraElements(true);
+        });
+
         _isConfigured = true;
     }
 

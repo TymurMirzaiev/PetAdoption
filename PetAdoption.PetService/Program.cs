@@ -2,6 +2,7 @@ using System.Reflection;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure;
+using PetAdoption.PetService.Infrastructure.BackgroundServices;
 using PetAdoption.PetService.Infrastructure.Middleware;
 
 // Configure MongoDB mappings
@@ -9,12 +10,16 @@ MongoDbConfiguration.Configure();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Command-side repository
+// Repositories
 builder.Services.AddSingleton<IPetRepository, PetRepository>();
-// Query-side store
 builder.Services.AddSingleton<IPetQueryStore, PetQueryStore>();
-// Event publisher
+builder.Services.AddSingleton<IOutboxRepository, OutboxRepository>();
+
+// Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
+
+// Background services
+builder.Services.AddHostedService<OutboxProcessorService>();
 
 builder.Services.AddMediator(Assembly.GetAssembly(typeof(Program)));
 

@@ -7,17 +7,18 @@ namespace PetAdoption.PetService.Domain.ValueObjects;
 /// </summary>
 public sealed class PetType : IEquatable<PetType>
 {
+    // ValidTypes must be initialized BEFORE static PetType instances
+    private static readonly HashSet<string> ValidTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Dog", "Cat", "Rabbit", "Bird", "Fish", "Hamster"
+    };
+
     public static readonly PetType Dog = new("Dog");
     public static readonly PetType Cat = new("Cat");
     public static readonly PetType Rabbit = new("Rabbit");
     public static readonly PetType Bird = new("Bird");
     public static readonly PetType Fish = new("Fish");
     public static readonly PetType Hamster = new("Hamster");
-
-    private static readonly HashSet<string> ValidTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Dog", "Cat", "Rabbit", "Bird", "Fish", "Hamster"
-    };
 
     public string Value { get; }
 

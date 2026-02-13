@@ -1,21 +1,15 @@
-using PetAdoption.PetService.Domain.Exceptions;
-
 namespace PetAdoption.PetService.Application.DTOs;
 
 /// <summary>
-/// Standardized error response for API errors.
+/// Standardized error response for API errors with string-based error codes.
 /// </summary>
 public record ErrorResponse
 {
     /// <summary>
-    /// Error code for programmatic handling.
+    /// Error code (subcode) for programmatic handling.
+    /// Uses snake_case format (e.g., "pet_not_found", "invalid_pet_name").
     /// </summary>
     public string ErrorCode { get; init; }
-
-    /// <summary>
-    /// Numeric error code value.
-    /// </summary>
-    public int ErrorCodeValue { get; init; }
 
     /// <summary>
     /// Human-readable error message.
@@ -33,26 +27,12 @@ public record ErrorResponse
     public DateTime Timestamp { get; init; }
 
     public ErrorResponse(
-        PetDomainErrorCode errorCode,
-        string message,
-        IDictionary<string, object>? details = null)
-    {
-        ErrorCode = errorCode.ToString();
-        ErrorCodeValue = (int)errorCode;
-        Message = message;
-        Details = details;
-        Timestamp = DateTime.UtcNow;
-    }
-
-    public ErrorResponse(
         string errorCode,
-        int errorCodeValue,
         string message,
         IDictionary<string, object>? details = null)
     {
-        ErrorCode = errorCode;
-        ErrorCodeValue = errorCodeValue;
-        Message = message;
+        ErrorCode = errorCode ?? throw new ArgumentNullException(nameof(errorCode));
+        Message = message ?? throw new ArgumentNullException(nameof(message));
         Details = details;
         Timestamp = DateTime.UtcNow;
     }

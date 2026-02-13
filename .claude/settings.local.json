@@ -12,7 +12,9 @@
       "Bash(dotnet restore:*)",
       "Bash(docker compose up:*)",
       "Bash(dotnet run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }

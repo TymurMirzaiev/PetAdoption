@@ -63,8 +63,7 @@ public class ExceptionHandlingMiddleware
             exception.Message);
 
         var errorResponse = new ErrorResponse(
-            errorCode: "InternalServerError",
-            errorCodeValue: 5000,
+            errorCode: "internal_server_error",
             message: "An unexpected error occurred. Please try again later.",
             details: new Dictionary<string, object>
             {
@@ -74,7 +73,7 @@ public class ExceptionHandlingMiddleware
         await WriteErrorResponseAsync(context, HttpStatusCode.InternalServerError, errorResponse);
     }
 
-    private static HttpStatusCode MapErrorCodeToHttpStatus(PetDomainErrorCode errorCode)
+    private static HttpStatusCode MapErrorCodeToHttpStatus(string errorCode)
     {
         return errorCode switch
         {

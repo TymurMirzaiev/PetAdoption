@@ -5,7 +5,14 @@
       "Bash(dotnet new:*)",
       "Bash(dotnet add:*)",
       "Bash(dotnet sln:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(libman restore:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(docker compose up:*)",
+      "Bash(dotnet run:*)",
+      "Bash(curl:*)"
     ]
   }
 }

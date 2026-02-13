@@ -9,24 +9,62 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 dotnet build PetAdoption.sln
 
 # Run the PetService API (listens on ports configured in launchSettings.json)
-dotnet run --project PetAdoption.PetService
+dotnet run --project src/Services/PetService/PetAdoption.PetService.API
+
+# Run the Blazor Web App
+dotnet run --project src/Web/PetAdoption.Web.BlazorApp
 
 # Start all infrastructure (MongoDB, RabbitMQ) and the service via Docker Compose
 docker compose up
 
 # Run only infrastructure dependencies
 docker compose up mongo rabbitmq
-```
 
-No test projects exist yet. When added, use `dotnet test PetAdoption.sln`.
+# Run tests
+dotnet test PetAdoption.sln
+```
 
 ## Architecture
 
-This is a .NET 9 microservice for pet adoption, implementing **tactical DDD patterns**, **CQRS**, **Transactional Outbox**, and a **custom Mediator pattern** (not MediatR).
+This is a .NET 9 microservice for pet adoption, implementing **Clean Architecture**, **tactical DDD patterns**, **CQRS**, **Transactional Outbox**, and a **custom Mediator pattern** (not MediatR).
 
-### Layer Structure (inside `PetAdoption.PetService/`)
+### Solution Structure
+
+```
+PetAdoption/
+├── src/
+│   ├── Services/
+│   │   └── PetService/
+│   │       ├── PetAdoption.PetService.Domain/        (Class Library - Zero dependencies)
+│   │       ├── PetAdoption.PetService.Application/   (Class Library - References Domain)
+│   │       ├── PetAdoption.PetService.Infrastructure/ (Class Library - References Application + Domain)
+│   │       └── PetAdoption.PetService.API/           (Web API - References all layers)
+│   ├── Web/
+│   │   └── PetAdoption.Web.BlazorApp/                (Blazor Web App)
+│   └── ServiceCommon/                                 (Future: Shared libraries)
+├── tests/
+│   └── PetService/
+│       ├── PetAdoption.PetService.UnitTests/
+│       └── PetAdoption.PetService.IntegrationTests/
+├── docs/
+│   ├── CLAUDE.md
+│   └── ERROR_HANDLING.md
+└── docker-compose.yml
+```
+
+### Dependency Rules (Clean Architecture)
+
+```
+API → Infrastructure → Application → Domain
+Infrastructure → Domain
+Application → Domain
+Domain → (no external dependencies)
+```
+
+### Layer Structure
 
 #### Domain Layer (Pure - No Dependencies)
+**Project:** `PetAdoption.PetService.Domain`
 - **Aggregates:** `Pet` aggregate root with full lifecycle (`Reserve()`, `Adopt()`, `CancelReservation()`)
 - **Value Objects:** `PetName`, `PetType` with validation and business rules
 - **Domain Events:** `PetReservedEvent`, `PetAdoptedEvent`, `PetReservationCancelledEvent` (inherit from `DomainEventBase`)
@@ -35,22 +73,26 @@ This is a .NET 9 microservice for pet adoption, implementing **tactical DDD patt
 - **Outbox:** `OutboxEvent` entity for reliable event delivery
 
 #### Application Layer (Orchestration)
+**Project:** `PetAdoption.PetService.Application`
 - **Commands/** — `ReservePetCommand`, `AdoptPetCommand`, `CancelReservationCommand` with handlers
 - **Queries/** — `GetAllPetsQuery`, `GetPetByIdQuery` with handlers
 - **DTOs/** — `PetListItemDto`, `PetDetailsDto`, response DTOs, `ErrorResponse`
-- **Services/** — `IOutboxService` for transactional event storage
+- **Abstractions/** — `IMediator`, `IRequest`, `IRequestHandler`, `IPipelineBehavior` (mediator contracts)
 
 #### Infrastructure Layer (Implementation)
-- **Repositories:** `PetRepository` (commands), `PetQueryStore` (queries), `OutboxRepository`
-- **Event Publishing:** `RabbitMqPublisher` (publishes to RabbitMQ)
-- **Outbox Processor:** `OutboxProcessorService` background service for reliable event delivery
-- **Middleware:** `ExceptionHandlingMiddleware` for error handling with subcodes
-- **MongoDB Configuration:** Value object serializers, entity mappings
-- **Mediator:** Custom CQRS mediator with pipeline behaviors
+**Project:** `PetAdoption.PetService.Infrastructure`
+- **Persistence/** — `PetRepository` (commands), `PetQueryStore` (queries), `OutboxRepository`
+- **Messaging/** — `RabbitMqPublisher` (publishes to RabbitMQ)
+- **BackgroundServices/** — `OutboxProcessorService` for reliable event delivery
+- **Middleware/** — `ExceptionHandlingMiddleware` for error handling with subcodes
+- **Mediator/** — Concrete mediator implementation, `LoggingBehavior`
+- **DependencyInjection/** — `ServiceCollectionExtensions` for DI configuration
 
-#### Controllers (API)
-- ASP.NET Core REST controllers dispatching through mediator
+#### API Layer
+**Project:** `PetAdoption.PetService.API`
+- **Controllers/** — ASP.NET Core REST controllers dispatching through mediator
 - All exceptions handled by `ExceptionHandlingMiddleware`
+- Swagger/OpenAPI documentation
 
 ### Key Patterns
 
@@ -87,9 +129,10 @@ This is a .NET 9 microservice for pet adoption, implementing **tactical DDD patt
 - See ERROR_HANDLING.md for complete documentation
 
 #### 5. Custom Mediator
-- Defined in `Infrastructure/Mediator/Mediator.cs`
+- **Abstractions** defined in `Application/Abstractions/IMediator.cs` (interfaces only)
+- **Implementation** in `Infrastructure/Mediator/Mediator.cs`
 - Uses `IPipelineBehavior<TRequest, TResponse>` for cross-cutting concerns
-- Handlers auto-discovered via reflection in `ServiceCollectionExtensions.AddMediator()`
+- Handlers auto-discovered via reflection in `Infrastructure/DependencyInjection/ServiceCollectionExtensions.AddMediator()`
 - Pipeline: Request → LoggingBehavior → (ValidationBehavior - disabled) → Handler
 
 ### Infrastructure Dependencies
@@ -187,25 +230,35 @@ See `ERROR_HANDLING.md` for comprehensive error handling documentation.
 
 ### Testing
 
-No test projects exist yet. Recommended structure:
+Test projects are structured following Clean Architecture principles:
+
+#### Unit Tests
+**Project:** `tests/PetService/PetAdoption.PetService.UnitTests`
+- References: `Domain`, `Application`
+- Purpose: Test business logic in isolation
+- Recommended coverage:
+  - Domain: Aggregate behavior, value object validation, domain exceptions
+  - Application: Command/query handlers with mocked repositories
+
+#### Integration Tests
+**Project:** `tests/PetService/PetAdoption.PetService.IntegrationTests`
+- References: All PetService layers
+- Purpose: Test full stack with real infrastructure
+- Recommended coverage:
+  - API endpoints with real MongoDB and RabbitMQ (use Testcontainers)
+  - Outbox processor background service
+  - End-to-end workflows
 
 ```bash
-# Create test project
-dotnet new xunit -n PetAdoption.Tests
-dotnet sln add PetAdoption.Tests/PetAdoption.Tests.csproj
-
-# Add reference to main project
-dotnet add PetAdoption.Tests reference PetAdoption.PetService
-
-# Run tests
+# Run all tests
 dotnet test PetAdoption.sln
-```
 
-**Test Coverage Recommendations:**
-1. **Domain Tests:** Aggregate behavior, value object validation, domain exceptions
-2. **Application Tests:** Command/query handlers, outbox service
-3. **Integration Tests:** API endpoints, MongoDB persistence, event publishing
-4. **Background Service Tests:** Outbox processor with test doubles
+# Run unit tests only
+dotnet test tests/PetService/PetAdoption.PetService.UnitTests
+
+# Run integration tests only
+dotnet test tests/PetService/PetAdoption.PetService.IntegrationTests
+```
 
 ### MongoDB Collections Schema
 
@@ -235,21 +288,26 @@ dotnet test PetAdoption.sln
 
 ### Development Workflow
 
-1. **Make domain changes** in `Domain/Pet.cs`
-2. **Create command/query** in `Application/Commands` or `Application/Queries`
-3. **Add controller action** in `Controllers/PetsController.cs`
-4. **Events are automatically** saved to outbox and published
-5. **Errors are automatically** transformed to ErrorResponse
+1. **Make domain changes** in `src/Services/PetService/PetAdoption.PetService.Domain/Pet.cs`
+2. **Create command/query** in `src/Services/PetService/PetAdoption.PetService.Application/Commands` or `.../Queries`
+3. **Implement handler** in the same file as command/query
+4. **Add controller action** in `src/Services/PetService/PetAdoption.PetService.API/Controllers/PetsController.cs`
+5. **Events are automatically** saved to outbox and published
+6. **Errors are automatically** transformed to ErrorResponse
 
 ### Important Notes
 
-- **Persistence Ignorance:** Domain layer has ZERO infrastructure dependencies (MongoDB serializers in Infrastructure)
+- **Clean Architecture:** Domain has ZERO external dependencies (no NuGet packages, no project references)
+- **Dependency Flow:** API → Infrastructure → Application → Domain (never reversed)
+- **Mediator Abstractions:** Defined in Application layer, implemented in Infrastructure layer
+- **Persistence Ignorance:** Domain layer knows nothing about MongoDB (serializers in Infrastructure)
 - **Event Reliability:** Outbox pattern ensures events are never lost, even if RabbitMQ is down
 - **Error Handling:** All domain exceptions automatically transformed to HTTP responses by middleware
 - **Value Objects:** Validation happens automatically in constructors
 - **CQRS:** Never use repository for queries, always use query store
 - **Validation Pipeline:** Currently disabled (commented out in ServiceCollectionExtensions.cs)
 - **Factory Method:** Always use `Pet.Create(name, type)` to create new pets
+- **Client-Side Libraries:** Managed by LibMan (`libman.json`), not committed to git
 
 ### Related Documentation
 

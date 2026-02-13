@@ -18,13 +18,22 @@ public static class MongoDbConfiguration
 
         // Register value object serializers
         BsonSerializer.RegisterSerializer(new PetNameSerializer());
-        BsonSerializer.RegisterSerializer(new PetTypeSerializer());
 
         // Configure Pet entity mapping
         BsonClassMap.RegisterClassMap<Pet>(cm =>
         {
             cm.AutoMap();
             cm.MapIdMember(p => p.Id)
+                .SetIdGenerator(GuidGenerator.Instance)
+                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.SetIgnoreExtraElements(true);
+        });
+
+        // Configure PetType entity mapping
+        BsonClassMap.RegisterClassMap<PetType>(cm =>
+        {
+            cm.AutoMap();
+            cm.MapIdMember(pt => pt.Id)
                 .SetIdGenerator(GuidGenerator.Instance)
                 .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
             cm.SetIgnoreExtraElements(true);
@@ -53,21 +62,6 @@ public static class MongoDbConfiguration
         }
 
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, PetName value)
-        {
-            context.Writer.WriteString(value?.Value ?? string.Empty);
-        }
-    }
-
-    // Custom serializer for PetType value object
-    private class PetTypeSerializer : SerializerBase<PetType>
-    {
-        public override PetType Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
-        {
-            var value = context.Reader.ReadString();
-            return new PetType(value);
-        }
-
-        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, PetType value)
         {
             context.Writer.WriteString(value?.Value ?? string.Empty);
         }

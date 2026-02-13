@@ -16,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<IPetRepository, PetRepository>();
 builder.Services.AddSingleton<IPetQueryStore, PetQueryStore>();
 builder.Services.AddSingleton<IOutboxRepository, OutboxRepository>();
+builder.Services.AddSingleton<IPetTypeRepository, PetTypeRepository>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
@@ -29,7 +30,17 @@ builder.Services.AddControllers();
 
 builder.Services.AddSwaggerGen(); // Registers Swagger
 
+// Register seeder
+builder.Services.AddTransient<PetTypeSeeder>();
+
 var app = builder.Build();
+
+// Seed pet types on startup
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<PetTypeSeeder>();
+    await seeder.SeedAsync();
+}
 
 // Configure the HTTP request pipeline.
 // Exception handling must be first to catch all exceptions

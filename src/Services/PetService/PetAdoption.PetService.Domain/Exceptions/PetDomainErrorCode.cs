@@ -40,6 +40,16 @@ public static class PetDomainErrorCode
     /// </summary>
     public const string InvalidPetType = "invalid_pet_type";
 
+    /// <summary>
+    /// Pet type with the given code already exists.
+    /// </summary>
+    public const string PetTypeAlreadyExists = "pet_type_already_exists";
+
+    /// <summary>
+    /// Pet type was not found.
+    /// </summary>
+    public const string PetTypeNotFound = "pet_type_not_found";
+
     // General domain errors
 
     /// <summary>

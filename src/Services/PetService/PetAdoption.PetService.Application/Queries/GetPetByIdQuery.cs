@@ -1,5 +1,6 @@
 using PetAdoption.PetService.Domain.Exceptions;
 using PetAdoption.PetService.Application.Abstractions;
+using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Application.Queries;
 
@@ -23,10 +24,12 @@ public record PetDetailsDto(
 public class GetPetByIdQueryHandler : IRequestHandler<GetPetByIdQuery, PetDetailsDto>
 {
     private readonly IPetQueryStore _queryStore;
+    private readonly IPetTypeRepository _petTypeRepository;
 
-    public GetPetByIdQueryHandler(IPetQueryStore queryStore)
+    public GetPetByIdQueryHandler(IPetQueryStore queryStore, IPetTypeRepository petTypeRepository)
     {
         _queryStore = queryStore;
+        _petTypeRepository = petTypeRepository;
     }
 
     public async Task<PetDetailsDto> Handle(GetPetByIdQuery request, CancellationToken cancellationToken = default)
@@ -43,10 +46,14 @@ public class GetPetByIdQueryHandler : IRequestHandler<GetPetByIdQuery, PetDetail
                 });
         }
 
+        // Fetch pet type
+        var petType = await _petTypeRepository.GetByIdAsync(pet.PetTypeId, cancellationToken);
+        var petTypeName = petType?.Name ?? "Unknown";
+
         return new PetDetailsDto(
             pet.Id,
             pet.Name,
-            pet.Type,
+            petTypeName,
             pet.Status.ToString()
         );
     }

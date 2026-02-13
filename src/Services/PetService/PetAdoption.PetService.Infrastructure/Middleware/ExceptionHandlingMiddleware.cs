@@ -79,6 +79,7 @@ public class ExceptionHandlingMiddleware
         {
             // Not found errors
             PetDomainErrorCode.PetNotFound => HttpStatusCode.NotFound,
+            PetDomainErrorCode.PetTypeNotFound => HttpStatusCode.NotFound,
 
             // Validation errors
             PetDomainErrorCode.InvalidPetName => HttpStatusCode.BadRequest,
@@ -89,6 +90,7 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.PetNotReserved => HttpStatusCode.Conflict,
             PetDomainErrorCode.ConcurrencyConflict => HttpStatusCode.Conflict,
             PetDomainErrorCode.InvalidOperation => HttpStatusCode.Conflict,
+            PetDomainErrorCode.PetTypeAlreadyExists => HttpStatusCode.Conflict,
 
             // Unknown/default
             _ => HttpStatusCode.InternalServerError

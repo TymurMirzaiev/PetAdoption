@@ -6,21 +6,23 @@ namespace PetAdoption.PetService.UnitTests.Domain;
 
 public class PetTests
 {
+    private static readonly Guid TestPetTypeId = Guid.NewGuid();
+
     [Fact]
     public void Create_WithValidParameters_ShouldCreateAvailablePet()
     {
         // Arrange
         var name = "Bella";
-        var type = "Dog";
+        var petTypeId = TestPetTypeId;
 
         // Act
-        var pet = Pet.Create(name, type);
+        var pet = Pet.Create(name, petTypeId);
 
         // Assert
         pet.Should().NotBeNull();
         pet.Id.Should().NotBeEmpty();
         pet.Name.Value.Should().Be(name);
-        pet.Type.Value.Should().Be(type);
+        pet.PetTypeId.Should().Be(petTypeId);
         pet.Status.Should().Be(PetStatus.Available);
         pet.Version.Should().Be(0);
         pet.DomainEvents.Should().BeEmpty();
@@ -30,7 +32,7 @@ public class PetTests
     public void Reserve_WhenPetIsAvailable_ShouldChangeStatusToReserved()
     {
         // Arrange
-        var pet = Pet.Create("Bella", "Dog");
+        var pet = Pet.Create("Bella", TestPetTypeId);
 
         // Act
         pet.Reserve();
@@ -49,7 +51,7 @@ public class PetTests
     public void Reserve_WhenPetIsReserved_ShouldThrowDomainException()
     {
         // Arrange
-        var pet = Pet.Create("Bella", "Dog");
+        var pet = Pet.Create("Bella", TestPetTypeId);
         pet.Reserve();
 
         // Act
@@ -64,7 +66,7 @@ public class PetTests
     public void Reserve_WhenPetIsAdopted_ShouldThrowDomainException()
     {
         // Arrange
-        var pet = Pet.Create("Bella", "Dog");
+        var pet = Pet.Create("Bella", TestPetTypeId);
         pet.Reserve();
         pet.Adopt();
 
@@ -80,7 +82,7 @@ public class PetTests
     public void Adopt_WhenPetIsReserved_ShouldChangeStatusToAdopted()
     {
         // Arrange
-        var pet = Pet.Create("Max", "Cat");
+        var pet = Pet.Create("Max", TestPetTypeId);
         pet.Reserve();
         pet.ClearDomainEvents(); // Clear reservation event
 
@@ -101,7 +103,7 @@ public class PetTests
     public void Adopt_WhenPetIsAvailable_ShouldThrowDomainException()
     {
         // Arrange
-        var pet = Pet.Create("Max", "Cat");
+        var pet = Pet.Create("Max", TestPetTypeId);
 
         // Act
         var act = () => pet.Adopt();
@@ -115,7 +117,7 @@ public class PetTests
     public void Adopt_WhenPetIsAdopted_ShouldThrowDomainException()
     {
         // Arrange
-        var pet = Pet.Create("Max", "Cat");
+        var pet = Pet.Create("Max", TestPetTypeId);
         pet.Reserve();
         pet.Adopt();
 
@@ -131,7 +133,7 @@ public class PetTests
     public void CancelReservation_WhenPetIsReserved_ShouldChangeStatusToAvailable()
     {
         // Arrange
-        var pet = Pet.Create("Charlie", "Rabbit");
+        var pet = Pet.Create("Charlie", TestPetTypeId);
         pet.Reserve();
         pet.ClearDomainEvents(); // Clear reservation event
 
@@ -152,7 +154,7 @@ public class PetTests
     public void CancelReservation_WhenPetIsAvailable_ShouldThrowDomainException()
     {
         // Arrange
-        var pet = Pet.Create("Charlie", "Rabbit");
+        var pet = Pet.Create("Charlie", TestPetTypeId);
 
         // Act
         var act = () => pet.CancelReservation();
@@ -166,7 +168,7 @@ public class PetTests
     public void CancelReservation_WhenPetIsAdopted_ShouldThrowDomainException()
     {
         // Arrange
-        var pet = Pet.Create("Charlie", "Rabbit");
+        var pet = Pet.Create("Charlie", TestPetTypeId);
         pet.Reserve();
         pet.Adopt();
 
@@ -182,7 +184,7 @@ public class PetTests
     public void CompleteWorkflow_ReserveAdopt_ShouldSucceed()
     {
         // Arrange
-        var pet = Pet.Create("Buddy", "Dog");
+        var pet = Pet.Create("Buddy", TestPetTypeId);
 
         // Act & Assert - Reserve
         pet.Reserve();
@@ -199,7 +201,7 @@ public class PetTests
     public void CompleteWorkflow_ReserveCancelReserve_ShouldSucceed()
     {
         // Arrange
-        var pet = Pet.Create("Luna", "Cat");
+        var pet = Pet.Create("Luna", TestPetTypeId);
 
         // Act & Assert - Reserve
         pet.Reserve();
@@ -219,7 +221,7 @@ public class PetTests
     public void ClearDomainEvents_ShouldRemoveAllEvents()
     {
         // Arrange
-        var pet = Pet.Create("Rocky", "Hamster");
+        var pet = Pet.Create("Rocky", TestPetTypeId);
         pet.Reserve();
         pet.DomainEvents.Should().HaveCount(1);
 

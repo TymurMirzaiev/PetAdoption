@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Exceptions;

@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace PetAdoption.PetService.Infrastructure.Mediator;
 
 public interface IMediator

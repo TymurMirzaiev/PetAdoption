@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain;

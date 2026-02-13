@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
 

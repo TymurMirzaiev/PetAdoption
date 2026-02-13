@@ -43,6 +43,20 @@ msbuild.log
 msbuild.err
 msbuild.wrn
 
+# .NET specific
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# NuGet Packages
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+# LibMan - Client-side libraries
+**/wwwroot/lib/
+
 # Node.js build artifacts
 node_modules/
 package-lock.json

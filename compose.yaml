@@ -4,7 +4,7 @@ services:
     image: petadoption.petservice
     build:
       context: .
-      dockerfile: PetAdoption.PetService/Dockerfile
+      dockerfile: src/Services/PetService/PetAdoption.PetService.API/Dockerfile
     ports:
       - "8080:8080"
       

@@ -1,4 +1,7 @@
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Infrastructure.Mediator;
 
 namespace PetAdoption.PetService.Infrastructure;

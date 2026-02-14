@@ -1,4 +1,5 @@
 using System.Reflection;
+using MongoDB.Driver;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.DependencyInjection;
@@ -12,6 +13,12 @@ MongoDbConfiguration.Configure();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// MongoDB
+var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDb") ?? "mongodb://localhost:27017";
+var mongoClient = new MongoClient(mongoConnectionString);
+var mongoDatabase = mongoClient.GetDatabase("PetAdoptionDb");
+builder.Services.AddSingleton<IMongoDatabase>(mongoDatabase);
+
 // Repositories
 builder.Services.AddSingleton<IPetRepository, PetRepository>();
 builder.Services.AddSingleton<IPetQueryStore, PetQueryStore>();
@@ -24,7 +31,8 @@ builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
 // Background services
 builder.Services.AddHostedService<OutboxProcessorService>();
 
-builder.Services.AddMediator(Assembly.GetAssembly(typeof(Program)));
+// Register mediator with Application assembly to auto-discover handlers
+builder.Services.AddMediator(typeof(GetAllPetsQueryHandler).Assembly);
 
 builder.Services.AddControllers();
 

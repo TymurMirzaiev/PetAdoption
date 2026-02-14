@@ -82,14 +82,61 @@ public class PetRepository : IPetRepository
             }
 
             await session.CommitTransactionAsync();
-
             aggregate.ClearDomainEvents();
+        }
+        catch (NotSupportedException)
+        {
+            // MongoDB standalone doesn't support transactions - use non-transactional approach
+            await SaveWithoutTransaction(aggregate, isNew);
         }
         catch
         {
-            await session.AbortTransactionAsync();
+            if (session.IsInTransaction)
+            {
+                await session.AbortTransactionAsync();
+            }
             throw;
         }
+    }
+
+    private async Task SaveWithoutTransaction(Pet aggregate, bool isNew)
+    {
+        if (isNew)
+        {
+            await _pets.InsertOneAsync(aggregate);
+        }
+        else
+        {
+            var currentVersion = aggregate.Version;
+            aggregate.IncrementVersion();
+
+            var result = await _pets.ReplaceOneAsync(
+                p => p.Id == aggregate.Id && p.Version == currentVersion,
+                aggregate);
+
+            if (result.MatchedCount == 0)
+            {
+                throw new DomainException(
+                    PetDomainErrorCode.ConcurrencyConflict,
+                    $"Pet {aggregate.Id} was modified by another operation. Please reload and try again.",
+                    new Dictionary<string, object>
+                    {
+                        { "PetId", aggregate.Id },
+                        { "ExpectedVersion", currentVersion }
+                    });
+            }
+        }
+
+        if (aggregate.DomainEvents.Any())
+        {
+            var outboxEvents = aggregate.DomainEvents
+                .Select(SerializeEvent)
+                .ToList();
+
+            await _outboxEvents.InsertManyAsync(outboxEvents);
+        }
+
+        aggregate.ClearDomainEvents();
     }
 
     private static OutboxEvent SerializeEvent(IDomainEvent domainEvent)

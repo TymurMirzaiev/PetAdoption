@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,15 +8,12 @@ using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Infrastructure.BackgroundServices;
 
-/// <summary>
-/// Background service that processes pending events from the outbox and publishes them to RabbitMQ.
-/// Runs periodically to ensure eventual consistency and reliable event delivery.
-/// </summary>
 public class OutboxProcessorService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<OutboxProcessorService> _logger;
     private readonly TimeSpan _processingInterval = TimeSpan.FromSeconds(5);
+    private static readonly Assembly _domainAssembly = typeof(IDomainEvent).Assembly;
 
     public OutboxProcessorService(
         IServiceProvider serviceProvider,
@@ -105,15 +103,13 @@ public class OutboxProcessorService : BackgroundService
     {
         try
         {
-            // Get the event type
-            var eventType = Type.GetType($"PetAdoption.PetService.Domain.{outboxEvent.EventType}, PetAdoption.PetService");
+            var eventType = _domainAssembly.GetType($"PetAdoption.PetService.Domain.{outboxEvent.EventType}");
             if (eventType == null)
             {
                 _logger.LogWarning("Could not find event type {EventType}", outboxEvent.EventType);
                 return null;
             }
 
-            // Deserialize
             var domainEvent = JsonSerializer.Deserialize(outboxEvent.EventData, eventType) as IDomainEvent;
             return domainEvent;
         }

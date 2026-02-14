@@ -25,6 +25,14 @@ public class PetsController : ControllerBase
         return Ok(pets);
     }
 
+    // POST /api/pets
+    [HttpPost]
+    public async Task<ActionResult<CreatePetResponse>> Create(CreatePetRequest request)
+    {
+        var result = await _mediator.Send(new CreatePetCommand(request.Name, request.PetTypeId));
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
     // GET /api/pets/{id}
     [HttpGet("{id}")]
     public async Task<ActionResult<PetDetailsDto>> GetById(Guid id)
@@ -66,3 +74,5 @@ public class PetsController : ControllerBase
         return Ok(result);
     }
 }
+
+public record CreatePetRequest(string Name, Guid PetTypeId);

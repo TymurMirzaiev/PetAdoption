@@ -26,6 +26,8 @@ public static class MongoDbConfiguration
             cm.MapIdMember(p => p.Id)
                 .SetIdGenerator(GuidGenerator.Instance)
                 .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.MapMember(p => p.PetTypeId)
+                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
             cm.SetIgnoreExtraElements(true);
         });
 

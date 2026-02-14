@@ -2,14 +2,15 @@ using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Domain;
 
-/// <summary>
-/// Base class for domain events providing common event metadata.
-/// </summary>
 public abstract class DomainEventBase : IDomainEvent
 {
-    public Guid EventId { get; }
-    public Guid AggregateId { get; }
-    public DateTime OccurredOn { get; }
+    public Guid EventId { get; init; }
+    public Guid AggregateId { get; init; }
+    public DateTime OccurredOn { get; init; }
+
+    protected DomainEventBase()
+    {
+    }
 
     protected DomainEventBase(Guid aggregateId)
     {

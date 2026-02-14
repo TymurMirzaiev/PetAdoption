@@ -295,6 +295,56 @@ dotnet test tests/PetService/PetAdoption.PetService.IntegrationTests
 5. **Events are automatically** saved to outbox and published
 6. **Errors are automatically** transformed to ErrorResponse
 
+### Command/Query Handler Pattern
+
+**File Structure:**
+- Each command/query has **two files**: `*Command.cs` (or `*Query.cs`) and `*CommandHandler.cs` (or `*QueryHandler.cs`)
+- The **command/query file** contains ONLY the request record
+- The **handler file** contains the response record AND the handler implementation
+
+**Example:**
+```csharp
+// CreatePetCommand.cs - Contains only the request
+using PetAdoption.PetService.Application.Abstractions;
+
+namespace PetAdoption.PetService.Application.Commands;
+
+public record CreatePetCommand(string Name, Guid PetTypeId) : ICommand<CreatePetResponse>;
+```
+
+```csharp
+// CreatePetCommandHandler.cs - Contains response record AND handler
+using PetAdoption.PetService.Application.Abstractions;
+using PetAdoption.PetService.Domain;
+using PetAdoption.PetService.Domain.Interfaces;
+
+namespace PetAdoption.PetService.Application.Commands;
+
+public record CreatePetResponse(Guid Id);
+
+public class CreatePetCommandHandler : ICommandHandler<CreatePetCommand, CreatePetResponse>
+{
+    private readonly IPetRepository _petRepository;
+
+    public CreatePetCommandHandler(IPetRepository petRepository)
+    {
+        _petRepository = petRepository;
+    }
+
+    public async Task<CreatePetResponse> Handle(CreatePetCommand request, CancellationToken cancellationToken)
+    {
+        var pet = Pet.Create(request.Name, request.PetTypeId);
+        await _petRepository.Add(pet);
+        return new CreatePetResponse(pet.Id);
+    }
+}
+```
+
+**Rationale:**
+- Response records are implementation details of the handler
+- Keeps command/query files minimal and focused on the request contract
+- Handler file becomes self-contained with both response and implementation
+
 ### Important Notes
 
 - **Clean Architecture:** Domain has ZERO external dependencies (no NuGet packages, no project references)

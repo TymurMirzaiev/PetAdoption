@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -10,11 +11,13 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
 {
     private readonly string _exchangeName;
     private readonly ConnectionFactory _factory;
+    private readonly ILogger<RabbitMqPublisher> _logger;
     private IConnection? _connection;
     private IChannel? _channel;
 
-    public RabbitMqPublisher(IConfiguration config)
+    public RabbitMqPublisher(IConfiguration config, ILogger<RabbitMqPublisher> logger)
     {
+        _logger = logger;
         var section = config.GetSection("RabbitMq");
         _exchangeName = section["Exchange"] ?? "pet_reservations";
 
@@ -24,6 +27,9 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
             UserName = section["User"] ?? "guest",
             Password = section["Password"] ?? "guest",
         };
+
+        _logger.LogInformation("RabbitMQ Publisher initialized. Exchange: {Exchange}, Host: {Host}",
+            _exchangeName, _factory.HostName);
     }
 
     public async Task PublishAsync(IDomainEvent domainEvent)
@@ -51,13 +57,16 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
     {
         if (_connection == null || !_connection.IsOpen)
         {
+            _logger.LogInformation("Establishing RabbitMQ connection to {Host}", _factory.HostName);
             _connection = await _factory.CreateConnectionAsync();
             _channel = await _connection.CreateChannelAsync();
-            
+
             await _channel.ExchangeDeclareAsync(
-                exchange: _exchangeName, 
-                type: ExchangeType.Fanout, 
+                exchange: _exchangeName,
+                type: ExchangeType.Fanout,
                 durable: true);
+
+            _logger.LogInformation("RabbitMQ connection established. Exchange '{Exchange}' declared", _exchangeName);
         }
     }
 
@@ -70,5 +79,8 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
             exchange: _exchangeName,
             routingKey: string.Empty,
             body: body);
+
+        _logger.LogInformation("Published {EventType} to exchange '{Exchange}'. Payload: {Payload}",
+            domainEvent.GetType().Name, _exchangeName, json);
     }
 }

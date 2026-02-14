@@ -1,35 +1,38 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
+using PetAdoption.PetService.Infrastructure.Messaging.Configuration;
 
 namespace PetAdoption.PetService.Infrastructure.Messaging;
 
 public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
 {
-    private readonly string _exchangeName;
+    private readonly RabbitMqOptions _options;
     private readonly ConnectionFactory _factory;
     private readonly ILogger<RabbitMqPublisher> _logger;
     private IConnection? _connection;
     private IChannel? _channel;
 
-    public RabbitMqPublisher(IConfiguration config, ILogger<RabbitMqPublisher> logger)
+    public RabbitMqPublisher(IOptions<RabbitMqOptions> options, ILogger<RabbitMqPublisher> logger)
     {
         _logger = logger;
-        var section = config.GetSection("RabbitMq");
-        _exchangeName = section["Exchange"] ?? "pet_reservations";
+        _options = options.Value;
 
         _factory = new ConnectionFactory
         {
-            HostName = section["Host"] ?? "localhost",
-            UserName = section["User"] ?? "guest",
-            Password = section["Password"] ?? "guest",
+            HostName = _options.Host,
+            Port = _options.Port,
+            UserName = _options.User,
+            Password = _options.Password,
+            VirtualHost = _options.VirtualHost
         };
 
-        _logger.LogInformation("RabbitMQ Publisher initialized. Exchange: {Exchange}, Host: {Host}",
-            _exchangeName, _factory.HostName);
+        _logger.LogInformation("RabbitMQ Publisher initialized. Host: {Host}:{Port}",
+            _factory.HostName, _factory.Port);
     }
 
     public async Task PublishAsync(IDomainEvent domainEvent)
@@ -57,16 +60,10 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
     {
         if (_connection == null || !_connection.IsOpen)
         {
-            _logger.LogInformation("Establishing RabbitMQ connection to {Host}", _factory.HostName);
+            _logger.LogInformation("Establishing RabbitMQ connection to {Host}:{Port}", _factory.HostName, _factory.Port);
             _connection = await _factory.CreateConnectionAsync();
             _channel = await _connection.CreateChannelAsync();
-
-            await _channel.ExchangeDeclareAsync(
-                exchange: _exchangeName,
-                type: ExchangeType.Fanout,
-                durable: true);
-
-            _logger.LogInformation("RabbitMQ connection established. Exchange '{Exchange}' declared", _exchangeName);
+            _logger.LogInformation("RabbitMQ connection established");
         }
     }
 
@@ -75,12 +72,26 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
         var json = JsonSerializer.Serialize(domainEvent);
         var body = Encoding.UTF8.GetBytes(json);
 
+        var exchange = RabbitMqTopology.Exchanges.PetEvents;
+        var routingKey = GetRoutingKey(domainEvent);
+
         await _channel!.BasicPublishAsync(
-            exchange: _exchangeName,
-            routingKey: string.Empty,
+            exchange: exchange,
+            routingKey: routingKey,
             body: body);
 
-        _logger.LogInformation("Published {EventType} to exchange '{Exchange}'. Payload: {Payload}",
-            domainEvent.GetType().Name, _exchangeName, json);
+        _logger.LogInformation("Published {EventType} to exchange '{Exchange}' with routing key '{RoutingKey}'",
+            domainEvent.GetType().Name, exchange, routingKey);
+    }
+
+    private static string GetRoutingKey(IDomainEvent domainEvent)
+    {
+        return domainEvent.GetType().Name switch
+        {
+            nameof(PetReservedEvent) => RabbitMqTopology.RoutingKeys.PetReserved,
+            nameof(PetAdoptedEvent) => RabbitMqTopology.RoutingKeys.PetAdopted,
+            nameof(PetReservationCancelledEvent) => RabbitMqTopology.RoutingKeys.ReservationCancelled,
+            _ => string.Empty
+        };
     }
 }

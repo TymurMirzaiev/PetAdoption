@@ -5,13 +5,15 @@ using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.DependencyInjection;
 using PetAdoption.PetService.Infrastructure.Persistence;
 using PetAdoption.PetService.Infrastructure.Messaging;
+using PetAdoption.PetService.Infrastructure.Messaging.Configuration;
 using PetAdoption.PetService.Infrastructure.BackgroundServices;
 using PetAdoption.PetService.Infrastructure.Middleware;
 
-// Configure MongoDB mappings
 MongoDbConfiguration.Configure();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
 
 // MongoDB
 var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDb") ?? "mongodb://localhost:27017";
@@ -29,6 +31,7 @@ builder.Services.AddSingleton<IPetTypeRepository, PetTypeRepository>();
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
 
 // Background services
+builder.Services.AddHostedService<RabbitMqTopologySetup>();
 builder.Services.AddHostedService<OutboxProcessorService>();
 
 // Register mediator with Application assembly to auto-discover handlers

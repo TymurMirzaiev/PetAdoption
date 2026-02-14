@@ -1,5 +1,6 @@
 using PetAdoption.PetService.Infrastructure.Messaging.Configuration;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 
 namespace PetAdoption.PetService.Infrastructure.Messaging;
 
@@ -15,7 +16,17 @@ public class RabbitMqTopologyBuilder
     {
         _setupActions.Add(async channel =>
         {
-            await channel.ExchangeDeclareAsync(name, type, durable, autoDelete);
+            try
+            {
+                await channel.ExchangeDeclareAsync(name, type, durable, autoDelete);
+            }
+            catch (OperationInterruptedException ex) when (ex.ShutdownReason.ReplyCode == 406)
+            {
+                // PRECONDITION_FAILED - exchange exists with different properties
+                // Delete and recreate with new configuration
+                await channel.ExchangeDeleteAsync(name);
+                await channel.ExchangeDeclareAsync(name, type, durable, autoDelete);
+            }
         });
         return this;
     }
@@ -29,7 +40,17 @@ public class RabbitMqTopologyBuilder
     {
         _setupActions.Add(async channel =>
         {
-            await channel.QueueDeclareAsync(name, durable, exclusive, autoDelete, arguments);
+            try
+            {
+                await channel.QueueDeclareAsync(name, durable, exclusive, autoDelete, arguments);
+            }
+            catch (OperationInterruptedException ex) when (ex.ShutdownReason.ReplyCode == 406)
+            {
+                // PRECONDITION_FAILED - queue exists with different properties
+                // Delete and recreate with new configuration
+                await channel.QueueDeleteAsync(name);
+                await channel.QueueDeclareAsync(name, durable, exclusive, autoDelete, arguments);
+            }
         });
         return this;
     }

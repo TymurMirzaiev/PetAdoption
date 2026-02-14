@@ -22,38 +22,54 @@ public class RabbitMqTopologySetup : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            _logger.LogInformation("Setting up RabbitMQ topology...");
+        const int maxRetries = 10;
+        const int delayMs = 2000;
 
-            var factory = new ConnectionFactory
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
             {
-                HostName = _options.Host,
-                Port = _options.Port,
-                UserName = _options.User,
-                Password = _options.Password,
-                VirtualHost = _options.VirtualHost
-            };
+                _logger.LogInformation("Setting up RabbitMQ topology (attempt {Attempt}/{MaxRetries})...", attempt, maxRetries);
 
-            _connection = await factory.CreateConnectionAsync(cancellationToken);
-            var channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
+                var factory = new ConnectionFactory
+                {
+                    HostName = _options.Host,
+                    Port = _options.Port,
+                    UserName = _options.User,
+                    Password = _options.Password,
+                    VirtualHost = _options.VirtualHost
+                };
 
-            var builder = new RabbitMqTopologyBuilder()
-                .FromConfiguration(_options);
+                _connection = await factory.CreateConnectionAsync(cancellationToken);
+                var channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
-            await builder.SetupAsync(channel);
+                var builder = new RabbitMqTopologyBuilder()
+                    .FromConfiguration(_options);
 
-            await channel.CloseAsync(cancellationToken);
+                await builder.SetupAsync(channel);
 
-            _logger.LogInformation(
-                "RabbitMQ topology setup completed. Exchanges: {ExchangeCount}, Queues: {QueueCount}",
-                _options.Exchanges.Count,
-                _options.Queues.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to setup RabbitMQ topology");
-            throw;
+                await channel.CloseAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "RabbitMQ topology setup completed. Exchanges: {ExchangeCount}, Queues: {QueueCount}",
+                    _options.Exchanges.Count,
+                    _options.Queues.Count);
+
+                return;
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to setup RabbitMQ topology (attempt {Attempt}/{MaxRetries}). Retrying in {DelayMs}ms...",
+                    attempt, maxRetries, delayMs);
+
+                await Task.Delay(delayMs, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to setup RabbitMQ topology after {MaxRetries} attempts", maxRetries);
+                throw;
+            }
         }
     }
 

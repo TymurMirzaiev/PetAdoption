@@ -16,7 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
 
 // MongoDB
-var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDb") ?? "mongodb://localhost:27017";
+var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDb")
+    ?? throw new InvalidOperationException("MongoDB connection string is not configured");
 var mongoClient = new MongoClient(mongoConnectionString);
 var mongoDatabase = mongoClient.GetDatabase("PetAdoptionDb");
 builder.Services.AddSingleton<IMongoDatabase>(mongoDatabase);

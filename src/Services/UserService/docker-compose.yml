@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  userservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: petadoption-userservice
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__MongoDb=mongodb://root:example@mongodb:27017
+      - Database__Name=UserDb
+      - Jwt__Secret=your-super-secret-key-minimum-32-characters-long-change-in-production!
+      - Jwt__Issuer=PetAdoption.UserService
+      - Jwt__Audience=PetAdoption.Services
+      - Jwt__ExpirationMinutes=60
+      - RabbitMq__Host=rabbitmq
+      - RabbitMq__Port=5672
+      - RabbitMq__User=guest
+      - RabbitMq__Password=guest
+      - RabbitMq__VirtualHost=/
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - petadoption-network
+
+  mongodb:
+    image: mongo:8.0
+    container_name: petadoption-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - petadoption-network
+
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: petadoption-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - petadoption-network
+
+networks:
+  petadoption-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  rabbitmq-data:

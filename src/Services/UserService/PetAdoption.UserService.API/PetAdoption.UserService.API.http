@@ -1,0 +1,6 @@
+@PetAdoption.UserService.API_HostAddress = http://localhost:5197
+
+GET {{PetAdoption.UserService.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

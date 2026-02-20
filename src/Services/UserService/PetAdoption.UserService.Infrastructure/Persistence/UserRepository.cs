@@ -20,23 +20,30 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByIdAsync(UserId id)
     {
-        return await _users.Find(u => u.Id.Value == id.Value).FirstOrDefaultAsync();
+        // Use Filter API instead of LINQ to work with custom serializers
+        var filter = Builders<User>.Filter.Eq("_id", id.Value);
+        return await _users.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<User?> GetByEmailAsync(Email email)
     {
-        return await _users.Find(u => u.Email.Value == email.Value).FirstOrDefaultAsync();
+        // Use Filter API instead of LINQ to work with custom serializers
+        var filter = Builders<User>.Filter.Eq("Email", email.Value);
+        return await _users.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<bool> ExistsWithEmailAsync(Email email)
     {
-        return await _users.Find(u => u.Email.Value == email.Value).AnyAsync();
+        // Use Filter API instead of LINQ to work with custom serializers
+        var filter = Builders<User>.Filter.Eq("Email", email.Value);
+        var count = await _users.CountDocumentsAsync(filter);
+        return count > 0;
     }
 
     public async Task SaveAsync(User user)
     {
-        // Save user (upsert)
-        var filter = Builders<User>.Filter.Eq(u => u.Id.Value, user.Id.Value);
+        // Save user (upsert) - Use Filter API to work with custom serializers
+        var filter = Builders<User>.Filter.Eq("_id", user.Id.Value);
         await _users.ReplaceOneAsync(
             filter,
             user,

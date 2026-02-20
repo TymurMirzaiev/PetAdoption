@@ -20,6 +20,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Configure MongoDB serialization
+        MongoDbConfiguration.Configure();
+
         // MongoDB
         var mongoConnectionString = configuration.GetConnectionString("MongoDb")
             ?? throw new InvalidOperationException("MongoDB connection string is not configured");

@@ -16,19 +16,27 @@ public class UserQueryStore : IUserQueryStore
 
     public async Task<User?> GetByIdAsync(UserId id)
     {
-        return await _users.Find(u => u.Id.Value == id.Value).FirstOrDefaultAsync();
+        // Use Filter API instead of LINQ to work with custom serializers
+        var filter = Builders<User>.Filter.Eq("_id", id.Value);
+        return await _users.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<User?> GetByEmailAsync(Email email)
     {
-        return await _users.Find(u => u.Email.Value == email.Value).FirstOrDefaultAsync();
+        // Use Filter API instead of LINQ to work with custom serializers
+        var filter = Builders<User>.Filter.Eq("Email", email.Value);
+        return await _users.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<List<User>> GetAllAsync(int skip = 0, int take = 50)
     {
+        // Use empty filter for "get all"
+        var filter = Builders<User>.Filter.Empty;
+        var sort = Builders<User>.Sort.Descending("RegisteredAt");
+
         return await _users
-            .Find(_ => true)
-            .SortByDescending(u => u.RegisteredAt)
+            .Find(filter)
+            .Sort(sort)
             .Skip(skip)
             .Limit(take)
             .ToListAsync();
@@ -36,6 +44,7 @@ public class UserQueryStore : IUserQueryStore
 
     public async Task<int> CountAsync()
     {
-        return (int)await _users.CountDocumentsAsync(_ => true);
+        var filter = Builders<User>.Filter.Empty;
+        return (int)await _users.CountDocumentsAsync(filter);
     }
 }

@@ -20,29 +20,35 @@ public class OutboxRepository : IOutboxRepository
 
     public async Task<List<OutboxEvent>> GetUnprocessedAsync(int batchSize = 100)
     {
+        // Use Filter API for consistency
+        var filter = Builders<OutboxEvent>.Filter.Eq("IsProcessed", false);
+        var sort = Builders<OutboxEvent>.Sort.Ascending("CreatedAt");
+
         return await _outboxEvents
-            .Find(e => !e.IsProcessed)
-            .SortBy(e => e.CreatedAt)
+            .Find(filter)
+            .Sort(sort)
             .Limit(batchSize)
             .ToListAsync();
     }
 
     public async Task MarkAsProcessedAsync(string id)
     {
-        var filter = Builders<OutboxEvent>.Filter.Eq(e => e.Id, id);
+        // Use Filter API for consistency
+        var filter = Builders<OutboxEvent>.Filter.Eq("_id", id);
         var update = Builders<OutboxEvent>.Update
-            .Set(e => e.IsProcessed, true)
-            .Set(e => e.ProcessedAt, DateTime.UtcNow);
+            .Set("IsProcessed", true)
+            .Set("ProcessedAt", DateTime.UtcNow);
 
         await _outboxEvents.UpdateOneAsync(filter, update);
     }
 
     public async Task MarkAsFailedAsync(string id, string error)
     {
-        var filter = Builders<OutboxEvent>.Filter.Eq(e => e.Id, id);
+        // Use Filter API for consistency
+        var filter = Builders<OutboxEvent>.Filter.Eq("_id", id);
         var update = Builders<OutboxEvent>.Update
-            .Inc(e => e.RetryCount, 1)
-            .Set(e => e.LastError, error);
+            .Inc("RetryCount", 1)
+            .Set("LastError", error);
 
         await _outboxEvents.UpdateOneAsync(filter, update);
     }

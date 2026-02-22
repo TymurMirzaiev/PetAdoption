@@ -22,10 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PetAdoption.UserService.Domain\PetAdoption.UserService.Domain.csproj" />
-    <ProjectReference Include="..\PetAdoption.UserService.Application\PetAdoption.UserService.Application.csproj" />
-    <ProjectReference Include="..\PetAdoption.UserService.Infrastructure\PetAdoption.UserService.Infrastructure.csproj" />
-    <ProjectReference Include="..\PetAdoption.UserService.API\PetAdoption.UserService.API.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\UserService\PetAdoption.UserService.Domain\PetAdoption.UserService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\UserService\PetAdoption.UserService.Application\PetAdoption.UserService.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\UserService\PetAdoption.UserService.Infrastructure\PetAdoption.UserService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\UserService\PetAdoption.UserService.API\PetAdoption.UserService.API.csproj" />
   </ItemGroup>
 
 </Project>

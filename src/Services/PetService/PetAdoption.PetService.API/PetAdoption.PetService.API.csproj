@@ -16,4 +16,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="PetAdoption.PetService.IntegrationTests" />
+  </ItemGroup>
+
 </Project>

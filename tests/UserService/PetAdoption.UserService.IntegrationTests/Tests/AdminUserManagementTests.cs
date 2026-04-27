@@ -169,8 +169,8 @@ public class AdminUserManagementTests : IAsyncLifetime
         // Act
         var response = await _adminClient.GetAsync($"/api/users/{nonExistentId}");
 
-        // Assert - No global exception handler, so UserNotFoundException results in 500
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -259,8 +259,8 @@ public class AdminUserManagementTests : IAsyncLifetime
             Password = suspendPassword
         });
 
-        // Assert - UserSuspendedException is thrown, results in 500 (no global exception handler)
-        loginResponse.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        // Assert - UserSuspendedException maps to Forbidden
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     // ──────────────────────────────────────────────────────────────

@@ -69,9 +69,8 @@ public class PasswordManagementTests : IAsyncLifetime
         // Act
         var response = await client.PostAsJsonAsync("/api/users/me/change-password", request);
 
-        // Assert - InvalidCredentialsException is thrown but no global exception handler
-        // maps it to a proper status code, so the API returns 500
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        // Assert - InvalidCredentialsException maps to Unauthorized
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -87,9 +86,8 @@ public class PasswordManagementTests : IAsyncLifetime
         // Act
         var response = await client.PostAsJsonAsync("/api/users/me/change-password", request);
 
-        // Assert - ArgumentException from Password.ValidatePlainText is not handled,
-        // so the API returns 500
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        // Assert - ArgumentException from Password.ValidatePlainText maps to BadRequest
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]

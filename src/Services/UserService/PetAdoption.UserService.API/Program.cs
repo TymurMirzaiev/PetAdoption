@@ -54,6 +54,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Exception handling middleware must be first to catch all exceptions
+app.UseMiddleware<PetAdoption.UserService.API.Middleware.ExceptionHandlingMiddleware>();
+
 // Important: Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();

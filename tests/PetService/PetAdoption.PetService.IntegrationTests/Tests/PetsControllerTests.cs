@@ -38,7 +38,8 @@ public class PetsControllerTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Seeds a pet type via the admin API and returns its ID.
+    /// Gets a pet type ID, using an already-seeded type or creating a new one.
+    /// The PetTypeSeeder seeds default types (dog, cat, rabbit, bird, fish, hamster) on startup.
     /// </summary>
     private async Task<Guid> SeedPetTypeAsync(string code = "dog", string name = "Dog")
     {
@@ -48,11 +49,19 @@ public class PetsControllerTests : IAsyncLifetime
             .Build();
 
         var response = await _client.PostAsJsonAsync("/api/admin/pet-types", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
-        result.Should().NotBeNull();
-        return result!.Id;
+        if (response.StatusCode == HttpStatusCode.Created)
+        {
+            var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
+            return result!.Id;
+        }
+
+        // Type already seeded — look it up
+        var allTypesResponse = await _client.GetAsync("/api/admin/pet-types?includeInactive=true");
+        allTypesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var allTypes = await allTypesResponse.Content.ReadFromJsonAsync<List<PetTypeResponseDto>>();
+        var existing = allTypes!.First(t => t.Code == code);
+        return existing.Id;
     }
 
     /// <summary>
@@ -442,4 +451,6 @@ public class PetsControllerTests : IAsyncLifetime
     private record PetDetailsResponseDto(Guid Id, string Name, string Type, string Status);
 
     private record StatusChangeResponseDto(bool Success, string? Message, Guid? PetId, string? Status);
+
+    private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 }

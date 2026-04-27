@@ -97,6 +97,11 @@ internal class TestPetRepository : IPetRepository
 
         pet.ClearDomainEvents();
     }
+
+    public async Task Delete(Guid id)
+    {
+        await _pets.DeleteOneAsync(p => p.Id == id);
+    }
 }
 
 /// <summary>
@@ -120,5 +125,29 @@ internal class TestPetQueryStore : IPetQueryStore
     public async Task<PetAdoption.PetService.Domain.Pet?> GetById(Guid id)
     {
         return await _pets.Find(p => p.Id == id).FirstOrDefaultAsync();
+    }
+
+    public async Task<(IEnumerable<PetAdoption.PetService.Domain.Pet> Pets, long Total)> GetFiltered(
+        PetAdoption.PetService.Domain.PetStatus? status,
+        Guid? petTypeId,
+        int skip,
+        int take)
+    {
+        var builder = Builders<PetAdoption.PetService.Domain.Pet>.Filter;
+        var filter = builder.Empty;
+
+        if (status.HasValue)
+            filter &= builder.Eq(p => p.Status, status.Value);
+
+        if (petTypeId.HasValue)
+            filter &= builder.Eq(p => p.PetTypeId, petTypeId.Value);
+
+        var total = await _pets.CountDocumentsAsync(filter);
+        var pets = await _pets.Find(filter)
+            .Skip(skip)
+            .Limit(take)
+            .ToListAsync();
+
+        return (pets, total);
     }
 }

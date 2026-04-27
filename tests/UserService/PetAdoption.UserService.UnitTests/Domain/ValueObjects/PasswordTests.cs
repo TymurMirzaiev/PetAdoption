@@ -5,6 +5,10 @@ using PetAdoption.UserService.Domain.ValueObjects;
 
 public class PasswordTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // FromHash
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void FromHash_WithValidHash_ShouldSucceed()
     {
@@ -33,6 +37,22 @@ public class PasswordTests
     }
 
     [Fact]
+    public void Equals_WithSameHash_ShouldBeEqual()
+    {
+        // Arrange
+        var hash = "$2a$12$somehashvalue1234567890";
+        var password1 = Password.FromHash(hash);
+        var password2 = Password.FromHash(hash);
+
+        // Act & Assert
+        password1.Should().Be(password2);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // ValidatePlainText (Valid)
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
     public void ValidatePlainText_WithValidPassword_ShouldNotThrow()
     {
         // Arrange
@@ -44,6 +64,36 @@ public class PasswordTests
         // Assert
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void ValidatePlainText_WithMinimumLength_ShouldNotThrow()
+    {
+        // Arrange
+        var password = "Password";
+
+        // Act
+        var act = () => Password.ValidatePlainText(password);
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ValidatePlainText_WithMaximumLength_ShouldNotThrow()
+    {
+        // Arrange
+        var password = new string('a', 100);
+
+        // Act
+        var act = () => Password.ValidatePlainText(password);
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // ValidatePlainText (Invalid)
+    // ──────────────────────────────────────────────────────────────
 
     [Theory]
     [InlineData("")]
@@ -85,43 +135,5 @@ public class PasswordTests
         // Assert
         act.Should().Throw<ArgumentException>()
             .WithMessage("Password cannot exceed 100 characters*");
-    }
-
-    [Fact]
-    public void ValidatePlainText_WithMinimumLength_ShouldNotThrow()
-    {
-        // Arrange
-        var password = "Password";
-
-        // Act
-        var act = () => Password.ValidatePlainText(password);
-
-        // Assert
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void ValidatePlainText_WithMaximumLength_ShouldNotThrow()
-    {
-        // Arrange
-        var password = new string('a', 100);
-
-        // Act
-        var act = () => Password.ValidatePlainText(password);
-
-        // Assert
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void Equals_WithSameHash_ShouldBeEqual()
-    {
-        // Arrange
-        var hash = "$2a$12$somehashvalue1234567890";
-        var password1 = Password.FromHash(hash);
-        var password2 = Password.FromHash(hash);
-
-        // Act & Assert
-        password1.Should().Be(password2);
     }
 }

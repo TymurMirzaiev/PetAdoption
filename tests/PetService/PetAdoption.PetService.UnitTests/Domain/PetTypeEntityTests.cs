@@ -6,6 +6,10 @@ namespace PetAdoption.PetService.UnitTests.Domain;
 
 public class PetTypeEntityTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Creation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Create_WithValidParameters_ShouldCreateActivePetType()
     {
@@ -36,6 +40,10 @@ public class PetTypeEntityTests
         petType.Code.Should().Be("dragon");
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Code Validation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Create_WithEmptyCode_ShouldThrowDomainException()
     {
@@ -47,6 +55,10 @@ public class PetTypeEntityTests
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.InvalidPetType);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Name Validation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Create_WithEmptyName_ShouldThrowDomainException()
     {
@@ -57,6 +69,10 @@ public class PetTypeEntityTests
         act.Should().Throw<DomainException>()
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.InvalidPetType);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Code Validation (Length)
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void Create_WithCodeTooShort_ShouldThrowDomainException()
@@ -82,6 +98,10 @@ public class PetTypeEntityTests
         act.Should().Throw<DomainException>()
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.InvalidPetType);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // UpdateName
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void UpdateName_WithValidName_ShouldUpdateNameAndTimestamp()
@@ -113,6 +133,10 @@ public class PetTypeEntityTests
         act.Should().Throw<DomainException>()
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.InvalidPetType);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Activate / Deactivate
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void Deactivate_WhenActive_ShouldSetIsActiveToFalse()
@@ -172,22 +196,26 @@ public class PetTypeEntityTests
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.InvalidOperation);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Lifecycle
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Lifecycle_CreateUpdateDeactivateActivate_ShouldWorkCorrectly()
     {
-        // Create
+        // Arrange
         var petType = PetType.Create("dragon", "Dragon");
         petType.IsActive.Should().BeTrue();
 
-        // Update
+        // Act & Assert - Update
         petType.UpdateName("Fire Dragon");
         petType.Name.Should().Be("Fire Dragon");
 
-        // Deactivate
+        // Act & Assert - Deactivate
         petType.Deactivate();
         petType.IsActive.Should().BeFalse();
 
-        // Activate again
+        // Act & Assert - Activate again
         petType.Activate();
         petType.IsActive.Should().BeTrue();
     }

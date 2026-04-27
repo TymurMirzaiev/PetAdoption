@@ -8,6 +8,10 @@ public class PetTests
 {
     private static readonly Guid TestPetTypeId = Guid.NewGuid();
 
+    // ──────────────────────────────────────────────────────────────
+    // Creation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Create_WithValidParameters_ShouldCreateAvailablePet()
     {
@@ -27,6 +31,10 @@ public class PetTests
         pet.Version.Should().Be(0);
         pet.DomainEvents.Should().BeEmpty();
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Reserve
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void Reserve_WhenPetIsAvailable_ShouldChangeStatusToReserved()
@@ -77,6 +85,10 @@ public class PetTests
         act.Should().Throw<DomainException>()
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.PetNotAvailable);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Adopt
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void Adopt_WhenPetIsReserved_ShouldChangeStatusToAdopted()
@@ -129,6 +141,10 @@ public class PetTests
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.PetNotReserved);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // CancelReservation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void CancelReservation_WhenPetIsReserved_ShouldChangeStatusToAvailable()
     {
@@ -180,6 +196,10 @@ public class PetTests
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.PetNotReserved);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Workflows
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void CompleteWorkflow_ReserveAdopt_ShouldSucceed()
     {
@@ -216,6 +236,10 @@ public class PetTests
         pet.Status.Should().Be(PetStatus.Reserved);
         pet.DomainEvents.Should().HaveCount(3); // Reserve, Cancel, Reserve
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // DomainEvents
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void ClearDomainEvents_ShouldRemoveAllEvents()

@@ -5,6 +5,10 @@ using PetAdoption.UserService.Domain.ValueObjects;
 
 public class UserPreferencesTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Default Preferences
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Default_ShouldReturnDefaultPreferences()
     {
@@ -19,6 +23,10 @@ public class UserPreferencesTests
         preferences.PreferredSizes.Should().BeNull();
         preferences.PreferredAgeRange.Should().BeNull();
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Custom Preferences
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void Create_WithCustomValues_ShouldSucceed()

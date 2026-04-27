@@ -6,6 +6,10 @@ namespace PetAdoption.PetService.UnitTests.Domain;
 
 public class PetNameTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Valid Creation
+    // ──────────────────────────────────────────────────────────────
+
     [Theory]
     [InlineData("Bella")]
     [InlineData("Max")]
@@ -34,6 +38,10 @@ public class PetNameTests
         // Assert
         petName.Value.Should().Be(expected);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Invalid Creation
+    // ──────────────────────────────────────────────────────────────
 
     [Theory]
     [InlineData(null)]
@@ -65,6 +73,10 @@ public class PetNameTests
         act.Should().Throw<DomainException>()
             .Which.ErrorCode.Should().Be(PetDomainErrorCode.InvalidPetName);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Equality
+    // ──────────────────────────────────────────────────────────────
 
     [Theory]
     [InlineData("Bella", "Bella", true)]
@@ -118,6 +130,10 @@ public class PetNameTests
         // Act & Assert
         petName1.GetHashCode().Should().Be(petName2.GetHashCode());
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // String Conversion
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void ToString_ShouldReturnValue()

@@ -17,6 +17,10 @@ public class GetUsersQueryHandlerTests
         _handler = new GetUsersQueryHandler(_mockUserQueryStore.Object);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithUsers_ShouldReturnUserList()
     {
@@ -44,33 +48,6 @@ public class GetUsersQueryHandlerTests
         result.Total.Should().Be(2);
         result.Skip.Should().Be(0);
         result.Take.Should().Be(50);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WithPagination_ShouldReturnCorrectPage()
-    {
-        // Arrange
-        var user1 = User.Register("user1@example.com", "User One", "$2a$12$hash1", null);
-        var users = new List<User> { user1 };
-
-        var query = new GetUsersQuery(10, 20);
-
-        _mockUserQueryStore
-            .Setup(s => s.GetAllAsync(10, 20))
-            .ReturnsAsync(users);
-
-        _mockUserQueryStore
-            .Setup(s => s.CountAsync())
-            .ReturnsAsync(100);
-
-        // Act
-        var result = await _handler.HandleAsync(query);
-
-        // Assert
-        result.Skip.Should().Be(10);
-        result.Take.Should().Be(20);
-        result.Total.Should().Be(100);
-        result.Users.Should().HaveCount(1);
     }
 
     [Fact]
@@ -145,6 +122,37 @@ public class GetUsersQueryHandlerTests
         // Assert
         _mockUserQueryStore.Verify(s => s.GetAllAsync(5, 15), Times.Once);
         _mockUserQueryStore.Verify(s => s.CountAsync(), Times.Once);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Pagination
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandleAsync_WithPagination_ShouldReturnCorrectPage()
+    {
+        // Arrange
+        var user1 = User.Register("user1@example.com", "User One", "$2a$12$hash1", null);
+        var users = new List<User> { user1 };
+
+        var query = new GetUsersQuery(10, 20);
+
+        _mockUserQueryStore
+            .Setup(s => s.GetAllAsync(10, 20))
+            .ReturnsAsync(users);
+
+        _mockUserQueryStore
+            .Setup(s => s.CountAsync())
+            .ReturnsAsync(100);
+
+        // Act
+        var result = await _handler.HandleAsync(query);
+
+        // Assert
+        result.Skip.Should().Be(10);
+        result.Take.Should().Be(20);
+        result.Total.Should().Be(100);
+        result.Users.Should().HaveCount(1);
     }
 
     [Fact]

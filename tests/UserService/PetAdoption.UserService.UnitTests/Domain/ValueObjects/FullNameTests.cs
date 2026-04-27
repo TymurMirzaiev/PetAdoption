@@ -5,6 +5,10 @@ using PetAdoption.UserService.Domain.ValueObjects;
 
 public class FullNameTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Valid Creation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Create_WithValidName_ShouldSucceed()
     {
@@ -19,17 +23,34 @@ public class FullNameTests
     }
 
     [Fact]
-    public void Create_WithNameHavingWhitespace_ShouldTrim()
+    public void Create_WithMinimumLength_ShouldSucceed()
     {
         // Arrange
-        var nameString = "  John Doe  ";
+        var nameString = "AB";
 
         // Act
         var fullName = FullName.From(nameString);
 
         // Assert
-        fullName.Value.Should().Be("John Doe");
+        fullName.Value.Should().Be("AB");
     }
+
+    [Fact]
+    public void Create_WithMaximumLength_ShouldSucceed()
+    {
+        // Arrange
+        var nameString = new string('A', 100);
+
+        // Act
+        var fullName = FullName.From(nameString);
+
+        // Assert
+        fullName.Value.Should().Be(nameString);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Invalid Creation
+    // ──────────────────────────────────────────────────────────────
 
     [Theory]
     [InlineData("")]
@@ -73,30 +94,21 @@ public class FullNameTests
             .WithMessage("Name cannot exceed 100 characters*");
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Trimming
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Create_WithMinimumLength_ShouldSucceed()
+    public void Create_WithNameHavingWhitespace_ShouldTrim()
     {
         // Arrange
-        var nameString = "AB";
+        var nameString = "  John Doe  ";
 
         // Act
         var fullName = FullName.From(nameString);
 
         // Assert
-        fullName.Value.Should().Be("AB");
-    }
-
-    [Fact]
-    public void Create_WithMaximumLength_ShouldSucceed()
-    {
-        // Arrange
-        var nameString = new string('A', 100);
-
-        // Act
-        var fullName = FullName.From(nameString);
-
-        // Assert
-        fullName.Value.Should().Be(nameString);
+        fullName.Value.Should().Be("John Doe");
     }
 
     [Fact]

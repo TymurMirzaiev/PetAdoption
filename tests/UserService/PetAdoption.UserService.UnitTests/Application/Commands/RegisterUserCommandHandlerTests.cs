@@ -22,6 +22,10 @@ public class RegisterUserCommandHandlerTests
         _handler = new RegisterUserCommandHandler(_mockUserRepository.Object, _mockPasswordHasher.Object);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithValidData_ShouldRegisterUser()
     {
@@ -53,6 +57,37 @@ public class RegisterUserCommandHandlerTests
         _mockUserRepository.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Once);
         _mockPasswordHasher.Verify(h => h.HashPassword(command.Password), Times.Once);
     }
+
+    [Fact]
+    public async Task HandleAsync_WithoutPhoneNumber_ShouldSucceed()
+    {
+        // Arrange
+        var command = new RegisterUserCommand(
+            "test@example.com",
+            "John Doe",
+            "SecurePass123!",
+            null
+        );
+
+        _mockUserRepository
+            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync((User?)null);
+
+        _mockPasswordHasher
+            .Setup(h => h.HashPassword(command.Password))
+            .Returns("$2a$12$hashedpassword");
+
+        // Act
+        var result = await _handler.HandleAsync(command);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        _mockUserRepository.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Once);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Validation/Error Cases
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_WithDuplicateEmail_ShouldThrowDuplicateEmailException()
@@ -107,32 +142,9 @@ public class RegisterUserCommandHandlerTests
         _mockUserRepository.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Never);
     }
 
-    [Fact]
-    public async Task HandleAsync_WithoutPhoneNumber_ShouldSucceed()
-    {
-        // Arrange
-        var command = new RegisterUserCommand(
-            "test@example.com",
-            "John Doe",
-            "SecurePass123!",
-            null
-        );
-
-        _mockUserRepository
-            .Setup(r => r.GetByEmailAsync(It.IsAny<Email>()))
-            .ReturnsAsync((User?)null);
-
-        _mockPasswordHasher
-            .Setup(h => h.HashPassword(command.Password))
-            .Returns("$2a$12$hashedpassword");
-
-        // Act
-        var result = await _handler.HandleAsync(command);
-
-        // Assert
-        result.Success.Should().BeTrue();
-        _mockUserRepository.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Once);
-    }
+    // ──────────────────────────────────────────────────────────────
+    // Side Effects (hashing, events)
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_ShouldHashPassword()

@@ -7,6 +7,10 @@ using PetAdoption.UserService.Domain.Events;
 
 public class UserTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Registration
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Register_WithValidData_ShouldCreateUser()
     {
@@ -47,6 +51,10 @@ public class UserTests
         domainEvent.FullName.Should().Be(fullName);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // UpdateProfile
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void UpdateProfile_WithValidData_ShouldUpdateUser()
     {
@@ -81,6 +89,10 @@ public class UserTests
         domainEvent.UserId.Should().Be(user.Id.Value);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // ChangePassword
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void ChangePassword_ShouldUpdatePassword()
     {
@@ -112,6 +124,10 @@ public class UserTests
         domainEvent.UserId.Should().Be(user.Id.Value);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // PromoteToAdmin
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void PromoteToAdmin_ShouldChangeRoleToAdmin()
     {
@@ -142,6 +158,10 @@ public class UserTests
 
         domainEvent.UserId.Should().Be(user.Id.Value);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Suspend/Activate
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void Suspend_ShouldChangeStatusToSuspended()
@@ -175,6 +195,10 @@ public class UserTests
         domainEvent.UserId.Should().Be(user.Id.Value);
         domainEvent.Reason.Should().Be(reason);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // RecordLogin
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public void RecordLogin_ShouldUpdateLastLoginTime()

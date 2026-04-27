@@ -25,6 +25,10 @@ public class ChangePasswordCommandHandlerTests
         );
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithValidData_ShouldChangePassword()
     {
@@ -65,6 +69,49 @@ public class ChangePasswordCommandHandlerTests
         _mockUserRepository.Verify(r => r.SaveAsync(user), Times.Once);
         _mockPasswordHasher.Verify(h => h.HashPassword("NewPassword123!"), Times.Once);
     }
+
+    [Fact]
+    public async Task HandleAsync_ShouldVerifyCurrentPasswordBeforeChanging()
+    {
+        // Arrange
+        var user = User.Register(
+            "test@example.com",
+            "John Doe",
+            "$2a$12$hashedpassword",
+            null
+        );
+
+        var command = new ChangePasswordCommand(
+            user.Id.Value,
+            "CurrentPassword123!",
+            "NewPassword123!"
+        );
+
+        _mockUserRepository
+            .Setup(r => r.GetByIdAsync(It.IsAny<UserId>()))
+            .ReturnsAsync(user);
+
+        _mockPasswordHasher
+            .Setup(h => h.VerifyPassword("CurrentPassword123!", "$2a$12$hashedpassword"))
+            .Returns(true);
+
+        _mockPasswordHasher
+            .Setup(h => h.HashPassword("NewPassword123!"))
+            .Returns("$2a$12$newhashedpassword");
+
+        // Act
+        await _handler.HandleAsync(command);
+
+        // Assert
+        _mockPasswordHasher.Verify(
+            h => h.VerifyPassword("CurrentPassword123!", "$2a$12$hashedpassword"),
+            Times.Once
+        );
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Error Cases
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_WithNonExistentUser_ShouldThrowUserNotFoundException()
@@ -189,44 +236,5 @@ public class ChangePasswordCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*suspended*");
-    }
-
-    [Fact]
-    public async Task HandleAsync_ShouldVerifyCurrentPasswordBeforeChanging()
-    {
-        // Arrange
-        var user = User.Register(
-            "test@example.com",
-            "John Doe",
-            "$2a$12$hashedpassword",
-            null
-        );
-
-        var command = new ChangePasswordCommand(
-            user.Id.Value,
-            "CurrentPassword123!",
-            "NewPassword123!"
-        );
-
-        _mockUserRepository
-            .Setup(r => r.GetByIdAsync(It.IsAny<UserId>()))
-            .ReturnsAsync(user);
-
-        _mockPasswordHasher
-            .Setup(h => h.VerifyPassword("CurrentPassword123!", "$2a$12$hashedpassword"))
-            .Returns(true);
-
-        _mockPasswordHasher
-            .Setup(h => h.HashPassword("NewPassword123!"))
-            .Returns("$2a$12$newhashedpassword");
-
-        // Act
-        await _handler.HandleAsync(command);
-
-        // Assert
-        _mockPasswordHasher.Verify(
-            h => h.VerifyPassword("CurrentPassword123!", "$2a$12$hashedpassword"),
-            Times.Once
-        );
     }
 }

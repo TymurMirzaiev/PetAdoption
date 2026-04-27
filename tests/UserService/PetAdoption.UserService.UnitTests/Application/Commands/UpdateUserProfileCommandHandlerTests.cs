@@ -19,6 +19,10 @@ public class UpdateUserProfileCommandHandlerTests
         _handler = new UpdateUserProfileCommandHandler(_mockUserRepository.Object);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithValidData_ShouldUpdateProfile()
     {
@@ -54,63 +58,6 @@ public class UpdateUserProfileCommandHandlerTests
         result.Message.Should().Be("Profile updated successfully");
 
         _mockUserRepository.Verify(r => r.SaveAsync(user), Times.Once);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WithNonExistentUser_ShouldThrowUserNotFoundException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid().ToString();
-        var command = new UpdateUserProfileCommand(
-            userId,
-            "Jane Doe",
-            "+9876543210",
-            null
-        );
-
-        _mockUserRepository
-            .Setup(r => r.GetByIdAsync(It.IsAny<UserId>()))
-            .ReturnsAsync((User?)null);
-
-        // Act
-        var act = () => _handler.HandleAsync(command);
-
-        // Assert
-        await act.Should().ThrowAsync<UserNotFoundException>()
-            .WithMessage($"*{userId}*");
-
-        _mockUserRepository.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task HandleAsync_WithSuspendedUser_ShouldThrowInvalidOperationException()
-    {
-        // Arrange
-        var user = User.Register(
-            "test@example.com",
-            "John Doe",
-            "$2a$12$hashedpassword",
-            null
-        );
-        user.Suspend("Account suspended");
-
-        var command = new UpdateUserProfileCommand(
-            user.Id.Value,
-            "Jane Doe",
-            "+9876543210",
-            null
-        );
-
-        _mockUserRepository
-            .Setup(r => r.GetByIdAsync(It.IsAny<UserId>()))
-            .ReturnsAsync(user);
-
-        // Act
-        var act = () => _handler.HandleAsync(command);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*suspended*");
     }
 
     [Fact]
@@ -176,5 +123,66 @@ public class UpdateUserProfileCommandHandlerTests
 
         // Assert
         result.Success.Should().BeTrue();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Error Cases
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandleAsync_WithNonExistentUser_ShouldThrowUserNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid().ToString();
+        var command = new UpdateUserProfileCommand(
+            userId,
+            "Jane Doe",
+            "+9876543210",
+            null
+        );
+
+        _mockUserRepository
+            .Setup(r => r.GetByIdAsync(It.IsAny<UserId>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var act = () => _handler.HandleAsync(command);
+
+        // Assert
+        await act.Should().ThrowAsync<UserNotFoundException>()
+            .WithMessage($"*{userId}*");
+
+        _mockUserRepository.Verify(r => r.SaveAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithSuspendedUser_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var user = User.Register(
+            "test@example.com",
+            "John Doe",
+            "$2a$12$hashedpassword",
+            null
+        );
+        user.Suspend("Account suspended");
+
+        var command = new UpdateUserProfileCommand(
+            user.Id.Value,
+            "Jane Doe",
+            "+9876543210",
+            null
+        );
+
+        _mockUserRepository
+            .Setup(r => r.GetByIdAsync(It.IsAny<UserId>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var act = () => _handler.HandleAsync(command);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*suspended*");
     }
 }

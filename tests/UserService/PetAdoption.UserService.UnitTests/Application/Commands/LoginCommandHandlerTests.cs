@@ -29,6 +29,10 @@ public class LoginCommandHandlerTests
         );
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithValidCredentials_ShouldReturnLoginResponse()
     {
@@ -67,6 +71,10 @@ public class LoginCommandHandlerTests
 
         _mockUserRepository.Verify(r => r.SaveAsync(user), Times.Once);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Error Cases (invalid credentials, suspended)
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_WithNonExistentUser_ShouldThrowInvalidCredentialsException()
@@ -138,6 +146,10 @@ public class LoginCommandHandlerTests
         await act.Should().ThrowAsync<UserSuspendedException>();
         _mockPasswordHasher.Verify(h => h.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Side Effects (token, login recording)
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_ShouldGenerateJwtToken()

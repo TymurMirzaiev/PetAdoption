@@ -19,6 +19,10 @@ public class GetUserByEmailQueryHandlerTests
         _handler = new GetUserByEmailQueryHandler(_mockUserQueryStore.Object);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithExistingEmail_ShouldReturnUserDto()
     {
@@ -43,25 +47,6 @@ public class GetUserByEmailQueryHandlerTests
         result.Should().NotBeNull();
         result.Email.Should().Be("test@example.com");
         result.FullName.Should().Be("John Doe");
-    }
-
-    [Fact]
-    public async Task HandleAsync_WithNonExistentEmail_ShouldThrowUserNotFoundException()
-    {
-        // Arrange
-        var email = "nonexistent@example.com";
-        var query = new GetUserByEmailQuery(email);
-
-        _mockUserQueryStore
-            .Setup(s => s.GetByEmailAsync(It.IsAny<Email>()))
-            .ReturnsAsync((User?)null);
-
-        // Act
-        var act = () => _handler.HandleAsync(query);
-
-        // Assert
-        await act.Should().ThrowAsync<UserNotFoundException>()
-            .WithMessage($"*{email}*");
     }
 
     [Fact]
@@ -114,5 +99,28 @@ public class GetUserByEmailQueryHandlerTests
             s => s.GetByEmailAsync(It.Is<Email>(e => e.Value == "test@example.com")),
             Times.Once
         );
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Error Cases
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task HandleAsync_WithNonExistentEmail_ShouldThrowUserNotFoundException()
+    {
+        // Arrange
+        var email = "nonexistent@example.com";
+        var query = new GetUserByEmailQuery(email);
+
+        _mockUserQueryStore
+            .Setup(s => s.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var act = () => _handler.HandleAsync(query);
+
+        // Assert
+        await act.Should().ThrowAsync<UserNotFoundException>()
+            .WithMessage($"*{email}*");
     }
 }

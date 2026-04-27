@@ -5,6 +5,10 @@ using PetAdoption.UserService.Domain.ValueObjects;
 
 public class PhoneNumberTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Valid Creation
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void FromOptional_WithValidPhone_ShouldSucceed()
     {
@@ -31,47 +35,6 @@ public class PhoneNumberTests
         // Assert
         phone.Should().NotBeNull();
         phone!.Value.Should().Be("+15551234567");
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData(null)]
-    public void FromOptional_WithEmptyOrNull_ShouldReturnNull(string? emptyPhone)
-    {
-        // Act
-        var phone = PhoneNumber.FromOptional(emptyPhone);
-
-        // Assert
-        phone.Should().BeNull();
-    }
-
-    [Fact]
-    public void FromOptional_WithTooShortPhone_ShouldThrowException()
-    {
-        // Arrange
-        var shortPhone = "+12345678"; // 9 digits
-
-        // Act
-        var act = () => PhoneNumber.FromOptional(shortPhone);
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("Invalid phone number length*");
-    }
-
-    [Fact]
-    public void FromOptional_WithTooLongPhone_ShouldThrowException()
-    {
-        // Arrange
-        var longPhone = "+1234567890123456"; // 16 digits
-
-        // Act
-        var act = () => PhoneNumber.FromOptional(longPhone);
-
-        // Assert
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("Invalid phone number length*");
     }
 
     [Fact]
@@ -114,6 +77,55 @@ public class PhoneNumberTests
         // Assert
         phone.Should().NotBeNull();
         phone!.Value.Should().Be("+15551234567");
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Invalid Creation
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void FromOptional_WithTooShortPhone_ShouldThrowException()
+    {
+        // Arrange
+        var shortPhone = "+12345678"; // 9 digits
+
+        // Act
+        var act = () => PhoneNumber.FromOptional(shortPhone);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Invalid phone number length*");
+    }
+
+    [Fact]
+    public void FromOptional_WithTooLongPhone_ShouldThrowException()
+    {
+        // Arrange
+        var longPhone = "+1234567890123456"; // 16 digits
+
+        // Act
+        var act = () => PhoneNumber.FromOptional(longPhone);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Invalid phone number length*");
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Optional Handling
+    // ──────────────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public void FromOptional_WithEmptyOrNull_ShouldReturnNull(string? emptyPhone)
+    {
+        // Act
+        var phone = PhoneNumber.FromOptional(emptyPhone);
+
+        // Assert
+        phone.Should().BeNull();
     }
 
     [Fact]

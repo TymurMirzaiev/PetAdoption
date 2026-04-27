@@ -5,6 +5,10 @@ namespace PetAdoption.PetService.UnitTests.Domain;
 
 public class DomainExceptionTests
 {
+    // ──────────────────────────────────────────────────────────────
+    // Constructor
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Constructor_WithErrorCodeAndMessage_ShouldSetProperties()
     {
@@ -43,6 +47,10 @@ public class DomainExceptionTests
         exception.Metadata.Should().BeEquivalentTo(metadata);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Metadata
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Constructor_WithEmptyMetadata_ShouldSetMetadata()
     {
@@ -58,6 +66,10 @@ public class DomainExceptionTests
         exception.Metadata.Should().NotBeNull();
         exception.Metadata.Should().BeEmpty();
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Error Codes
+    // ──────────────────────────────────────────────────────────────
 
     [Theory]
     [InlineData(PetDomainErrorCode.PetNotFound, "pet_not_found")]

@@ -20,6 +20,10 @@ public class GetUserByIdQueryHandlerTests
         _handler = new GetUserByIdQueryHandler(_mockUserQueryStore.Object);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Success Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithExistingUser_ShouldReturnUserDto()
     {
@@ -50,6 +54,10 @@ public class GetUserByIdQueryHandlerTests
         result.Role.Should().Be(UserRole.User.ToString());
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Error Cases
+    // ──────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task HandleAsync_WithNonExistentUser_ShouldThrowUserNotFoundException()
     {
@@ -68,6 +76,10 @@ public class GetUserByIdQueryHandlerTests
         await act.Should().ThrowAsync<UserNotFoundException>()
             .WithMessage($"*{userId}*");
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // Field Mapping
+    // ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task HandleAsync_ShouldIncludePreferences()

@@ -88,6 +88,7 @@ public class ExceptionHandlingMiddleware
             // Business rule violations
             PetDomainErrorCode.PetNotAvailable => HttpStatusCode.Conflict,
             PetDomainErrorCode.PetNotReserved => HttpStatusCode.Conflict,
+            PetDomainErrorCode.PetCannotBeDeleted => HttpStatusCode.Conflict,
             PetDomainErrorCode.ConcurrencyConflict => HttpStatusCode.Conflict,
             PetDomainErrorCode.InvalidOperation => HttpStatusCode.Conflict,
             PetDomainErrorCode.PetTypeAlreadyExists => HttpStatusCode.Conflict,

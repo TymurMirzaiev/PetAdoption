@@ -98,6 +98,26 @@ public class Pet : IAggregateRoot, IEntity
         AddDomainEvent(new PetReservationCancelledEvent(Id, Name));
     }
 
+    public void UpdateName(string newName)
+    {
+        Name = new PetName(newName);
+    }
+
+    public void EnsureCanBeDeleted()
+    {
+        if (Status != PetStatus.Available)
+        {
+            throw new DomainException(
+                PetDomainErrorCode.PetCannotBeDeleted,
+                $"Pet {Id} cannot be deleted because it is {Status}. Only Available pets can be deleted.",
+                new Dictionary<string, object>
+                {
+                    { "PetId", Id },
+                    { "CurrentStatus", Status.ToString() }
+                });
+        }
+    }
+
     public void AddDomainEvent(IDomainEvent domainEvent) =>
         _domainEvents.Add(domainEvent);
 

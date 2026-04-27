@@ -37,6 +37,11 @@ public class PetRepository : IPetRepository
         await SaveAggregateWithEvents(pet, isNew: false);
     }
 
+    public async Task Delete(Guid id)
+    {
+        await _pets.DeleteOneAsync(p => p.Id == id);
+    }
+
     private async Task SaveAggregateWithEvents(Pet aggregate, bool isNew)
     {
         using var session = await _client.StartSessionAsync();

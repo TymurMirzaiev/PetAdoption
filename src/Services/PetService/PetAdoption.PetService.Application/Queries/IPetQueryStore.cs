@@ -10,4 +10,9 @@ public interface IPetQueryStore
 {
     Task<IEnumerable<Pet>> GetAll();
     Task<Pet?> GetById(Guid id);
+    Task<(IEnumerable<Pet> Pets, long Total)> GetFiltered(
+        PetStatus? status,
+        Guid? petTypeId,
+        int skip,
+        int take);
 }

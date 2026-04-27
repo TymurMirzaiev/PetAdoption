@@ -19,6 +19,11 @@ public static class PetDomainErrorCode
     public const string PetNotReserved = "pet_not_reserved";
 
     /// <summary>
+    /// Pet cannot be deleted because it is reserved or adopted.
+    /// </summary>
+    public const string PetCannotBeDeleted = "pet_cannot_be_deleted";
+
+    /// <summary>
     /// Pet was not found in the system.
     /// </summary>
     public const string PetNotFound = "pet_not_found";

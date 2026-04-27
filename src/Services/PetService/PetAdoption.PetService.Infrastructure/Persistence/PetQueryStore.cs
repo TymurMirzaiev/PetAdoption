@@ -25,4 +25,28 @@ public class PetQueryStore : IPetQueryStore
     {
         return await _pets.Find(p => p.Id == id).FirstOrDefaultAsync();
     }
+
+    public async Task<(IEnumerable<Pet> Pets, long Total)> GetFiltered(
+        PetStatus? status,
+        Guid? petTypeId,
+        int skip,
+        int take)
+    {
+        var builder = Builders<Pet>.Filter;
+        var filter = builder.Empty;
+
+        if (status.HasValue)
+            filter &= builder.Eq(p => p.Status, status.Value);
+
+        if (petTypeId.HasValue)
+            filter &= builder.Eq(p => p.PetTypeId, petTypeId.Value);
+
+        var total = await _pets.CountDocumentsAsync(filter);
+        var pets = await _pets.Find(filter)
+            .Skip(skip)
+            .Limit(take)
+            .ToListAsync();
+
+        return (pets, total);
+    }
 }

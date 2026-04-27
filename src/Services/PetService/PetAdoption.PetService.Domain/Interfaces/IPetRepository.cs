@@ -9,4 +9,5 @@ public interface IPetRepository
     Task<Pet?> GetById(Guid id);
     Task Update(Pet pet);
     Task Add(Pet pet);
+    Task Delete(Guid id);
 }

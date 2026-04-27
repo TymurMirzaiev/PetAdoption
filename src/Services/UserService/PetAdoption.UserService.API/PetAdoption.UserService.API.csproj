@@ -15,4 +15,8 @@
     <ProjectReference Include="..\PetAdoption.UserService.Infrastructure\PetAdoption.UserService.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="PetAdoption.UserService.IntegrationTests" />
+  </ItemGroup>
+
 </Project>

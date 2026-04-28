@@ -196,9 +196,12 @@ public class PetsControllerTests : IAsyncLifetime
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var pets = await response.Content.ReadFromJsonAsync<List<PetListItemResponseDto>>();
-        pets.Should().NotBeNull();
-        pets.Should().BeEmpty();
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().BeEmpty();
+        result.Total.Should().Be(0);
+        result.Skip.Should().Be(0);
+        result.Take.Should().Be(20);
     }
 
     [Fact]
@@ -215,10 +218,11 @@ public class PetsControllerTests : IAsyncLifetime
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var pets = await response.Content.ReadFromJsonAsync<List<PetListItemResponseDto>>();
-        pets.Should().NotBeNull();
-        pets.Should().HaveCount(3);
-        pets!.Select(p => p.Name).Should().Contain(new[] { "Buddy", "Max", "Luna" });
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().HaveCount(3);
+        result.Pets.Select(p => p.Name).Should().Contain(new[] { "Buddy", "Max", "Luna" });
+        result.Total.Should().Be(3);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -250,6 +254,179 @@ public class PetsControllerTests : IAsyncLifetime
     {
         // Act
         var response = await _client.GetAsync($"/api/pets/{Guid.NewGuid()}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // PUT /api/pets/{id} (Update Pet)
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdatePet_WithValidName_ReturnsOkAndUpdatedPet()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreatePetAsync("Buddy", petTypeId);
+        var request = new UpdatePetRequestBuilder()
+            .WithName("Max")
+            .Build();
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/api/pets/{petId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<UpdatePetResponseDto>();
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(petId);
+        result.Name.Should().Be("Max");
+        result.Status.Should().Be("Available");
+    }
+
+    [Fact]
+    public async Task UpdatePet_WithEmptyName_ReturnsBadRequest()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreatePetAsync("Buddy", petTypeId);
+        var request = new UpdatePetRequestBuilder()
+            .WithName("")
+            .Build();
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/api/pets/{petId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdatePet_WithNameTooLong_ReturnsBadRequest()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreatePetAsync("Buddy", petTypeId);
+        var request = new UpdatePetRequestBuilder()
+            .WithName(new string('A', 101))
+            .Build();
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/api/pets/{petId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdatePet_WithNonExistentId_ReturnsNotFound()
+    {
+        // Arrange
+        var request = new UpdatePetRequestBuilder()
+            .WithName("Max")
+            .Build();
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/api/pets/{Guid.NewGuid()}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task UpdatePet_VerifyGetReturnsUpdatedName()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreatePetAsync("Buddy", petTypeId);
+        var request = new UpdatePetRequestBuilder()
+            .WithName("Max")
+            .Build();
+        var updateResponse = await _client.PutAsJsonAsync($"/api/pets/{petId}", request);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Act
+        var response = await _client.GetAsync($"/api/pets/{petId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pet = await response.Content.ReadFromJsonAsync<PetDetailsResponseDto>();
+        pet.Should().NotBeNull();
+        pet!.Name.Should().Be("Max");
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // DELETE /api/pets/{id} (Delete Pet)
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeletePet_WhenAvailable_ReturnsOkAndSuccess()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreatePetAsync("Buddy", petTypeId);
+
+        // Act
+        var response = await _client.DeleteAsync($"/api/pets/{petId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<DeletePetResponseDto>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Message.Should().Contain("Buddy");
+    }
+
+    [Fact]
+    public async Task DeletePet_WhenReserved_ReturnsConflict()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreateAndReservePetAsync(petTypeId);
+
+        // Act
+        var response = await _client.DeleteAsync($"/api/pets/{petId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task DeletePet_WhenAdopted_ReturnsConflict()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreateReserveAndAdoptPetAsync(petTypeId);
+
+        // Act
+        var response = await _client.DeleteAsync($"/api/pets/{petId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task DeletePet_WithNonExistentId_ReturnsNotFound()
+    {
+        // Act
+        var response = await _client.DeleteAsync($"/api/pets/{Guid.NewGuid()}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeletePet_VerifyGetReturnsNotFound()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await CreatePetAsync("Buddy", petTypeId);
+        var deleteResponse = await _client.DeleteAsync($"/api/pets/{petId}");
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Act
+        var response = await _client.GetAsync($"/api/pets/{petId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -439,6 +616,113 @@ public class PetsControllerTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────
+    // GET /api/pets with filtering and pagination
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetPets_FilterByStatus_ReturnsOnlyMatchingPets()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        await CreatePetAsync("Available1", petTypeId);
+        await CreatePetAsync("Available2", petTypeId);
+        await CreateAndReservePetAsync(petTypeId);
+
+        // Act
+        var response = await _client.GetAsync("/api/pets?status=Available");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().HaveCount(2);
+        result.Pets.Should().OnlyContain(p => p.Status == "Available");
+        result.Total.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetPets_FilterByPetTypeId_ReturnsOnlyMatchingPets()
+    {
+        // Arrange
+        var dogTypeId = await SeedPetTypeAsync("dog", "Dog");
+        var catTypeId = await SeedPetTypeAsync("cat", "Cat");
+        await CreatePetAsync("Buddy", dogTypeId);
+        await CreatePetAsync("Max", dogTypeId);
+        await CreatePetAsync("Whiskers", catTypeId);
+
+        // Act
+        var response = await _client.GetAsync($"/api/pets?petTypeId={catTypeId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().HaveCount(1);
+        result.Pets[0].Name.Should().Be("Whiskers");
+        result.Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetPets_WithPagination_ReturnsCorrectPage()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        for (var i = 1; i <= 5; i++)
+            await CreatePetAsync($"Pet{i}", petTypeId);
+
+        // Act
+        var response = await _client.GetAsync("/api/pets?skip=2&take=2");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().HaveCount(2);
+        result.Total.Should().Be(5);
+        result.Skip.Should().Be(2);
+        result.Take.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetPets_FilterByStatusAndPetType_ReturnsCombinedFilter()
+    {
+        // Arrange
+        var dogTypeId = await SeedPetTypeAsync("dog", "Dog");
+        var catTypeId = await SeedPetTypeAsync("cat", "Cat");
+        await CreatePetAsync("Buddy", dogTypeId);
+        await CreateAndReservePetAsync(dogTypeId);
+        await CreatePetAsync("Whiskers", catTypeId);
+
+        // Act
+        var response = await _client.GetAsync($"/api/pets?status=Available&petTypeId={dogTypeId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().HaveCount(1);
+        result.Pets[0].Name.Should().Be("Buddy");
+        result.Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetPets_WithInvalidStatus_IgnoresFilterAndReturnsAll()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        await CreatePetAsync("Buddy", petTypeId);
+
+        // Act
+        var response = await _client.GetAsync("/api/pets?status=InvalidStatus");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<GetPetsResponseDto>();
+        result.Should().NotBeNull();
+        result!.Pets.Should().HaveCount(1);
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Response DTOs for deserialization
     // ──────────────────────────────────────────────────────────────
 
@@ -453,4 +737,10 @@ public class PetsControllerTests : IAsyncLifetime
     private record StatusChangeResponseDto(bool Success, string? Message, Guid? PetId, string? Status);
 
     private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
+
+    private record UpdatePetResponseDto(Guid Id, string Name, string Status);
+
+    private record DeletePetResponseDto(bool Success, string Message);
+
+    private record GetPetsResponseDto(List<PetListItemResponseDto> Pets, long Total, int Skip, int Take);
 }

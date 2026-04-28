@@ -23,6 +23,7 @@ Available → (Reserve) → Reserved → (Adopt) → Adopted
 ```
 
 - Factory: `Pet.Create(name, petTypeId)`
+- Methods: `Reserve()`, `Adopt()`, `CancelReservation()`, `UpdateName()`, `EnsureCanBeDeleted()`
 - State transitions raise domain events
 - Optimistic concurrency via `Version` field
 
@@ -58,7 +59,7 @@ Available → (Reserve) → Reserved → (Adopt) → Adopted
 |------------|-------------|
 | `pet_not_found`, `pet_type_not_found` | 404 |
 | `invalid_pet_name`, `invalid_pet_type` | 400 |
-| `pet_not_available`, `pet_not_reserved`, `concurrency_conflict`, `pet_type_already_exists` | 409 |
+| `pet_not_available`, `pet_not_reserved`, `pet_cannot_be_deleted`, `concurrency_conflict`, `pet_type_already_exists` | 409 |
 
 ### CQRS
 
@@ -71,9 +72,11 @@ Available → (Reserve) → Reserved → (Adopt) → Adopted
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/pets` | List all pets |
+| GET | `/api/pets` | List pets (filtered, paginated: `?status=&petTypeId=&skip=&take=`) |
 | POST | `/api/pets` | Create pet |
 | GET | `/api/pets/{id}` | Get pet by ID |
+| PUT | `/api/pets/{id}` | Update pet name |
+| DELETE | `/api/pets/{id}` | Delete pet (only Available) |
 | POST | `/api/pets/{id}/reserve` | Reserve pet |
 | POST | `/api/pets/{id}/adopt` | Adopt pet |
 | POST | `/api/pets/{id}/cancel-reservation` | Cancel reservation |

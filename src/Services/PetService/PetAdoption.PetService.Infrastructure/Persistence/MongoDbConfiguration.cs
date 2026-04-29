@@ -58,7 +58,13 @@ public static class MongoDbConfiguration
         BsonClassMap.RegisterClassMap<Favorite>(cm =>
         {
             cm.AutoMap();
-            cm.MapIdMember(c => c.Id).SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.MapIdMember(c => c.Id)
+                .SetIdGenerator(GuidGenerator.Instance)
+                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.MapMember(c => c.UserId)
+                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.MapMember(c => c.PetId)
+                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
             cm.SetIgnoreExtraElements(true);
         });
 

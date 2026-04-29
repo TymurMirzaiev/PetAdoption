@@ -29,12 +29,12 @@ public class FavoriteQueryStore : IFavoriteQueryStore
             .ToListAsync();
 
         var petIds = favorites.Select(f => f.PetId).ToList();
-        var petFilter = Builders<Pet>.Filter.In("_id", petIds);
+        var petFilter = Builders<Pet>.Filter.In(p => p.Id, petIds);
         var pets = await _pets.Find(petFilter).ToListAsync();
         var petDict = pets.ToDictionary(p => p.Id);
 
         var typeIds = pets.Select(p => p.PetTypeId).Distinct().ToList();
-        var typeFilter = Builders<PetType>.Filter.In("_id", typeIds);
+        var typeFilter = Builders<PetType>.Filter.In(t => t.Id, typeIds);
         var types = await _petTypes.Find(typeFilter).ToListAsync();
         var typeDict = types.ToDictionary(t => t.Id);
 

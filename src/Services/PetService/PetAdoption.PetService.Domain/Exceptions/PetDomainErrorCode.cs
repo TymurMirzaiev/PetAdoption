@@ -81,4 +81,16 @@ public static class PetDomainErrorCode
     /// Unknown domain error.
     /// </summary>
     public const string UnknownDomainError = "unknown_domain_error";
+
+    // Favorite errors
+
+    /// <summary>
+    /// Pet is already in the user's favorites.
+    /// </summary>
+    public const string FavoriteAlreadyExists = "favorite_already_exists";
+
+    /// <summary>
+    /// Favorite was not found.
+    /// </summary>
+    public const string FavoriteNotFound = "favorite_not_found";
 }

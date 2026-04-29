@@ -49,6 +49,14 @@ public static class MongoDbConfiguration
             BsonClassMap.RegisterClassMap<UserRoleChangedEvent>();
             BsonClassMap.RegisterClassMap<UserSuspendedEvent>();
 
+            // Configure RefreshToken entity
+            BsonClassMap.RegisterClassMap<RefreshToken>(cm =>
+            {
+                cm.AutoMap();
+                cm.MapIdMember(c => c.Id);
+                cm.SetIgnoreExtraElements(true);
+            });
+
             _isConfigured = true;
         }
     }

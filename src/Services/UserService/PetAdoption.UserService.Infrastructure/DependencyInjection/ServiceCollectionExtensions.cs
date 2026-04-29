@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserQueryStore, UserQueryStore>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
         // Security Services
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();

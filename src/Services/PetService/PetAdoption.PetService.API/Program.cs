@@ -30,6 +30,8 @@ builder.Services.AddSingleton<IPetRepository, PetRepository>();
 builder.Services.AddSingleton<IPetQueryStore, PetQueryStore>();
 builder.Services.AddSingleton<IOutboxRepository, OutboxRepository>();
 builder.Services.AddSingleton<IPetTypeRepository, PetTypeRepository>();
+builder.Services.AddSingleton<IFavoriteRepository, FavoriteRepository>();
+builder.Services.AddSingleton<IFavoriteQueryStore, FavoriteQueryStore>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();

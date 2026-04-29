@@ -54,6 +54,14 @@ public static class MongoDbConfiguration
             cm.SetIgnoreExtraElements(true);
         });
 
+        // Configure Favorite entity mapping
+        BsonClassMap.RegisterClassMap<Favorite>(cm =>
+        {
+            cm.AutoMap();
+            cm.MapIdMember(c => c.Id).SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.SetIgnoreExtraElements(true);
+        });
+
         _isConfigured = true;
     }
 

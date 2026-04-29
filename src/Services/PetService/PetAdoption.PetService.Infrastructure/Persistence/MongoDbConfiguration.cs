@@ -18,6 +18,9 @@ public static class MongoDbConfiguration
 
         // Register value object serializers
         BsonSerializer.RegisterSerializer(new PetNameSerializer());
+        BsonSerializer.RegisterSerializer(new PetBreedSerializer());
+        BsonSerializer.RegisterSerializer(new PetAgeSerializer());
+        BsonSerializer.RegisterSerializer(new PetDescriptionSerializer());
 
         // Configure Pet entity mapping
         BsonClassMap.RegisterClassMap<Pet>(cm =>
@@ -66,6 +69,78 @@ public static class MongoDbConfiguration
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, PetName value)
         {
             context.Writer.WriteString(value?.Value ?? string.Empty);
+        }
+    }
+
+    // Custom serializer for PetBreed value object (nullable)
+    private class PetBreedSerializer : SerializerBase<PetBreed?>
+    {
+        public override PetBreed? Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var type = context.Reader.GetCurrentBsonType();
+            if (type == BsonType.Null)
+            {
+                context.Reader.ReadNull();
+                return null;
+            }
+            var value = context.Reader.ReadString();
+            return new PetBreed(value);
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, PetBreed? value)
+        {
+            if (value is null)
+                context.Writer.WriteNull();
+            else
+                context.Writer.WriteString(value.Value);
+        }
+    }
+
+    // Custom serializer for PetAge value object (nullable)
+    private class PetAgeSerializer : SerializerBase<PetAge?>
+    {
+        public override PetAge? Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var type = context.Reader.GetCurrentBsonType();
+            if (type == BsonType.Null)
+            {
+                context.Reader.ReadNull();
+                return null;
+            }
+            var value = context.Reader.ReadInt32();
+            return new PetAge(value);
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, PetAge? value)
+        {
+            if (value is null)
+                context.Writer.WriteNull();
+            else
+                context.Writer.WriteInt32(value.Months);
+        }
+    }
+
+    // Custom serializer for PetDescription value object (nullable)
+    private class PetDescriptionSerializer : SerializerBase<PetDescription?>
+    {
+        public override PetDescription? Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var type = context.Reader.GetCurrentBsonType();
+            if (type == BsonType.Null)
+            {
+                context.Reader.ReadNull();
+                return null;
+            }
+            var value = context.Reader.ReadString();
+            return new PetDescription(value);
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, PetDescription? value)
+        {
+            if (value is null)
+                context.Writer.WriteNull();
+            else
+                context.Writer.WriteString(value.Value);
         }
     }
 }

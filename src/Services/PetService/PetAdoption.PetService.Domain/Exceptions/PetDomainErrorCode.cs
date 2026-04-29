@@ -93,4 +93,26 @@ public static class PetDomainErrorCode
     /// Favorite was not found.
     /// </summary>
     public const string FavoriteNotFound = "favorite_not_found";
+
+    // Announcement errors
+
+    /// <summary>
+    /// Announcement title is invalid (empty, too long, etc.).
+    /// </summary>
+    public const string InvalidAnnouncementTitle = "invalid_announcement_title";
+
+    /// <summary>
+    /// Announcement body is invalid (empty, too long, etc.).
+    /// </summary>
+    public const string InvalidAnnouncementBody = "invalid_announcement_body";
+
+    /// <summary>
+    /// Announcement dates are invalid (end date not after start date).
+    /// </summary>
+    public const string InvalidAnnouncementDates = "invalid_announcement_dates";
+
+    /// <summary>
+    /// Announcement was not found.
+    /// </summary>
+    public const string AnnouncementNotFound = "announcement_not_found";
 }

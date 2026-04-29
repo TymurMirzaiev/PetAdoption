@@ -51,6 +51,11 @@ public static class PetDomainErrorCode
     public const string InvalidPetType = "invalid_pet_type";
 
     /// <summary>
+    /// Pet age is invalid (negative value).
+    /// </summary>
+    public const string InvalidPetAge = "invalid_pet_age";
+
+    /// <summary>
     /// Pet type with the given code already exists.
     /// </summary>
     public const string PetTypeAlreadyExists = "pet_type_already_exists";

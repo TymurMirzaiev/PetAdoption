@@ -1,4 +1,3 @@
-
 # Blazor UI Design Spec
 
 ## Overview
@@ -7,11 +6,12 @@ A Blazor WebAssembly single-page application for the PetAdoption platform. Two U
 
 ## Tech Stack
 
-- Blazor WebAssembly (.NET 9.0)
+- Blazor WebAssembly (.NET 10.0, matching UserService for consistency)
 - MudBlazor component framework (default dark palette)
 - JWT authentication with refresh tokens (localStorage)
 - Google SSO via Google Identity Services JS library
 - HTTP clients to PetService (port 8080) and UserService (port 5000)
+- Hosted via standalone Kestrel in the BlazorApp project; added to docker-compose alongside existing services
 
 ## Project Structure
 
@@ -58,6 +58,11 @@ Two named `HttpClient` registrations: `"PetApi"` and `"UserApi"`. `Authorization
 - If email doesn't exist: auto-register user with Google claims (name, email), then issue tokens.
 - Users created via Google SSO have `ExternalProvider: "Google"` flag, no password stored. Password-related UI is hidden for these users.
 
+### Security Notes
+
+- **localStorage and XSS:** While Blazor WASM reduces XSS surface (C# in WASM, not arbitrary JS), tokens in localStorage are still accessible via JS interop. Mitigate with strict Content-Security-Policy headers on the hosting server. HttpOnly cookies were considered but rejected due to BFF complexity.
+- **CORS:** Both PetService and UserService must be configured with CORS to allow requests from the Blazor WASM origin. Add `AllowedOrigins` configuration in each service's `Program.cs` using `AddCors()` middleware.
+
 ## Pages
 
 ### Public (no auth)
@@ -73,22 +78,24 @@ Two named `HttpClient` registrations: `"PetApi"` and `"UserApi"`. `Authorization
 - Link to Register page.
 
 **Register** (`/register`)
-- Name, email, phone, password form.
+- FullName, Email, PhoneNumber, Password fields (matching UserService `RegisterUserRequest` DTO).
 - Redirects to Discover on success.
 
 ### User Experience (requires User role)
 
 **Discover** (`/discover`)
 - Card stack of available pets, loaded in paginated batches from `GET /api/pets`.
-- Each card: photo placeholder (colored `MudAvatar` with initials for v1), name, species, breed, age.
+- Each card: photo placeholder (colored `MudAvatar` with initials for v1), name, pet type, breed, age.
 - Swipe right or tap heart button = favorite (`POST /api/favorites`).
 - Swipe left or tap skip button = next card.
-- Filter bar at top: pet type dropdown, species filter.
+- Filter bar at top: pet type dropdown.
 - Preloads next batch when stack runs low.
 - Touch gestures + mouse drag + button fallbacks on all devices.
+- **Empty state:** "No more pets to discover" message with link to adjust filters.
+- **Loading state:** Skeleton card placeholders while fetching.
 
 **Pet Detail** (`/pets/{id}`)
-- Full pet profile: name, species, breed, age, description, status.
+- Full pet profile: name, pet type, breed, age, description, status.
 - Two action buttons: "Add to Favorites" + "Reserve Now".
 - Reserve triggers `POST /api/pets/{id}/reserve`.
 
@@ -96,16 +103,19 @@ Two named `HttpClient` registrations: `"PetApi"` and `"UserApi"`. `Authorization
 - `MudGrid` of pet cards the user has favorited.
 - Each card has "View Details" and "Reserve" actions.
 - Remove from favorites via icon button.
+- **Empty state:** "No favorites yet. Start discovering pets!" with link to Discover.
 
 **My Reservations** (`/reservations`)
 - List of reserved pets with status and date.
 - Cancel reservation action per item.
+- **Empty state:** "No active reservations."
 
 **My Adoptions** (`/adoptions`)
 - Read-only gallery of adopted pets, historical record.
+- **Empty state:** "No adoptions yet."
 
 **Profile & Settings** (`/profile`)
-- Edit name, phone, preferences.
+- Edit FullName, PhoneNumber.
 - Change password form (hidden for Google SSO users).
 - Logout button.
 
@@ -118,8 +128,8 @@ Two named `HttpClient` registrations: `"PetApi"` and `"UserApi"`. `Authorization
 
 **Manage Pets** (`/admin/pets`)
 - `MudDataGrid` with server-side pagination, sorting, filtering.
-- Columns: name, species, breed, age, status, actions.
-- Inline status change dropdown (Available -> Reserved -> Adopted).
+- Columns: name, pet type, breed, age, status, actions.
+- Status action buttons per row that respect domain state machine: "Reserve" (if Available), "Adopt" (if Reserved), "Cancel Reservation" (if Reserved). These call the existing command endpoints (`/reserve`, `/adopt`, `/cancel-reservation`), not a generic status update.
 - Edit button -> dialog with pet form.
 - Delete button -> confirmation dialog.
 - "Add Pet" button -> same form dialog in create mode.
@@ -136,8 +146,21 @@ Two named `HttpClient` registrations: `"PetApi"` and `"UserApi"`. `Authorization
 
 **Manage Users** (`/admin/users`)
 - `MudDataGrid` with name, email, role, status.
-- Actions: suspend/unsuspend, promote to admin.
+- Actions: suspend/activate, promote to admin.
 - No user creation from admin -- users self-register.
+
+## Error Handling (UI)
+
+- **API errors** are shown as `MudSnackbar` toast notifications with the error message from the `ErrorResponse` body.
+- **409 Conflict** (e.g., pet already reserved by another user): toast with explanation, card/page refreshes to show updated status.
+- **401 Unauthorized** after refresh token failure: redirect to login with "Session expired" message.
+- **Network errors**: toast with "Connection error. Please try again." and a retry option where applicable.
+- **Form validation errors**: inline field-level validation messages using MudBlazor's built-in form validation.
+
+## Responsive Layout
+
+- **User pages:** Mobile-first. Swipe cards centered, full-width on small screens. Pet grids responsive via `MudGrid` breakpoints (1 column mobile, 2 tablet, 3+ desktop).
+- **Admin pages:** Desktop-primary. `MudDrawer` sidebar collapses to hamburger menu on small screens. Data grids scroll horizontally on mobile.
 
 ## Component Architecture
 
@@ -190,63 +213,157 @@ Any API call -> `AuthorizationMessageHandler` checks expiry -> if expired -> `PO
 
 ## New Backend Work
 
-### 1. Favorites (PetService)
+### 0. Prerequisites
+
+- **Upgrade BlazorApp to .NET 10.0:** Currently targets `net9.0`. Upgrade `PetAdoption.Web.BlazorApp.csproj` to `net10.0` to match UserService.
+- **PetService stays on .NET 9.0** for now -- services communicate over HTTP so runtime version differences are fine. Upgrade PetService separately when ready.
+
+### 1. Pet Domain Model Extensions (PetService)
+
+The current `Pet` aggregate has only `Id`, `Name`, `PetTypeId`, `Status`, `Version`. The UI requires additional fields. Add to the `Pet` aggregate:
+
+- **Breed** -- new value object `PetBreed` (string, max 100 chars, optional/nullable). Distinct from PetType: PetType is "Dog", Breed is "Golden Retriever".
+- **Age** -- new value object `PetAge` (int, months, must be >= 0).
+- **Description** -- new value object `PetDescription` (string, max 2000 chars, optional/nullable).
+
+Update `Pet.Create()` factory method to accept these new fields. Update existing DTOs (`PetListItemDto`, `PetDetailsDto`) to include them. Update `CreatePetCommand` and `UpdatePetCommand` accordingly.
+
+### 2. JWT Authentication for PetService
+
+PetService currently has no authentication. Add:
+
+- JWT Bearer authentication middleware (same shared secret as UserService).
+- `[Authorize]` on endpoints that need it: favorites endpoints, reserve/adopt/cancel-reservation.
+- `[Authorize(Policy = "AdminOnly")]` on admin endpoints (pet CRUD, announcements admin).
+- `[AllowAnonymous]` on public read endpoints: `GET /api/pets`, `GET /api/pets/{id}`, `GET /api/announcements/active`.
+- Extract `userId` from JWT claims for favorites operations.
+
+### 3. CORS Configuration (Both Services)
+
+Add CORS middleware to both PetService and UserService `Program.cs`:
+- Allow the Blazor WASM origin (configurable via `appsettings.json`).
+- Allow `Authorization` header, `Content-Type`, and standard methods.
+
+### 4. Favorites (PetService)
 
 New lightweight aggregate:
-- **Favorite** -- properties: `Id`, `UserId`, `PetId`, `CreatedAt`.
+- **Favorite** -- properties: `Id`, `UserId` (Guid, from JWT), `PetId` (Guid), `CreatedAt` (DateTime).
 - Factory method: `Favorite.Create(userId, petId)`.
+- Business rule: one favorite per (userId, petId) pair (unique index in MongoDB).
 - Repository: `IFavoriteRepository` (write), `IFavoriteQueryStore` (read).
 - MongoDB collection: `favorites`.
 
-New endpoints:
-- `POST /api/favorites` -- add favorite (userId from JWT, petId in body).
-- `DELETE /api/favorites/{petId}` -- remove favorite.
-- `GET /api/favorites` -- get current user's favorites (paginated, returns pet details).
+**Cross-service note:** `UserId` references a UserService entity. If a user is deleted/suspended in UserService, orphaned favorites may remain. For v1, this is acceptable -- favorites are non-critical data. Future: listen for `UserSuspendedEvent` via RabbitMQ to clean up.
 
-### 2. Announcements (PetService)
+New endpoints:
+
+**`POST /api/favorites`** (requires auth)
+- Request: `{ "petId": "guid" }`
+- Response 201: `{ "id": "guid", "petId": "guid", "createdAt": "datetime" }`
+- Error 409: pet already favorited
+- Error 404: pet not found
+
+**`DELETE /api/favorites/{petId}`** (requires auth)
+- Response 204: no content
+- Error 404: favorite not found
+
+**`GET /api/favorites?page=1&pageSize=10`** (requires auth)
+- Response 200: `{ "items": [{ "favoriteId": "guid", "petId": "guid", "petName": "string", "petType": "string", "breed": "string", "age": 24, "status": "Available", "createdAt": "datetime" }], "totalCount": 42, "page": 1, "pageSize": 10 }`
+- Uses MongoDB `$lookup` to join favorites with pets collection for the current user.
+
+### 5. Announcements (PetService)
 
 New aggregate:
-- **Announcement** -- properties: `Id`, `Title`, `Body`, `StartDate`, `EndDate`, `CreatedBy`, `CreatedAt`.
-- Value objects: `AnnouncementTitle`, `AnnouncementBody`.
+- **Announcement** -- properties: `Id`, `Title`, `Body`, `StartDate`, `EndDate`, `CreatedBy` (Guid), `CreatedAt`.
+- Value objects: `AnnouncementTitle` (1-200 chars), `AnnouncementBody` (1-5000 chars).
 - Factory method: `Announcement.Create(title, body, startDate, endDate, createdBy)`.
+- Business rules: `EndDate` must be after `StartDate`. `StartDate` can be in the past (for "start immediately"). All dates stored as UTC.
 - Repository: `IAnnouncementRepository` (write), `IAnnouncementQueryStore` (read).
 - MongoDB collection: `announcements`.
 
 New endpoints:
-- `POST /api/announcements` -- create (admin only).
-- `PUT /api/announcements/{id}` -- update (admin only).
-- `DELETE /api/announcements/{id}` -- delete (admin only).
-- `GET /api/announcements` -- list all (admin, paginated).
-- `GET /api/announcements/active` -- get currently active (public, for user-facing banner).
 
-### 3. Refresh Tokens (UserService)
+**`POST /api/announcements`** (admin only)
+- Request: `{ "title": "string", "body": "string", "startDate": "datetime", "endDate": "datetime" }`
+- Response 201: `{ "id": "guid" }`
+- Error 400: validation failures
 
-- New MongoDB collection: `refreshTokens` (userId, token, expiresAt, isRevoked).
-- `POST /api/users/refresh` -- validate refresh token, issue new access + refresh token pair.
-- Logout revokes refresh token server-side.
-- Existing login endpoint updated to return refresh token alongside access token.
+**`PUT /api/announcements/{id}`** (admin only)
+- Request: `{ "title": "string", "body": "string", "startDate": "datetime", "endDate": "datetime" }`
+- Response 200: `{ "id": "guid" }`
+- Error 404: not found
 
-### 4. Google SSO (UserService)
+**`DELETE /api/announcements/{id}`** (admin only)
+- Response 204: no content
+- Error 404: not found
 
-- `POST /api/users/auth/google` -- accepts Google ID token, validates against Google's public keys.
-- If email exists: issue access + refresh tokens.
-- If email doesn't exist: auto-register with Google claims, then issue tokens.
-- Users created via SSO get `ExternalProvider: "Google"` flag, no password stored.
+**`GET /api/announcements?page=1&pageSize=10`** (admin only)
+- Response 200: `{ "items": [{ "id": "guid", "title": "string", "startDate": "datetime", "endDate": "datetime", "status": "Active|Scheduled|Expired", "createdAt": "datetime" }], "totalCount": 5, "page": 1, "pageSize": 10 }`
+- Status is computed: Active if now is between start/end, Scheduled if start is future, Expired if end is past.
+
+**`GET /api/announcements/{id}`** (admin only)
+- Response 200: `{ "id": "guid", "title": "string", "body": "string", "startDate": "datetime", "endDate": "datetime", "createdBy": "guid", "createdAt": "datetime" }`
+- Error 404: not found
+- Used to pre-fill the edit dialog with full body content.
+
+**`GET /api/announcements/active`** (public, no auth)
+- Response 200: `[{ "id": "guid", "title": "string", "body": "string" }]`
+- Returns announcements where `StartDate <= now <= EndDate`.
+
+### 6. Refresh Tokens (UserService)
+
+- New MongoDB collection: `refreshTokens` -- fields: `Id`, `UserId`, `Token` (random 256-bit base64), `ExpiresAt`, `IsRevoked`, `CreatedAt`.
+- Token expiry: 30 days (configurable).
+
+**`POST /api/users/refresh`**
+- Request: `{ "refreshToken": "string" }`
+- Response 200: `{ "accessToken": "string", "refreshToken": "string" }` (new pair, old refresh token is revoked)
+- Error 401: token invalid, expired, or revoked
+
+**`POST /api/users/logout`** (new endpoint)
+- Request: `{ "refreshToken": "string" }`
+- Response 204: refresh token revoked server-side
+
+- Existing `POST /api/users/login` response updated to include `refreshToken` alongside existing `token` field.
+
+### 7. Google SSO (UserService)
+
+**`POST /api/users/auth/google`**
+- Request: `{ "idToken": "string" }`
+- Response 200: `{ "accessToken": "string", "refreshToken": "string" }`
+- Backend validates ID token using Google's public JWKS endpoint.
+- If email exists: issue tokens for existing user.
+- If email doesn't exist: create new user with `ExternalProvider: "Google"`, `Password: null`, then issue tokens.
+- Error 401: invalid or expired Google ID token.
+- Requires `Google:ClientId` in appsettings for audience validation.
+
+### 8. Activate User Endpoint (UserService)
+
+The domain has an `Activate()` method but no corresponding API endpoint.
+
+**`POST /api/users/{id}/activate`** (admin only)
+- Response 200: `{ "userId": "guid", "status": "Active" }`
+- Error 404: user not found
+- Error 409: user already active
 
 ## Decisions Log
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Project structure | Single Blazor WASM project | Role-based routing, one deploy unit |
+| .NET version | .NET 10.0 | Match UserService, latest stable |
 | UI paradigm | Tinder swipe (user) + sidebar dashboard (admin) | Engaging discovery UX + efficient admin |
 | Swipe behavior | Swipe = favorite, reserve is explicit | Users browse many before committing |
 | Render mode | Blazor WebAssembly | Smooth gestures, no SignalR dependency |
 | Swipe input | Touch + mouse drag + button fallbacks | Accessibility, works on all devices |
 | Theme | MudBlazor default dark palette | Ship fast, customize later |
-| JWT storage | localStorage | Standard SPA pattern, low XSS risk in WASM |
-| Token refresh | Refresh tokens (localStorage) | Better UX than re-login on expiry |
+| JWT storage | localStorage with CSP headers | Standard SPA pattern, CSP mitigates XSS |
+| Token refresh | Refresh tokens (localStorage, 30-day expiry) | Better UX than re-login on expiry |
 | SSO | Google only | Simplest, most common provider |
 | Favorites location | PetService, own aggregate | Co-located with pet queries, clean separation |
+| Favorites cleanup | Accept orphans for v1 | Non-critical data, event-driven cleanup later |
 | Announcements location | PetService | Shelter content, avoids new service overhead |
 | State management | No global store | YAGNI, scoped services if needed later |
 | API communication | Direct HTTP, no BFF | Simple, matches two-service architecture |
+| Hosting | Standalone Kestrel in docker-compose | Consistent with existing service deployment |
+| Admin status changes | Domain-aware action buttons, not free-form dropdown | Respect Pet aggregate state machine |

@@ -41,6 +41,11 @@ public static class PetDomainErrorCode
     public const string InvalidPetName = "invalid_pet_name";
 
     /// <summary>
+    /// Pet breed is invalid (empty, too long, etc.).
+    /// </summary>
+    public const string InvalidPetBreed = "invalid_pet_breed";
+
+    /// <summary>
     /// Pet type is invalid (not in allowed list).
     /// </summary>
     public const string InvalidPetType = "invalid_pet_type";

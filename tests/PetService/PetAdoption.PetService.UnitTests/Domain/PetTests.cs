@@ -33,6 +33,45 @@ public class PetTests
     }
 
     // ──────────────────────────────────────────────────────────────
+    // Create (extended fields)
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Create_WithAllFields_ShouldSetProperties()
+    {
+        // Arrange
+        var petTypeId = Guid.NewGuid();
+
+        // Act
+        var pet = Pet.Create("Bella", petTypeId, "Golden Retriever", 24, "Friendly dog");
+
+        // Assert
+        pet.Name.Value.Should().Be("Bella");
+        pet.PetTypeId.Should().Be(petTypeId);
+        pet.Breed.Should().NotBeNull();
+        pet.Breed!.Value.Should().Be("Golden Retriever");
+        pet.Age.Should().NotBeNull();
+        pet.Age!.Months.Should().Be(24);
+        pet.Description.Should().NotBeNull();
+        pet.Description!.Value.Should().Be("Friendly dog");
+    }
+
+    [Fact]
+    public void Create_WithNullOptionalFields_ShouldLeaveNull()
+    {
+        // Arrange
+        var petTypeId = Guid.NewGuid();
+
+        // Act
+        var pet = Pet.Create("Bella", petTypeId);
+
+        // Assert
+        pet.Breed.Should().BeNull();
+        pet.Age.Should().BeNull();
+        pet.Description.Should().BeNull();
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Reserve
     // ──────────────────────────────────────────────────────────────
 

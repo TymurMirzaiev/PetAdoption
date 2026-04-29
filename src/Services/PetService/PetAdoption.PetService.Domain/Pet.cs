@@ -11,6 +11,9 @@ public class Pet : IAggregateRoot, IEntity
     public Guid PetTypeId { get; private set; }
     public PetStatus Status { get; private set; }
     public int Version { get; private set; }
+    public PetBreed? Breed { get; private set; }
+    public PetAge? Age { get; private set; }
+    public PetDescription? Description { get; private set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
 
@@ -18,7 +21,7 @@ public class Pet : IAggregateRoot, IEntity
     private Pet() { }
 
     // Private constructor for creating new pets
-    private Pet(Guid id, PetName name, Guid petTypeId)
+    private Pet(Guid id, PetName name, Guid petTypeId, PetBreed? breed = null, PetAge? age = null, PetDescription? description = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("Pet ID cannot be empty.", nameof(id));
@@ -29,15 +32,24 @@ public class Pet : IAggregateRoot, IEntity
         Id = id;
         Name = name ?? throw new ArgumentNullException(nameof(name));
         PetTypeId = petTypeId;
+        Breed = breed;
+        Age = age;
+        Description = description;
         Status = PetStatus.Available;
     }
 
     /// <summary>
     /// Factory method to create a new available pet with validated pet type.
     /// </summary>
-    public static Pet Create(string name, Guid petTypeId)
+    public static Pet Create(string name, Guid petTypeId, string? breed = null, int? ageMonths = null, string? description = null)
     {
-        return new Pet(Guid.NewGuid(), new PetName(name), petTypeId);
+        return new Pet(
+            Guid.NewGuid(),
+            new PetName(name),
+            petTypeId,
+            breed is not null ? new PetBreed(breed) : null,
+            ageMonths.HasValue ? new PetAge(ageMonths.Value) : null,
+            description is not null ? new PetDescription(description) : null);
     }
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 

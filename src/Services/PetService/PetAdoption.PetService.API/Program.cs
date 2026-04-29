@@ -32,6 +32,8 @@ builder.Services.AddSingleton<IOutboxRepository, OutboxRepository>();
 builder.Services.AddSingleton<IPetTypeRepository, PetTypeRepository>();
 builder.Services.AddSingleton<IFavoriteRepository, FavoriteRepository>();
 builder.Services.AddSingleton<IFavoriteQueryStore, FavoriteQueryStore>();
+builder.Services.AddSingleton<IAnnouncementRepository, AnnouncementRepository>();
+builder.Services.AddSingleton<IAnnouncementQueryStore, AnnouncementQueryStore>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();

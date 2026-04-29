@@ -21,6 +21,8 @@ public static class MongoDbConfiguration
         BsonSerializer.RegisterSerializer(new PetBreedSerializer());
         BsonSerializer.RegisterSerializer(new PetAgeSerializer());
         BsonSerializer.RegisterSerializer(new PetDescriptionSerializer());
+        BsonSerializer.RegisterSerializer(new AnnouncementTitleSerializer());
+        BsonSerializer.RegisterSerializer(new AnnouncementBodySerializer());
 
         // Configure Pet entity mapping
         BsonClassMap.RegisterClassMap<Pet>(cm =>
@@ -68,7 +70,46 @@ public static class MongoDbConfiguration
             cm.SetIgnoreExtraElements(true);
         });
 
+        // Configure Announcement entity mapping
+        BsonClassMap.RegisterClassMap<Announcement>(cm =>
+        {
+            cm.AutoMap();
+            cm.MapIdMember(c => c.Id).SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.MapMember(c => c.CreatedBy).SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+            cm.SetIgnoreExtraElements(true);
+        });
+
         _isConfigured = true;
+    }
+
+    // Custom serializer for AnnouncementTitle value object
+    private class AnnouncementTitleSerializer : SerializerBase<AnnouncementTitle>
+    {
+        public override AnnouncementTitle Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var value = context.Reader.ReadString();
+            return new AnnouncementTitle(value);
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, AnnouncementTitle value)
+        {
+            context.Writer.WriteString(value?.Value ?? string.Empty);
+        }
+    }
+
+    // Custom serializer for AnnouncementBody value object
+    private class AnnouncementBodySerializer : SerializerBase<AnnouncementBody>
+    {
+        public override AnnouncementBody Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            var value = context.Reader.ReadString();
+            return new AnnouncementBody(value);
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, AnnouncementBody value)
+        {
+            context.Writer.WriteString(value?.Value ?? string.Empty);
+        }
     }
 
     // Custom serializer for PetName value object

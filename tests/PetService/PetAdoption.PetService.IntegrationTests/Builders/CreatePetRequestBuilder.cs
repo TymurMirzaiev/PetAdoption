@@ -6,6 +6,9 @@ public class CreatePetRequestBuilder
 {
     private string _name = "Buddy";
     private Guid _petTypeId = Guid.NewGuid();
+    private string? _breed = null;
+    private int? _ageMonths = null;
+    private string? _description = null;
 
     public CreatePetRequestBuilder WithName(string name)
     {
@@ -19,7 +22,25 @@ public class CreatePetRequestBuilder
         return this;
     }
 
-    public CreatePetRequest Build() => new(_name, _petTypeId);
+    public CreatePetRequestBuilder WithBreed(string breed)
+    {
+        _breed = breed;
+        return this;
+    }
+
+    public CreatePetRequestBuilder WithAgeMonths(int ageMonths)
+    {
+        _ageMonths = ageMonths;
+        return this;
+    }
+
+    public CreatePetRequestBuilder WithDescription(string description)
+    {
+        _description = description;
+        return this;
+    }
+
+    public CreatePetRequest Build() => new(_name, _petTypeId, _breed, _ageMonths, _description);
 
     public static CreatePetRequestBuilder Default() => new();
 }

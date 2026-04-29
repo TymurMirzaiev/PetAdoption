@@ -18,7 +18,10 @@ public record PetDetailsDto(
     Guid Id,
     string Name,
     string Type,
-    string Status
+    string Status,
+    string? Breed,
+    int? AgeMonths,
+    string? Description
 );
 
 public class GetPetByIdQueryHandler : IRequestHandler<GetPetByIdQuery, PetDetailsDto>
@@ -54,7 +57,10 @@ public class GetPetByIdQueryHandler : IRequestHandler<GetPetByIdQuery, PetDetail
             pet.Id,
             pet.Name,
             petTypeName,
-            pet.Status.ToString()
+            pet.Status.ToString(),
+            pet.Breed?.Value,
+            pet.Age?.Months,
+            pet.Description?.Value
         );
     }
 }

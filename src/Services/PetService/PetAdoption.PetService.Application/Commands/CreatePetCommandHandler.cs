@@ -17,7 +17,7 @@ public class CreatePetCommandHandler : IRequestHandler<CreatePetCommand, CreateP
 
     public async Task<CreatePetResponse> Handle(CreatePetCommand request, CancellationToken cancellationToken = default)
     {
-        var pet = Pet.Create(request.Name, request.PetTypeId);
+        var pet = Pet.Create(request.Name, request.PetTypeId, request.Breed, request.AgeMonths, request.Description);
         await _petRepository.Add(pet);
         return new CreatePetResponse(pet.Id);
     }

@@ -730,15 +730,15 @@ public class PetsControllerTests : IAsyncLifetime
 
     private record CreatePetTypeResponseDto(Guid Id, string Code, string Name);
 
-    private record PetListItemResponseDto(Guid Id, string Name, string Type, string Status);
+    private record PetListItemResponseDto(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
 
-    private record PetDetailsResponseDto(Guid Id, string Name, string Type, string Status);
+    private record PetDetailsResponseDto(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
 
     private record StatusChangeResponseDto(bool Success, string? Message, Guid? PetId, string? Status);
 
     private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 
-    private record UpdatePetResponseDto(Guid Id, string Name, string Status);
+    private record UpdatePetResponseDto(Guid Id, string Name, string Status, string? Breed, int? AgeMonths, string? Description);
 
     private record DeletePetResponseDto(bool Success, string Message);
 

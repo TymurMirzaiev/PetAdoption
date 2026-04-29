@@ -31,7 +31,10 @@ public class GetAllPetsQueryHandler : IRequestHandler<GetAllPetsQuery, IEnumerab
             p.Id,
             p.Name,
             petTypeDict.GetValueOrDefault(p.PetTypeId, "Unknown"),
-            p.Status.ToString()
+            p.Status.ToString(),
+            p.Breed?.Value,
+            p.Age?.Months,
+            p.Description?.Value
         ));
     }
 }

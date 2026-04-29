@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using PetAdoption.PetService.API.Controllers;
@@ -24,6 +25,8 @@ public class PetsControllerTests : IAsyncLifetime
     {
         _factory = new PetServiceWebAppFactory(_mongoFixture.ConnectionString);
         _client = _factory.CreateClient();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken());
         await Task.CompletedTask;
     }
 

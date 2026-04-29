@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.Commands;
@@ -19,6 +20,7 @@ public class PetsController : ControllerBase
     }
 
     // GET /api/pets?status=Available&petTypeId=...&skip=0&take=20
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<GetPetsResponse>> GetAll(
         [FromQuery] string? status = null,
@@ -37,6 +39,7 @@ public class PetsController : ControllerBase
     }
 
     // POST /api/pets
+    [Authorize(Policy = "AdminOnly")]
     [HttpPost]
     public async Task<ActionResult<CreatePetResponse>> Create(CreatePetRequest request)
     {
@@ -45,6 +48,7 @@ public class PetsController : ControllerBase
     }
 
     // GET /api/pets/{id}
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<ActionResult<PetDetailsDto>> GetById(Guid id)
     {
@@ -53,6 +57,7 @@ public class PetsController : ControllerBase
     }
 
     // PUT /api/pets/{id}
+    [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id}")]
     public async Task<ActionResult<UpdatePetResponse>> Update(Guid id, UpdatePetRequest request)
     {
@@ -61,6 +66,7 @@ public class PetsController : ControllerBase
     }
 
     // DELETE /api/pets/{id}
+    [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id}")]
     public async Task<ActionResult<DeletePetResponse>> Delete(Guid id)
     {
@@ -69,6 +75,7 @@ public class PetsController : ControllerBase
     }
 
     // POST /api/pets/{id}/reserve
+    [Authorize]
     [HttpPost("{id}/reserve")]
     public async Task<ActionResult<ReservePetResponse>> Reserve(Guid id)
     {
@@ -80,6 +87,7 @@ public class PetsController : ControllerBase
     }
 
     // POST /api/pets/{id}/adopt
+    [Authorize]
     [HttpPost("{id}/adopt")]
     public async Task<ActionResult<AdoptPetResponse>> Adopt(Guid id)
     {
@@ -91,6 +99,7 @@ public class PetsController : ControllerBase
     }
 
     // POST /api/pets/{id}/cancel-reservation
+    [Authorize]
     [HttpPost("{id}/cancel-reservation")]
     public async Task<ActionResult<CancelReservationResponse>> CancelReservation(Guid id)
     {

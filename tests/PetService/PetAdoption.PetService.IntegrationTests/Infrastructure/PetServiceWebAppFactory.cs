@@ -1,8 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain.Interfaces;
@@ -21,8 +25,16 @@ internal class PetServiceWebAppFactory : WebApplicationFactory<Program>
         _databaseName = $"PetAdoptionTest_{Guid.NewGuid():N}";
     }
 
+    private const string TestJwtSecret = "test-secret-key-minimum-32-characters-long-for-testing!";
+    private const string TestJwtIssuer = "PetAdoption.UserService";
+    private const string TestJwtAudience = "PetAdoption.Services";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("Jwt:Secret", TestJwtSecret);
+        builder.UseSetting("Jwt:Issuer", TestJwtIssuer);
+        builder.UseSetting("Jwt:Audience", TestJwtAudience);
+
         builder.ConfigureServices(services =>
         {
             // Remove the real MongoDB registrations
@@ -54,6 +66,26 @@ internal class PetServiceWebAppFactory : WebApplicationFactory<Program>
     {
         var client = new MongoClient(_mongoConnectionString);
         return client.GetDatabase(_databaseName);
+    }
+
+    public static string GenerateTestToken(string userId = "test-user-id", string role = "Admin")
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes("test-secret-key-minimum-32-characters-long-for-testing!"));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(ClaimTypes.Role, role),
+            new Claim("userId", userId)
+        };
+        var token = new JwtSecurityToken(
+            issuer: "PetAdoption.UserService",
+            audience: "PetAdoption.Services",
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     public override async ValueTask DisposeAsync()

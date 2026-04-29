@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.Commands;
@@ -8,6 +9,7 @@ namespace PetAdoption.PetService.API.Controllers;
 
 [ApiController]
 [Route("api/admin/pet-types")]
+[Authorize(Policy = "AdminOnly")]
 public class PetTypesAdminController : ControllerBase
 {
     private readonly IMediator _mediator;

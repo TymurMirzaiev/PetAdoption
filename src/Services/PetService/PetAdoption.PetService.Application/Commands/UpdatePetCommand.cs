@@ -32,6 +32,9 @@ public class UpdatePetCommandHandler : IRequestHandler<UpdatePetCommand, UpdateP
         }
 
         pet.UpdateName(request.Name);
+        pet.UpdateBreed(request.Breed);
+        pet.UpdateAge(request.AgeMonths);
+        pet.UpdateDescription(request.Description);
         await _repository.Update(pet);
 
         return new UpdatePetResponse(pet.Id, pet.Name, pet.Status.ToString(), pet.Breed?.Value, pet.Age?.Months, pet.Description?.Value);

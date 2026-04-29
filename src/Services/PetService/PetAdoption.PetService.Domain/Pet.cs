@@ -115,6 +115,21 @@ public class Pet : IAggregateRoot, IEntity
         Name = new PetName(newName);
     }
 
+    public void UpdateBreed(string? breed)
+    {
+        Breed = breed is not null ? new PetBreed(breed) : null;
+    }
+
+    public void UpdateAge(int? ageMonths)
+    {
+        Age = ageMonths.HasValue ? new PetAge(ageMonths.Value) : null;
+    }
+
+    public void UpdateDescription(string? description)
+    {
+        Description = description is not null ? new PetDescription(description) : null;
+    }
+
     public void EnsureCanBeDeleted()
     {
         if (Status != PetStatus.Available)

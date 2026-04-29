@@ -277,6 +277,96 @@ public class PetTests
     }
 
     // ──────────────────────────────────────────────────────────────
+    // UpdateBreed
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void UpdateBreed_WithValidBreed_ShouldUpdate()
+    {
+        // Arrange
+        var pet = Pet.Create("Bella", Guid.NewGuid());
+
+        // Act
+        pet.UpdateBreed("Labrador");
+
+        // Assert
+        pet.Breed!.Value.Should().Be("Labrador");
+    }
+
+    [Fact]
+    public void UpdateBreed_WithNull_ShouldClearBreed()
+    {
+        // Arrange
+        var pet = Pet.Create("Bella", Guid.NewGuid(), breed: "Labrador");
+
+        // Act
+        pet.UpdateBreed(null);
+
+        // Assert
+        pet.Breed.Should().BeNull();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // UpdateAge
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void UpdateAge_WithValidAge_ShouldUpdate()
+    {
+        // Arrange
+        var pet = Pet.Create("Bella", Guid.NewGuid());
+
+        // Act
+        pet.UpdateAge(36);
+
+        // Assert
+        pet.Age!.Months.Should().Be(36);
+    }
+
+    [Fact]
+    public void UpdateAge_WithNull_ShouldClearAge()
+    {
+        // Arrange
+        var pet = Pet.Create("Bella", Guid.NewGuid(), ageMonths: 24);
+
+        // Act
+        pet.UpdateAge(null);
+
+        // Assert
+        pet.Age.Should().BeNull();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // UpdateDescription
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void UpdateDescription_WithValidDescription_ShouldUpdate()
+    {
+        // Arrange
+        var pet = Pet.Create("Bella", Guid.NewGuid());
+
+        // Act
+        pet.UpdateDescription("Very friendly");
+
+        // Assert
+        pet.Description!.Value.Should().Be("Very friendly");
+    }
+
+    [Fact]
+    public void UpdateDescription_WithNull_ShouldClearDescription()
+    {
+        // Arrange
+        var pet = Pet.Create("Bella", Guid.NewGuid(), description: "Old desc");
+
+        // Act
+        pet.UpdateDescription(null);
+
+        // Assert
+        pet.Description.Should().BeNull();
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // DomainEvents
     // ──────────────────────────────────────────────────────────────
 

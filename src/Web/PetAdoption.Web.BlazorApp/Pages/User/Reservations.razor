@@ -1,0 +1,94 @@
+@page "/reservations"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>My Reservations</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">My Reservations</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (!_pets.Any())
+    {
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Align="Align.Center" Class="mt-8">
+            No reservations yet.
+        </MudText>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var pet in _pets)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="3">
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                <MudAvatar Color="Color.Warning">@pet.Name[..1]</MudAvatar>
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@pet.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@pet.Type</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (pet.Breed is not null)
+                            {
+                                <MudText Typo="Typo.body2"><b>Breed:</b> @pet.Breed</MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Size="Size.Small" Color="Color.Primary"
+                                OnClick="@(() => Navigation.NavigateTo($"/pets/{pet.Id}"))">View</MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Error"
+                                OnClick="@(() => CancelReservation(pet.Id))">Cancel</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<PetListItem> _pets = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadReservations();
+
+    private async Task LoadReservations()
+    {
+        _loading = true;
+        try
+        {
+            var response = await PetApi.GetPetsAsync(status: "Reserved");
+            _pets = response?.Pets?.ToList() ?? [];
+        }
+        catch { Snackbar.Add("Failed to load reservations", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task CancelReservation(Guid petId)
+    {
+        try
+        {
+            var response = await PetApi.CancelReservationAsync(petId);
+            if (response.IsSuccessStatusCode)
+            {
+                _pets.RemoveAll(p => p.Id == petId);
+                Snackbar.Add("Reservation cancelled", Severity.Info);
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to cancel", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+    }
+}

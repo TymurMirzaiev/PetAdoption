@@ -1,0 +1,140 @@
+@page "/profile"
+@layout MainLayout
+@attribute [Authorize]
+@inject UserApiClient UserApi
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>My Profile</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Profile</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_profile is not null)
+    {
+        <MudPaper Class="pa-6 mb-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="mb-4">Personal Information</MudText>
+            <MudForm @ref="_profileForm" @bind-IsValid="_profileValid">
+                <MudTextField @bind-Value="_fullName" Label="Full Name" Required="true" Class="mb-4" />
+                <MudTextField Value="_profile.Email" Label="Email" ReadOnly="true" Class="mb-4" />
+                <MudTextField @bind-Value="_phoneNumber" Label="Phone Number" Class="mb-4" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                    Disabled="@(!_profileValid || _saving)" OnClick="UpdateProfile">
+                    @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
+                    else { <span>Save Changes</span> }
+                </MudButton>
+            </MudForm>
+        </MudPaper>
+
+        @if (_profile.HasPassword)
+        {
+            <MudPaper Class="pa-6 mb-4" Elevation="3">
+                <MudText Typo="Typo.h6" Class="mb-4">Change Password</MudText>
+                <MudForm @ref="_passwordForm" @bind-IsValid="_passwordValid">
+                    <MudTextField @bind-Value="_currentPassword" Label="Current Password"
+                        InputType="InputType.Password" Required="true" Class="mb-4" />
+                    <MudTextField @bind-Value="_newPassword" Label="New Password"
+                        InputType="InputType.Password" Required="true"
+                        HelperText="Minimum 8 characters" Class="mb-4" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning"
+                        Disabled="@(!_passwordValid || _changingPassword)" OnClick="ChangePassword">
+                        @if (_changingPassword) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
+                        else { <span>Change Password</span> }
+                    </MudButton>
+                </MudForm>
+            </MudPaper>
+        }
+
+        @if (_profile.ExternalProvider is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4">
+                Signed in via @_profile.ExternalProvider
+            </MudAlert>
+        }
+
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true" OnClick="Logout">
+            Sign Out
+        </MudButton>
+    }
+</MudContainer>
+
+@code {
+    private UserProfile? _profile;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _changingPassword;
+    private MudForm _profileForm = null!;
+    private MudForm _passwordForm = null!;
+    private bool _profileValid;
+    private bool _passwordValid;
+    private string _fullName = "";
+    private string _phoneNumber = "";
+    private string _currentPassword = "";
+    private string _newPassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _profile = await UserApi.GetMyProfileAsync();
+            if (_profile is not null)
+            {
+                _fullName = _profile.FullName;
+                _phoneNumber = _profile.PhoneNumber ?? "";
+            }
+        }
+        catch { Snackbar.Add("Failed to load profile", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task UpdateProfile()
+    {
+        _saving = true;
+        try
+        {
+            var phone = string.IsNullOrWhiteSpace(_phoneNumber) ? null : _phoneNumber;
+            var response = await UserApi.UpdateProfileAsync(new { FullName = _fullName, PhoneNumber = phone });
+            if (response.IsSuccessStatusCode) Snackbar.Add("Profile updated!", Severity.Success);
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to update", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+        finally { _saving = false; }
+    }
+
+    private async Task ChangePassword()
+    {
+        _changingPassword = true;
+        try
+        {
+            var response = await UserApi.ChangePasswordAsync(new { CurrentPassword = _currentPassword, NewPassword = _newPassword });
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Password changed!", Severity.Success);
+                _currentPassword = "";
+                _newPassword = "";
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to change password", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+        finally { _changingPassword = false; }
+    }
+
+    private async Task Logout()
+    {
+        await AuthProvider.Logout();
+        Navigation.NavigateTo("/");
+    }
+}

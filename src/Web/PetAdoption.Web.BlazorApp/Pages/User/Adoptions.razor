@@ -1,0 +1,73 @@
+@page "/adoptions"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject ISnackbar Snackbar
+
+<PageTitle>My Adoptions</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">My Adoptions</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (!_pets.Any())
+    {
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Align="Align.Center" Class="mt-8">
+            No adoptions yet. Start by discovering and reserving a pet!
+        </MudText>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var pet in _pets)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="3">
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                <MudAvatar Color="Color.Info">@pet.Name[..1]</MudAvatar>
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@pet.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@pet.Type</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (pet.Breed is not null)
+                            {
+                                <MudText Typo="Typo.body2"><b>Breed:</b> @pet.Breed</MudText>
+                            }
+                            @if (pet.AgeMonths.HasValue)
+                            {
+                                <MudText Typo="Typo.body2"><b>Age:</b> @FormatAge(pet.AgeMonths.Value)</MudText>
+                            }
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Adopted</MudChip>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<PetListItem> _pets = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await PetApi.GetPetsAsync(status: "Adopted");
+            _pets = response?.Pets?.ToList() ?? [];
+        }
+        catch { Snackbar.Add("Failed to load adoptions", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private static string FormatAge(int months) =>
+        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
+}

@@ -1,0 +1,119 @@
+@page "/pets/{Id:guid}"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Pet Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+    @if (_loading)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" />
+    }
+    else if (_pet is null)
+    {
+        <MudText Typo="Typo.h6" Color="Color.Error">Pet not found.</MudText>
+    }
+    else
+    {
+        <MudPaper Class="pa-6" Elevation="3">
+            <div class="d-flex align-center mb-4">
+                <MudAvatar Color="Color.Primary" Size="Size.Large" Class="mr-4">@_pet.Name[..1]</MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h4">@_pet.Name</MudText>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@_pet.Type</MudText>
+                </div>
+                <MudSpacer />
+                <MudChip T="string" Color="@StatusColor(_pet.Status)">@_pet.Status</MudChip>
+            </div>
+
+            @if (_pet.Breed is not null)
+            {
+                <MudText Typo="Typo.body1" Class="mb-2"><b>Breed:</b> @_pet.Breed</MudText>
+            }
+            @if (_pet.AgeMonths.HasValue)
+            {
+                <MudText Typo="Typo.body1" Class="mb-2"><b>Age:</b> @FormatAge(_pet.AgeMonths.Value)</MudText>
+            }
+            @if (_pet.Description is not null)
+            {
+                <MudText Typo="Typo.body1" Class="mb-4">@_pet.Description</MudText>
+            }
+
+            <MudDivider Class="my-4" />
+
+            <div class="d-flex gap-2">
+                @if (_pet.Status == "Available")
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Favorite"
+                        OnClick="AddToFavorites" Disabled="_actionLoading">Add to Favorites</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.BookmarkAdd"
+                        OnClick="Reserve" Disabled="_actionLoading">Reserve</MudButton>
+                }
+                <MudButton Variant="Variant.Outlined" OnClick="@(() => Navigation.NavigateTo("/discover"))">Back</MudButton>
+            </div>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private PetDetails? _pet;
+    private bool _loading = true;
+    private bool _actionLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _pet = await PetApi.GetPetAsync(Id); }
+        catch { Snackbar.Add("Failed to load pet details", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task AddToFavorites()
+    {
+        _actionLoading = true;
+        try
+        {
+            var response = await PetApi.AddFavoriteAsync(Id);
+            if (response.IsSuccessStatusCode) Snackbar.Add("Added to favorites!", Severity.Success);
+            else Snackbar.Add("Failed to add favorite", Severity.Error);
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+        finally { _actionLoading = false; }
+    }
+
+    private async Task Reserve()
+    {
+        _actionLoading = true;
+        try
+        {
+            var response = await PetApi.ReservePetAsync(Id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Pet reserved!", Severity.Success);
+                _pet = await PetApi.GetPetAsync(Id);
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to reserve", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+        finally { _actionLoading = false; }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Available" => Color.Success,
+        "Reserved" => Color.Warning,
+        "Adopted" => Color.Info,
+        _ => Color.Default
+    };
+
+    private static string FormatAge(int months) =>
+        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
+}

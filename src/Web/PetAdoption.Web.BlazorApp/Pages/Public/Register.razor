@@ -1,0 +1,90 @@
+@page "/register"
+@layout MainLayout
+@inject UserApiClient UserApi
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Register</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-8" Elevation="3">
+        <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-6">Create Account</MudText>
+
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_fullName" Label="Full Name"
+                Required="true" RequiredError="Full name is required" Class="mb-4" />
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
+                Required="true" RequiredError="Email is required" Class="mb-4" />
+            <MudTextField @bind-Value="_phoneNumber" Label="Phone Number (optional)" Class="mb-4" />
+            <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                Required="true" RequiredError="Password is required"
+                HelperText="Minimum 8 characters" Class="mb-4" />
+            <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password" InputType="InputType.Password"
+                Required="true" RequiredError="Please confirm your password"
+                Validation="@(new Func<string, string?>(ValidateConfirmPassword))" Class="mb-4" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                Disabled="@(!_isValid || _loading)" OnClick="HandleRegister" Class="mb-4">
+                @if (_loading) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
+                else { <span>Register</span> }
+            </MudButton>
+        </MudForm>
+
+        <MudDivider Class="mb-4" />
+        <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2">
+            Already have an account? <MudLink Href="/login">Sign In</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm _form = null!;
+    private string _fullName = "";
+    private string _email = "";
+    private string _phoneNumber = "";
+    private string _password = "";
+    private string _confirmPassword = "";
+    private bool _isValid;
+    private bool _loading;
+
+    private string? ValidateConfirmPassword(string confirmPassword) =>
+        confirmPassword != _password ? "Passwords do not match" : null;
+
+    private async Task HandleRegister()
+    {
+        _loading = true;
+        try
+        {
+            var phone = string.IsNullOrWhiteSpace(_phoneNumber) ? null : _phoneNumber;
+            var request = new RegisterRequest(_email, _fullName, _password, phone);
+            var response = await UserApi.RegisterAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var loginResponse = await UserApi.LoginAsync(new LoginRequest(_email, _password));
+                if (loginResponse.IsSuccessStatusCode)
+                {
+                    var result = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+                    if (result is not null)
+                    {
+                        await AuthProvider.Login(result.Token, result.RefreshToken);
+                        Navigation.NavigateTo("/discover");
+                        return;
+                    }
+                }
+                Snackbar.Add("Registration successful! Please sign in.", Severity.Success);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Registration failed", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Connection error. Please try again.", Severity.Error);
+        }
+        finally { _loading = false; }
+    }
+}

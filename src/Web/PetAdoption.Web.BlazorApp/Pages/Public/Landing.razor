@@ -1,0 +1,48 @@
+@page "/"
+@layout MainLayout
+
+<PageTitle>PetAdoption - Find Your Pet</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="d-flex flex-column align-center mt-16">
+    <MudText Typo="Typo.h2" Align="Align.Center" Class="mb-4">Find Your Perfect Pet</MudText>
+    <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Secondary" Class="mb-8">
+        Swipe through adorable pets waiting for a loving home.
+    </MudText>
+
+    <AuthorizeView>
+        <Authorized>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Href="/discover">
+                Start Discovering
+            </MudButton>
+        </Authorized>
+        <NotAuthorized>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Href="/login">
+                Get Started
+            </MudButton>
+        </NotAuthorized>
+    </AuthorizeView>
+
+    <MudGrid Class="mt-16" Justify="Justify.Center" Spacing="4">
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-6 text-center" Elevation="2">
+                <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Large" Color="Color.Primary" />
+                <MudText Typo="Typo.h6" Class="mt-2">Discover</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Swipe through pets near you</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-6 text-center" Elevation="2">
+                <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Large" Color="Color.Error" />
+                <MudText Typo="Typo.h6" Class="mt-2">Favorite</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Save the ones you love</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-6 text-center" Elevation="2">
+                <MudIcon Icon="@Icons.Material.Filled.Home" Size="Size.Large" Color="Color.Success" />
+                <MudText Typo="Typo.h6" Class="mt-2">Adopt</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Give them a forever home</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

@@ -16,7 +16,26 @@ MongoDbConfiguration.Configure();
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
+
+// When running under Aspire, override RabbitMQ host/port from the provided connection string
+builder.Services.PostConfigure<RabbitMqOptions>(options =>
+{
+    var connStr = builder.Configuration.GetConnectionString("rabbitmq");
+    if (connStr is not null && Uri.TryCreate(connStr, UriKind.Absolute, out var uri))
+    {
+        options.Host = uri.Host;
+        options.Port = uri.Port > 0 ? uri.Port : 5672;
+        if (uri.UserInfo is { Length: > 0 } userInfo)
+        {
+            var parts = userInfo.Split(':');
+            options.User = Uri.UnescapeDataString(parts[0]);
+            if (parts.Length > 1) options.Password = Uri.UnescapeDataString(parts[1]);
+        }
+    }
+});
 
 // MongoDB
 var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDb")
@@ -50,14 +69,23 @@ builder.Services.AddControllers();
 builder.Services.AddSwaggerGen(); // Registers Swagger
 
 // CORS
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
+        else
+        {
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        }
     });
 });
 
@@ -118,6 +146,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 app.UseSwagger();
 app.UseSwaggerUI();

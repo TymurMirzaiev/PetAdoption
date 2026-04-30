@@ -4,6 +4,7 @@
     <ProjectReference Include="..\PetAdoption.PetService.Infrastructure\PetAdoption.PetService.Infrastructure.csproj" />
     <ProjectReference Include="..\PetAdoption.PetService.Application\PetAdoption.PetService.Application.csproj" />
     <ProjectReference Include="..\PetAdoption.PetService.Domain\PetAdoption.PetService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Aspire\PetAdoption.ServiceDefaults\PetAdoption.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

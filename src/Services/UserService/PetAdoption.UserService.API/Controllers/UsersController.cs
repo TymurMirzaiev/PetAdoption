@@ -52,6 +52,20 @@ public class UsersController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Authenticate with Google ID token
+    /// </summary>
+    [HttpPost("auth/google")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GoogleAuth(
+        [FromBody] GoogleAuthRequest request,
+        [FromServices] ICommandHandler<GoogleAuthCommand, GoogleAuthResponse> handler)
+    {
+        var command = new GoogleAuthCommand(request.IdToken);
+        var response = await handler.HandleAsync(command);
+        return Ok(response);
+    }
+
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<IActionResult> RefreshToken(
@@ -232,3 +246,4 @@ public record SuspendUserRequest(string Reason);
 
 public record RefreshTokenRequest(string RefreshToken);
 public record LogoutRequest(string RefreshToken);
+public record GoogleAuthRequest(string IdToken);

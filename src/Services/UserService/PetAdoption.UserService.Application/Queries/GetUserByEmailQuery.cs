@@ -43,6 +43,8 @@ public class GetUserByEmailQueryHandler : IQueryHandler<GetUserByEmailQuery, Use
                 user.Preferences.ReceiveEmailNotifications,
                 user.Preferences.ReceiveSmsNotifications
             ),
+            user.ExternalProvider,
+            user.HasPassword,
             user.RegisteredAt,
             user.UpdatedAt,
             user.LastLoginAt

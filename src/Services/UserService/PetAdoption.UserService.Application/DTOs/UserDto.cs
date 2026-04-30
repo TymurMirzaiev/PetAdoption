@@ -8,6 +8,8 @@ public record UserDto(
     string Status,
     string Role,
     UserPreferencesDto Preferences,
+    string? ExternalProvider,
+    bool HasPassword,
     DateTime RegisteredAt,
     DateTime UpdatedAt,
     DateTime? LastLoginAt

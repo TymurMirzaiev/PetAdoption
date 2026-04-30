@@ -7,6 +7,7 @@ using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.Commands;
 using PetAdoption.UserService.Application.DTOs;
 using PetAdoption.UserService.Application.Queries;
+using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
 
 [ApiController]
@@ -48,6 +49,17 @@ public class UsersController : ControllerBase
         var command = new LoginCommand(request.Email, request.Password);
         var response = await handler.HandleAsync(command);
 
+        return Ok(response);
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RefreshToken(
+        [FromBody] RefreshTokenRequest request,
+        [FromServices] ICommandHandler<RefreshTokenCommand, RefreshTokenResponse> handler)
+    {
+        var command = new RefreshTokenCommand(request.RefreshToken);
+        var response = await handler.HandleAsync(command);
         return Ok(response);
     }
 
@@ -113,6 +125,21 @@ public class UsersController : ControllerBase
 
         var response = await handler.HandleAsync(command);
         return Ok(response);
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout(
+        [FromBody] LogoutRequest request,
+        [FromServices] IRefreshTokenRepository refreshTokenRepo)
+    {
+        var token = await refreshTokenRepo.GetByTokenAsync(request.RefreshToken);
+        if (token is not null)
+        {
+            token.Revoke();
+            await refreshTokenRepo.SaveAsync(token);
+        }
+        return NoContent();
     }
 
     // ADMIN-ONLY ENDPOINTS
@@ -202,3 +229,6 @@ public record ChangePasswordRequest(
 );
 
 public record SuspendUserRequest(string Reason);
+
+public record RefreshTokenRequest(string RefreshToken);
+public record LogoutRequest(string RefreshToken);

@@ -1,0 +1,50 @@
+@inject PetApiClient PetApi
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Edit Pet" : "Add Pet")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="Name" Label="Name" Required="true" RequiredError="Name is required" Class="mb-4" />
+            <MudSelect T="Guid?" @bind-Value="SelectedPetTypeId" Label="Pet Type" Required="true" RequiredError="Pet type is required" Class="mb-4">
+                @if (PetTypes is not null)
+                {
+                    @foreach (var pt in PetTypes)
+                    {
+                        <MudSelectItem Value="@((Guid?)pt.Id)">@pt.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+            <MudTextField @bind-Value="Breed" Label="Breed" Class="mb-4" />
+            <MudNumericField @bind-Value="AgeMonths" Label="Age (months)" Min="0" Class="mb-4" />
+            <MudTextField @bind-Value="Description" Label="Description" Lines="3" Class="mb-4" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="!_isValid" OnClick="Submit">
+            @(IsEdit ? "Save" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public Guid? SelectedPetTypeId { get; set; }
+    [Parameter] public string? Breed { get; set; }
+    [Parameter] public int? AgeMonths { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public List<PetTypeItem>? PetTypes { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new PetFormResult(Name, SelectedPetTypeId, Breed, AgeMonths, Description)));
+
+    public record PetFormResult(string Name, Guid? PetTypeId, string? Breed, int? AgeMonths, string? Description);
+}

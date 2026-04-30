@@ -41,6 +41,18 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
 });
 
+// CORS
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddControllers();
 
 // Add OpenAPI/Swagger support (.NET 10 native approach)
@@ -57,7 +69,7 @@ if (app.Environment.IsDevelopment())
 // Exception handling middleware must be first to catch all exceptions
 app.UseMiddleware<PetAdoption.UserService.API.Middleware.ExceptionHandlingMiddleware>();
 
-// Important: Authentication must come before Authorization
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 

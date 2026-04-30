@@ -1,0 +1,115 @@
+@page "/discover"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject ISnackbar Snackbar
+
+<PageTitle>Discover Pets</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudSelect T="Guid?" Label="Filter by Pet Type" @bind-Value="_selectedTypeId" @bind-Value:after="OnFilterChanged" Class="mb-4" Clearable="true">
+        @if (_petTypes is not null)
+        {
+            @foreach (var pt in _petTypes)
+            {
+                <MudSelectItem Value="@((Guid?)pt.Id)">@pt.Name</MudSelectItem>
+            }
+        }
+    </MudSelect>
+
+    @if (_loading)
+    {
+        <div class="d-flex justify-center mt-8">
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="300px" Height="420px" />
+        </div>
+    }
+    else if (!_pets.Any())
+    {
+        <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Secondary" Class="mt-8">
+            No more pets to discover. Try adjusting your filters!
+        </MudText>
+    }
+    else
+    {
+        <div class="d-flex justify-center">
+            <SwipeCardStack Pets="_pets" OnFavorite="HandleFavorite" OnSkip="HandleSkip" OnNeedMore="LoadMore" />
+        </div>
+    }
+</MudContainer>
+
+@code {
+    private List<PetListItem> _pets = [];
+    private List<PetTypeItem>? _petTypes;
+    private Guid? _selectedTypeId;
+    private bool _loading = true;
+    private int _skip;
+    private bool _hasMore = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPetTypes();
+        await LoadPets();
+    }
+
+    private async Task LoadPetTypes()
+    {
+        try
+        {
+            var response = await PetApi.GetPetTypesAsync();
+            _petTypes = response?.Items?.Where(pt => pt.IsActive).ToList();
+        }
+        catch { }
+    }
+
+    private async Task LoadPets()
+    {
+        _loading = true;
+        _skip = 0;
+        _pets.Clear();
+        _hasMore = true;
+        await FetchBatch();
+        _loading = false;
+    }
+
+    private async Task FetchBatch()
+    {
+        if (!_hasMore) return;
+        try
+        {
+            var response = await PetApi.GetPetsAsync(status: "Available", petTypeId: _selectedTypeId, skip: _skip, take: 10);
+            if (response?.Pets is not null)
+            {
+                var newPets = response.Pets.ToList();
+                _pets.AddRange(newPets);
+                _skip += newPets.Count;
+                _hasMore = newPets.Count == 10;
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load pets", Severity.Error);
+        }
+    }
+
+    private async Task HandleFavorite(PetListItem pet)
+    {
+        try
+        {
+            var response = await PetApi.AddFavoriteAsync(pet.Id);
+            if (!response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Failed to add favorite", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Connection error", Severity.Error);
+        }
+    }
+
+    private Task HandleSkip(PetListItem _) => Task.CompletedTask;
+
+    private async Task LoadMore() => await FetchBatch();
+
+    private async Task OnFilterChanged() => await LoadPets();
+}

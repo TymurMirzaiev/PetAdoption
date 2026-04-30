@@ -1,0 +1,121 @@
+@using PetAdoption.Web.BlazorApp.Models
+
+<div class="d-flex flex-column align-center">
+    @if (Pets.Any())
+    {
+        <div style="position: relative; width: 300px; height: 420px;">
+            @for (var i = Math.Min(Pets.Count - 1, 2); i >= 0; i--)
+            {
+                var pet = Pets[i];
+                var isTop = i == 0;
+                var offset = i * 4;
+                var scale = 1.0 - i * 0.03;
+                var style = $"position: absolute; top: {offset}px; left: {offset}px; transform: scale({scale}); transform-origin: top left; z-index: {10 - i};";
+                if (isTop)
+                {
+                    style += $" transition: transform 0.1s; transform: translateX({_offsetX}px) rotate({_offsetX * 0.05}deg) scale(1);";
+                }
+                <div style="@style"
+                     @ontouchstart="OnTouchStart" @ontouchstart:preventDefault
+                     @ontouchmove="OnTouchMove" @ontouchmove:preventDefault
+                     @ontouchend="OnTouchEnd"
+                     @onmousedown="OnMouseDown"
+                     @onmousemove="OnMouseMove"
+                     @onmouseup="OnMouseUp">
+                    <PetCard Pet="pet" />
+                </div>
+            }
+        </div>
+
+        <div class="d-flex gap-4 mt-4">
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Size="Size.Large"
+                OnClick="Skip" Variant="Variant.Outlined" />
+            <MudIconButton Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Size="Size.Large"
+                OnClick="Favorite" Variant="Variant.Outlined" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<PetListItem> Pets { get; set; } = [];
+    [Parameter] public EventCallback<PetListItem> OnFavorite { get; set; }
+    [Parameter] public EventCallback<PetListItem> OnSkip { get; set; }
+    [Parameter] public EventCallback OnNeedMore { get; set; }
+
+    private double _offsetX;
+    private double _startX;
+    private bool _dragging;
+    private const double SwipeThreshold = 100;
+
+    private void OnTouchStart(TouchEventArgs e)
+    {
+        _startX = e.ChangedTouches[0].ClientX;
+        _dragging = true;
+    }
+
+    private void OnTouchMove(TouchEventArgs e)
+    {
+        if (!_dragging) return;
+        _offsetX = e.ChangedTouches[0].ClientX - _startX;
+    }
+
+    private async Task OnTouchEnd(TouchEventArgs e)
+    {
+        _dragging = false;
+        if (Math.Abs(_offsetX) > SwipeThreshold)
+        {
+            if (_offsetX > 0) await Favorite();
+            else await Skip();
+        }
+        _offsetX = 0;
+    }
+
+    private void OnMouseDown(MouseEventArgs e)
+    {
+        _startX = e.ClientX;
+        _dragging = true;
+    }
+
+    private void OnMouseMove(MouseEventArgs e)
+    {
+        if (!_dragging) return;
+        _offsetX = e.ClientX - _startX;
+    }
+
+    private async Task OnMouseUp(MouseEventArgs e)
+    {
+        _dragging = false;
+        if (Math.Abs(_offsetX) > SwipeThreshold)
+        {
+            if (_offsetX > 0) await Favorite();
+            else await Skip();
+        }
+        _offsetX = 0;
+    }
+
+    private async Task Favorite()
+    {
+        if (!Pets.Any()) return;
+        var pet = Pets[0];
+        Pets.RemoveAt(0);
+        _offsetX = 0;
+        await OnFavorite.InvokeAsync(pet);
+        await CheckNeedMore();
+    }
+
+    private async Task Skip()
+    {
+        if (!Pets.Any()) return;
+        var pet = Pets[0];
+        Pets.RemoveAt(0);
+        _offsetX = 0;
+        await OnSkip.InvokeAsync(pet);
+        await CheckNeedMore();
+    }
+
+    private async Task CheckNeedMore()
+    {
+        if (Pets.Count <= 3)
+            await OnNeedMore.InvokeAsync();
+    }
+}

@@ -1,5 +1,4 @@
-using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -7,36 +6,36 @@ namespace PetAdoption.PetService.Infrastructure.Persistence;
 
 public class OutboxRepository : IOutboxRepository
 {
-    private readonly IMongoCollection<OutboxEvent> _outboxEvents;
+    private readonly PetServiceDbContext _db;
 
-    public OutboxRepository(IConfiguration configuration)
+    public OutboxRepository(PetServiceDbContext db)
     {
-        var client = new MongoClient(configuration.GetConnectionString("MongoDb"));
-        var database = client.GetDatabase("PetAdoptionDb");
-        _outboxEvents = database.GetCollection<OutboxEvent>("OutboxEvents");
+        _db = db;
     }
 
     public async Task Add(OutboxEvent outboxEvent)
     {
-        await _outboxEvents.InsertOneAsync(outboxEvent);
+        _db.OutboxEvents.Add(outboxEvent);
+        await _db.SaveChangesAsync();
     }
 
     public async Task AddRange(IEnumerable<OutboxEvent> outboxEvents)
     {
-        await _outboxEvents.InsertManyAsync(outboxEvents);
+        _db.OutboxEvents.AddRange(outboxEvents);
+        await _db.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<OutboxEvent>> GetPendingEvents(int batchSize = 100)
     {
-        return await _outboxEvents
-            .Find(e => !e.IsProcessed && e.RetryCount < 5)
-            .SortBy(e => e.OccurredOn)
-            .Limit(batchSize)
+        return await _db.OutboxEvents
+            .Where(e => !e.IsProcessed && e.RetryCount < 5)
+            .OrderBy(e => e.OccurredOn)
+            .Take(batchSize)
             .ToListAsync();
     }
 
     public async Task Update(OutboxEvent outboxEvent)
     {
-        await _outboxEvents.ReplaceOneAsync(e => e.Id == outboxEvent.Id, outboxEvent);
+        await _db.SaveChangesAsync();
     }
 }

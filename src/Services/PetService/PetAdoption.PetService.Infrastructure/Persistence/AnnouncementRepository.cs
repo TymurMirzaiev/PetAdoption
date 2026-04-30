@@ -1,4 +1,4 @@
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -6,33 +6,31 @@ namespace PetAdoption.PetService.Infrastructure.Persistence;
 
 public class AnnouncementRepository : IAnnouncementRepository
 {
-    private readonly IMongoCollection<Announcement> _announcements;
+    private readonly PetServiceDbContext _db;
 
-    public AnnouncementRepository(IMongoDatabase database)
+    public AnnouncementRepository(PetServiceDbContext db)
     {
-        _announcements = database.GetCollection<Announcement>("Announcements");
+        _db = db;
     }
 
     public async Task<Announcement?> GetByIdAsync(Guid id)
     {
-        var filter = Builders<Announcement>.Filter.Eq(a => a.Id, id);
-        return await _announcements.Find(filter).FirstOrDefaultAsync();
+        return await _db.Announcements.FindAsync(id);
     }
 
     public async Task AddAsync(Announcement announcement)
     {
-        await _announcements.InsertOneAsync(announcement);
+        _db.Announcements.Add(announcement);
+        await _db.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(Announcement announcement)
     {
-        var filter = Builders<Announcement>.Filter.Eq(a => a.Id, announcement.Id);
-        await _announcements.ReplaceOneAsync(filter, announcement);
+        await _db.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(Guid id)
     {
-        var filter = Builders<Announcement>.Filter.Eq(a => a.Id, id);
-        await _announcements.DeleteOneAsync(filter);
+        await _db.Announcements.Where(a => a.Id == id).ExecuteDeleteAsync();
     }
 }

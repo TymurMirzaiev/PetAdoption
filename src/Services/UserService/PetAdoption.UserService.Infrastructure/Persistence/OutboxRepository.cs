@@ -1,55 +1,48 @@
 namespace PetAdoption.UserService.Infrastructure.Persistence;
 
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Interfaces;
 
 public class OutboxRepository : IOutboxRepository
 {
-    private readonly IMongoCollection<OutboxEvent> _outboxEvents;
+    private readonly UserServiceDbContext _db;
 
-    public OutboxRepository(IMongoDatabase database)
+    public OutboxRepository(UserServiceDbContext db)
     {
-        _outboxEvents = database.GetCollection<OutboxEvent>("OutboxEvents");
+        _db = db;
     }
 
     public async Task AddAsync(OutboxEvent outboxEvent)
     {
-        await _outboxEvents.InsertOneAsync(outboxEvent);
+        _db.OutboxEvents.Add(outboxEvent);
+        await _db.SaveChangesAsync();
     }
 
     public async Task<List<OutboxEvent>> GetUnprocessedAsync(int batchSize = 100)
     {
-        // Use Filter API for consistency
-        var filter = Builders<OutboxEvent>.Filter.Eq("IsProcessed", false);
-        var sort = Builders<OutboxEvent>.Sort.Ascending("CreatedAt");
-
-        return await _outboxEvents
-            .Find(filter)
-            .Sort(sort)
-            .Limit(batchSize)
+        return await _db.OutboxEvents
+            .Where(e => !e.IsProcessed)
+            .OrderBy(e => e.CreatedAt)
+            .Take(batchSize)
             .ToListAsync();
     }
 
     public async Task MarkAsProcessedAsync(string id)
     {
-        // Use Filter API for consistency
-        var filter = Builders<OutboxEvent>.Filter.Eq("_id", id);
-        var update = Builders<OutboxEvent>.Update
-            .Set("IsProcessed", true)
-            .Set("ProcessedAt", DateTime.UtcNow);
-
-        await _outboxEvents.UpdateOneAsync(filter, update);
+        await _db.OutboxEvents
+            .Where(e => e.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.IsProcessed, true)
+                .SetProperty(e => e.ProcessedAt, DateTime.UtcNow));
     }
 
     public async Task MarkAsFailedAsync(string id, string error)
     {
-        // Use Filter API for consistency
-        var filter = Builders<OutboxEvent>.Filter.Eq("_id", id);
-        var update = Builders<OutboxEvent>.Update
-            .Inc("RetryCount", 1)
-            .Set("LastError", error);
-
-        await _outboxEvents.UpdateOneAsync(filter, update);
+        await _db.OutboxEvents
+            .Where(e => e.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.RetryCount, e => e.RetryCount + 1)
+                .SetProperty(e => e.LastError, error));
     }
 }

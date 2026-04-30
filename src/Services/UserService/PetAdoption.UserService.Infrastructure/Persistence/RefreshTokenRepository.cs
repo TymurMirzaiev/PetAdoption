@@ -1,43 +1,42 @@
 namespace PetAdoption.UserService.Infrastructure.Persistence;
 
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Interfaces;
 
 public class RefreshTokenRepository : IRefreshTokenRepository
 {
-    private readonly IMongoCollection<RefreshToken> _tokens;
+    private readonly UserServiceDbContext _db;
 
-    public RefreshTokenRepository(IMongoDatabase database)
+    public RefreshTokenRepository(UserServiceDbContext db)
     {
-        _tokens = database.GetCollection<RefreshToken>("RefreshTokens");
-
-        var indexBuilder = Builders<RefreshToken>.IndexKeys;
-        _tokens.Indexes.CreateOne(new CreateIndexModel<RefreshToken>(
-            indexBuilder.Ascending("Token"),
-            new CreateIndexOptions { Unique = true }));
-        _tokens.Indexes.CreateOne(new CreateIndexModel<RefreshToken>(
-            indexBuilder.Ascending("UserId")));
+        _db = db;
     }
 
     public async Task SaveAsync(RefreshToken refreshToken)
     {
-        var filter = Builders<RefreshToken>.Filter.Eq("_id", refreshToken.Id);
-        await _tokens.ReplaceOneAsync(filter, refreshToken, new ReplaceOptions { IsUpsert = true });
+        var entry = _db.Entry(refreshToken);
+        if (entry.State == EntityState.Detached)
+        {
+            var exists = await _db.RefreshTokens.AnyAsync(rt => rt.Id == refreshToken.Id);
+            if (exists)
+                _db.RefreshTokens.Update(refreshToken);
+            else
+                _db.RefreshTokens.Add(refreshToken);
+        }
+
+        await _db.SaveChangesAsync();
     }
 
     public async Task<RefreshToken?> GetByTokenAsync(string token)
     {
-        var filter = Builders<RefreshToken>.Filter.Eq("Token", token);
-        return await _tokens.Find(filter).FirstOrDefaultAsync();
+        return await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == token);
     }
 
     public async Task RevokeAllForUserAsync(string userId)
     {
-        var filter = Builders<RefreshToken>.Filter.And(
-            Builders<RefreshToken>.Filter.Eq("UserId", userId),
-            Builders<RefreshToken>.Filter.Eq("IsRevoked", false));
-        var update = Builders<RefreshToken>.Update.Set("IsRevoked", true);
-        await _tokens.UpdateManyAsync(filter, update);
+        await _db.RefreshTokens
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+            .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true));
     }
 }

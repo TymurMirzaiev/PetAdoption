@@ -1,4 +1,4 @@
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain;
 
@@ -6,21 +6,21 @@ namespace PetAdoption.PetService.Infrastructure.Persistence;
 
 public class AnnouncementQueryStore : IAnnouncementQueryStore
 {
-    private readonly IMongoCollection<Announcement> _announcements;
+    private readonly PetServiceDbContext _db;
 
-    public AnnouncementQueryStore(IMongoDatabase database)
+    public AnnouncementQueryStore(PetServiceDbContext db)
     {
-        _announcements = database.GetCollection<Announcement>("Announcements");
+        _db = db;
     }
 
     public async Task<(IEnumerable<AnnouncementListDto> Items, long Total)> GetAllAsync(int skip, int take)
     {
-        var filter = Builders<Announcement>.Filter.Empty;
-        var total = await _announcements.CountDocumentsAsync(filter);
-        var items = await _announcements.Find(filter)
-            .SortByDescending(a => a.CreatedAt)
+        var total = await _db.Announcements.LongCountAsync();
+
+        var items = await _db.Announcements.AsNoTracking()
+            .OrderByDescending(a => a.CreatedAt)
             .Skip(skip)
-            .Limit(take)
+            .Take(take)
             .ToListAsync();
 
         var now = DateTime.UtcNow;
@@ -37,8 +37,9 @@ public class AnnouncementQueryStore : IAnnouncementQueryStore
 
     public async Task<AnnouncementDetailDto?> GetByIdAsync(Guid id)
     {
-        var filter = Builders<Announcement>.Filter.Eq(a => a.Id, id);
-        var announcement = await _announcements.Find(filter).FirstOrDefaultAsync();
+        var announcement = await _db.Announcements.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == id);
+
         if (announcement is null) return null;
 
         return new AnnouncementDetailDto(
@@ -54,12 +55,10 @@ public class AnnouncementQueryStore : IAnnouncementQueryStore
     public async Task<IEnumerable<ActiveAnnouncementDto>> GetActiveAsync()
     {
         var now = DateTime.UtcNow;
-        var filter = Builders<Announcement>.Filter.And(
-            Builders<Announcement>.Filter.Lte(a => a.StartDate, now),
-            Builders<Announcement>.Filter.Gte(a => a.EndDate, now));
 
-        var items = await _announcements.Find(filter)
-            .SortByDescending(a => a.CreatedAt)
+        var items = await _db.Announcements.AsNoTracking()
+            .Where(a => a.StartDate <= now && a.EndDate >= now)
+            .OrderByDescending(a => a.CreatedAt)
             .ToListAsync();
 
         return items.Select(a => new ActiveAnnouncementDto(a.Id, a.Title.Value, a.Body.Value));

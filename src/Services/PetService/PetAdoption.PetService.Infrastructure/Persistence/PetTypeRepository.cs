@@ -1,4 +1,4 @@
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -6,68 +6,54 @@ namespace PetAdoption.PetService.Infrastructure.Persistence;
 
 public class PetTypeRepository : IPetTypeRepository
 {
-    private readonly IMongoCollection<PetType> _petTypes;
+    private readonly PetServiceDbContext _db;
 
-    public PetTypeRepository(IMongoDatabase database)
+    public PetTypeRepository(PetServiceDbContext db)
     {
-        _petTypes = database.GetCollection<PetType>("PetTypes");
-
-        // Create unique index on Code
-        var indexKeys = Builders<PetType>.IndexKeys.Ascending(pt => pt.Code);
-        var indexOptions = new CreateIndexOptions { Unique = true };
-        var indexModel = new CreateIndexModel<PetType>(indexKeys, indexOptions);
-        _petTypes.Indexes.CreateOneAsync(indexModel).GetAwaiter().GetResult();
+        _db = db;
     }
 
     public async Task<IReadOnlyList<PetType>> GetAllActiveAsync(CancellationToken cancellationToken = default)
     {
-        return await _petTypes
-            .Find(pt => pt.IsActive)
-            .SortBy(pt => pt.Name)
+        return await _db.PetTypes
+            .Where(pt => pt.IsActive)
+            .OrderBy(pt => pt.Name)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<PetType>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _petTypes
-            .Find(_ => true)
-            .SortBy(pt => pt.Name)
+        return await _db.PetTypes
+            .OrderBy(pt => pt.Name)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<PetType?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _petTypes
-            .Find(pt => pt.Id == id)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await _db.PetTypes.FindAsync([id], cancellationToken);
     }
 
     public async Task<PetType?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
     {
         var normalizedCode = code.ToLowerInvariant();
-        return await _petTypes
-            .Find(pt => pt.Code == normalizedCode)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await _db.PetTypes
+            .FirstOrDefaultAsync(pt => pt.Code == normalizedCode, cancellationToken);
     }
 
     public async Task<bool> ExistsByCodeAsync(string code, CancellationToken cancellationToken = default)
     {
         var normalizedCode = code.ToLowerInvariant();
-        return await _petTypes
-            .Find(pt => pt.Code == normalizedCode)
-            .AnyAsync(cancellationToken);
+        return await _db.PetTypes.AnyAsync(pt => pt.Code == normalizedCode, cancellationToken);
     }
 
     public async Task AddAsync(PetType petType, CancellationToken cancellationToken = default)
     {
-        await _petTypes.InsertOneAsync(petType, cancellationToken: cancellationToken);
+        _db.PetTypes.Add(petType);
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(PetType petType, CancellationToken cancellationToken = default)
     {
-        await _petTypes.ReplaceOneAsync(
-            pt => pt.Id == petType.Id,
-            petType,
-            cancellationToken: cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
     }
 }

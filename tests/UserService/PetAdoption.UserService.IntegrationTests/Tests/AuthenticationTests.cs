@@ -7,21 +7,21 @@ using Xunit;
 
 namespace PetAdoption.UserService.IntegrationTests.Tests;
 
-[Collection("MongoDB")]
+[Collection("SqlServer")]
 public class AuthenticationTests : IAsyncLifetime
 {
-    private readonly MongoDbFixture _mongoFixture;
+    private readonly SqlServerFixture _sqlFixture;
     private UserServiceWebAppFactory _factory = null!;
     private HttpClient _client = null!;
 
-    public AuthenticationTests(MongoDbFixture mongoFixture)
+    public AuthenticationTests(SqlServerFixture sqlFixture)
     {
-        _mongoFixture = mongoFixture;
+        _sqlFixture = sqlFixture;
     }
 
     public async Task InitializeAsync()
     {
-        _factory = new UserServiceWebAppFactory(_mongoFixture.ConnectionString);
+        _factory = new UserServiceWebAppFactory(_sqlFixture.ConnectionString);
         _client = _factory.CreateClient();
         await Task.CompletedTask;
     }

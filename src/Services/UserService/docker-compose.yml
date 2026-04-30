@@ -11,8 +11,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__MongoDb=mongodb://root:example@mongodb:27017
-      - Database__Name=UserDb
+      - ConnectionStrings__SqlServer=Server=mssql;Database=UserDb;User Id=sa;Password=YourStrong@Passw0rd!;TrustServerCertificate=True
       - Jwt__Secret=your-super-secret-key-minimum-32-characters-long-change-in-production!
       - Jwt__Issuer=PetAdoption.UserService
       - Jwt__Audience=PetAdoption.Services
@@ -23,21 +22,21 @@ services:
       - RabbitMq__Password=guest
       - RabbitMq__VirtualHost=/
     depends_on:
-      - mongodb
+      - mssql
       - rabbitmq
     networks:
       - petadoption-network
 
-  mongodb:
-    image: mongo:8.0
-    container_name: petadoption-mongodb
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: petadoption-mssql
     ports:
-      - "27017:27017"
+      - "1433:1433"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd!
     volumes:
-      - mongodb-data:/data/db
+      - mssql-data:/var/opt/mssql
     networks:
       - petadoption-network
 
@@ -60,5 +59,5 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb-data:
+  mssql-data:
   rabbitmq-data:

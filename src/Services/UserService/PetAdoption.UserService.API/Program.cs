@@ -1,14 +1,16 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PetAdoption.UserService.Infrastructure.DependencyInjection;
 using PetAdoption.UserService.Infrastructure.Messaging.Configuration;
+using PetAdoption.UserService.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-// Add Infrastructure services (MongoDB, RabbitMQ, Repositories, Security, Handlers)
+// Add Infrastructure services (SQL Server, RabbitMQ, Repositories, Security, Handlers)
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // When running under Aspire, override RabbitMQ host/port from the provided connection string
@@ -88,6 +90,13 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// Ensure database is created on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<UserServiceDbContext>();
+    await db.Database.EnsureCreatedAsync();
+}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

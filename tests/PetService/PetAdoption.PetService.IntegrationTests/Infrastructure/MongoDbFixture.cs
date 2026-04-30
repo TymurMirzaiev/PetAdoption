@@ -1,12 +1,12 @@
-using Testcontainers.MongoDb;
+using Testcontainers.MsSql;
 using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Infrastructure;
 
-public class MongoDbFixture : IAsyncLifetime
+public class SqlServerFixture : IAsyncLifetime
 {
-    public MongoDbContainer Container { get; } = new MongoDbBuilder()
-        .WithImage("mongo:7.0")
+    public MsSqlContainer Container { get; } = new MsSqlBuilder()
+        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
         .Build();
 
     public string ConnectionString => Container.GetConnectionString();
@@ -16,5 +16,5 @@ public class MongoDbFixture : IAsyncLifetime
     public async Task DisposeAsync() => await Container.DisposeAsync();
 }
 
-[CollectionDefinition("MongoDB")]
-public class MongoDbCollection : ICollectionFixture<MongoDbFixture>;
+[CollectionDefinition("SqlServer")]
+public class SqlServerCollection : ICollectionFixture<SqlServerFixture>;

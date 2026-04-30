@@ -1,34 +1,41 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using MongoDB.Driver;
+using PetAdoption.UserService.Infrastructure.Persistence;
 
 namespace PetAdoption.UserService.IntegrationTests.Infrastructure;
 
 internal class UserServiceWebAppFactory : WebApplicationFactory<Program>
 {
-    private readonly string _mongoConnectionString;
+    private readonly string _connectionString;
     private readonly string _databaseName;
 
-    public UserServiceWebAppFactory(string mongoConnectionString)
+    public UserServiceWebAppFactory(string connectionString)
     {
-        _mongoConnectionString = mongoConnectionString;
+        _connectionString = connectionString;
         _databaseName = $"UserServiceTest_{Guid.NewGuid():N}";
     }
 
+    private string TestConnectionString => new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(_connectionString)
+    {
+        InitialCatalog = _databaseName
+    }.ConnectionString;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("ConnectionStrings:SqlServer", TestConnectionString);
+
         builder.ConfigureServices(services =>
         {
-            // Remove the real MongoDB registration
-            services.RemoveAll<IMongoDatabase>();
+            // Remove the real DbContext registration and re-register with test connection
+            services.RemoveAll<DbContextOptions<UserServiceDbContext>>();
+            services.RemoveAll<UserServiceDbContext>();
 
-            // Register test MongoDB
-            var mongoClient = new MongoClient(_mongoConnectionString);
-            var mongoDatabase = mongoClient.GetDatabase(_databaseName);
-            services.AddSingleton<IMongoDatabase>(mongoDatabase);
+            services.AddDbContext<UserServiceDbContext>(options =>
+                options.UseSqlServer(TestConnectionString));
 
             // Remove RabbitMQ background services (OutboxProcessorService, RabbitMqTopologySetup)
             services.RemoveAll<IHostedService>();
@@ -37,17 +44,20 @@ internal class UserServiceWebAppFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
     }
 
-    public IMongoDatabase GetTestDatabase()
+    public UserServiceDbContext CreateDbContext()
     {
-        var client = new MongoClient(_mongoConnectionString);
-        return client.GetDatabase(_databaseName);
+        var options = new DbContextOptionsBuilder<UserServiceDbContext>()
+            .UseSqlServer(TestConnectionString)
+            .Options;
+
+        return new UserServiceDbContext(options);
     }
 
     public override async ValueTask DisposeAsync()
     {
         // Clean up the test database
-        var client = new MongoClient(_mongoConnectionString);
-        await client.DropDatabaseAsync(_databaseName);
+        await using var dbContext = CreateDbContext();
+        await dbContext.Database.EnsureDeletedAsync();
         await base.DisposeAsync();
     }
 }

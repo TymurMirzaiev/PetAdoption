@@ -41,7 +41,7 @@ PetAdoption/
 - **CQRS**: Separate `IRepository` (write) and `IQueryStore` (read)
 - **DDD**: Aggregates, value objects, domain events, factory methods
 - **Transactional Outbox**: Domain events saved atomically, published by background service
-- **MongoDB** with custom value object serializers (use Filter API, not LINQ)
+- **SQL Server** with EF Core (value object conversions in entity configurations)
 - **RabbitMQ** for async event publishing
 - **JWT + RBAC** (UserService)
 - **Custom Mediator** (PetService, not MediatR)
@@ -53,6 +53,7 @@ PetAdoption/
 - AppHost orchestrates MongoDB (persistent), RabbitMQ (persistent + management), PetService, UserService, Blazor WASM
 - ServiceDefaults multi-targets `net9.0;net10.0` (PetService is .NET 9, UserService is .NET 10)
 - JWT secret shared via `builder.AddParameter("jwt-secret", secret: true)` → `appsettings.json` `Parameters:jwt-secret`
+- SQL Server password via `builder.AddParameter("sql-password", secret: true)` → `appsettings.json` `Parameters:sql-password`
 - Both services use `PostConfigure<RabbitMqOptions>` to bridge Aspire's AMQP connection string to their custom `RabbitMqOptions`
 - Blazor WASM runs in-browser and can't use Aspire service discovery — it uses fixed ports (PetService=8080, UserService=5001)
 - CORS: both services use `SetIsOriginAllowed(_ => true)` in Development to support Aspire's dynamic ports
@@ -84,17 +85,13 @@ Application references only Domain
 Never reverse the dependency flow
 ```
 
-### MongoDB
+### EF Core
 
-**Always use Filter API for queries with value objects** (LINQ fails at runtime):
-```csharp
-// WRONG
-await _users.Find(u => u.Email == email).FirstOrDefaultAsync();
-
-// CORRECT
-var filter = Builders<User>.Filter.Eq("Email", email.Value);
-await _users.Find(filter).FirstOrDefaultAsync();
-```
+- Each service has its own `DbContext` (`PetServiceDbContext`, `UserServiceDbContext`)
+- Value objects are mapped via `HasConversion` in entity configurations
+- Repositories are scoped (EF Core `DbContext` is scoped)
+- `EnsureCreatedAsync()` on startup (no migrations)
+- LINQ is fully supported for queries (no Filter API workaround needed)
 
 ### Error Handling
 
@@ -176,8 +173,8 @@ public class XBuilder
 
 ### Integration Tests
 
-- `WebApplicationFactory<Program>` + Testcontainers MongoDB
-- `[Collection("MongoDB")]` + `IAsyncLifetime` for shared container
+- `WebApplicationFactory<Program>` + Testcontainers SQL Server
+- `[Collection("SqlServer")]` + `IAsyncLifetime` for shared container
 - Unique database name per test class for isolation
 - Disable RabbitMQ background services in factory
 - Private response record DTOs at bottom of test class

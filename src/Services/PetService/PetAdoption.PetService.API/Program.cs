@@ -1,8 +1,7 @@
-using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using MongoDB.Driver;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.DependencyInjection;
@@ -11,8 +10,6 @@ using PetAdoption.PetService.Infrastructure.Messaging;
 using PetAdoption.PetService.Infrastructure.Messaging.Configuration;
 using PetAdoption.PetService.Infrastructure.BackgroundServices;
 using PetAdoption.PetService.Infrastructure.Middleware;
-
-MongoDbConfiguration.Configure();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,22 +34,21 @@ builder.Services.PostConfigure<RabbitMqOptions>(options =>
     }
 });
 
-// MongoDB
-var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDb")
-    ?? throw new InvalidOperationException("MongoDB connection string is not configured");
-var mongoClient = new MongoClient(mongoConnectionString);
-var mongoDatabase = mongoClient.GetDatabase("PetAdoptionDb");
-builder.Services.AddSingleton<IMongoDatabase>(mongoDatabase);
+// SQL Server via EF Core
+var connectionString = builder.Configuration.GetConnectionString("SqlServer")
+    ?? throw new InvalidOperationException("SQL Server connection string is not configured");
+builder.Services.AddDbContext<PetServiceDbContext>(options =>
+    options.UseSqlServer(connectionString));
 
-// Repositories
-builder.Services.AddSingleton<IPetRepository, PetRepository>();
-builder.Services.AddSingleton<IPetQueryStore, PetQueryStore>();
-builder.Services.AddSingleton<IOutboxRepository, OutboxRepository>();
-builder.Services.AddSingleton<IPetTypeRepository, PetTypeRepository>();
-builder.Services.AddSingleton<IFavoriteRepository, FavoriteRepository>();
-builder.Services.AddSingleton<IFavoriteQueryStore, FavoriteQueryStore>();
-builder.Services.AddSingleton<IAnnouncementRepository, AnnouncementRepository>();
-builder.Services.AddSingleton<IAnnouncementQueryStore, AnnouncementQueryStore>();
+// Repositories (scoped — EF Core DbContext is scoped)
+builder.Services.AddScoped<IPetRepository, PetRepository>();
+builder.Services.AddScoped<IPetQueryStore, PetQueryStore>();
+builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
+builder.Services.AddScoped<IPetTypeRepository, PetTypeRepository>();
+builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
+builder.Services.AddScoped<IFavoriteQueryStore, FavoriteQueryStore>();
+builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
+builder.Services.AddScoped<IAnnouncementQueryStore, AnnouncementQueryStore>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
@@ -124,9 +120,12 @@ builder.Services.AddTransient<PetTypeSeeder>();
 
 var app = builder.Build();
 
-// Seed pet types on startup
+// Ensure database is created and seed pet types on startup
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<PetServiceDbContext>();
+    await db.Database.EnsureCreatedAsync();
+
     var seeder = scope.ServiceProvider.GetRequiredService<PetTypeSeeder>();
     await seeder.SeedAsync();
 }

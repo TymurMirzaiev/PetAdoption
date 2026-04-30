@@ -2,17 +2,18 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
+using PetAdoption.UserService.Domain.Enums;
 using PetAdoption.UserService.IntegrationTests.Builders;
 using PetAdoption.UserService.IntegrationTests.Infrastructure;
 using Xunit;
 
 namespace PetAdoption.UserService.IntegrationTests.Tests;
 
-[Collection("MongoDB")]
+[Collection("SqlServer")]
 public class AdminUserManagementTests : IAsyncLifetime
 {
-    private readonly MongoDbFixture _mongoFixture;
+    private readonly SqlServerFixture _sqlFixture;
     private UserServiceWebAppFactory _factory = null!;
     private HttpClient _adminClient = null!;
     private HttpClient _regularClient = null!;
@@ -25,14 +26,14 @@ public class AdminUserManagementTests : IAsyncLifetime
     private const string RegularEmail = "regular-mgmt@test.com";
     private const string RegularPassword = "RegularPass123!";
 
-    public AdminUserManagementTests(MongoDbFixture mongoFixture)
+    public AdminUserManagementTests(SqlServerFixture sqlFixture)
     {
-        _mongoFixture = mongoFixture;
+        _sqlFixture = sqlFixture;
     }
 
     public async Task InitializeAsync()
     {
-        _factory = new UserServiceWebAppFactory(_mongoFixture.ConnectionString);
+        _factory = new UserServiceWebAppFactory(_sqlFixture.ConnectionString);
         _unauthenticatedClient = _factory.CreateClient();
 
         // 1. Register admin user via API
@@ -47,12 +48,12 @@ public class AdminUserManagementTests : IAsyncLifetime
         var adminRegResult = await adminRegisterResponse.Content.ReadFromJsonAsync<RegisterResponse>();
         _adminUserId = adminRegResult!.UserId;
 
-        // 2. Promote to admin via direct MongoDB update
-        var db = _factory.GetTestDatabase();
-        var usersCollection = db.GetCollection<MongoDB.Bson.BsonDocument>("Users");
-        var filter = Builders<MongoDB.Bson.BsonDocument>.Filter.Eq("_id", _adminUserId);
-        var update = Builders<MongoDB.Bson.BsonDocument>.Update.Set("Role", 1); // Admin = 1
-        await usersCollection.UpdateOneAsync(filter, update);
+        // 2. Promote to admin via direct database update
+        await using var db = _factory.CreateDbContext();
+        var user = await db.Users.FirstAsync(u => u.Id == Domain.ValueObjects.UserId.From(_adminUserId));
+        // Use raw SQL to update enum since the entity uses private setters
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE Users SET Role = {(int)UserRole.Admin} WHERE Id = {_adminUserId}");
 
         // 3. Login as admin to get admin JWT
         _adminClient = _factory.CreateClient();

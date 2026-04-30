@@ -1,5 +1,4 @@
-using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain;
 
@@ -7,23 +6,21 @@ namespace PetAdoption.PetService.Infrastructure.Persistence;
 
 public class PetQueryStore : IPetQueryStore
 {
-    private readonly IMongoCollection<Pet> _pets;
+    private readonly PetServiceDbContext _db;
 
-    public PetQueryStore(IConfiguration configuration)
+    public PetQueryStore(PetServiceDbContext db)
     {
-        var client = new MongoClient(configuration.GetConnectionString("MongoDb"));
-        var database = client.GetDatabase("PetAdoptionDb");
-        _pets = database.GetCollection<Pet>("Pets");
+        _db = db;
     }
 
     public async Task<IEnumerable<Pet>> GetAll()
     {
-        return await _pets.Find(_ => true).ToListAsync();
+        return await _db.Pets.AsNoTracking().ToListAsync();
     }
 
     public async Task<Pet?> GetById(Guid id)
     {
-        return await _pets.Find(p => p.Id == id).FirstOrDefaultAsync();
+        return await _db.Pets.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
     }
 
     public async Task<(IEnumerable<Pet> Pets, long Total)> GetFiltered(
@@ -32,20 +29,16 @@ public class PetQueryStore : IPetQueryStore
         int skip,
         int take)
     {
-        var builder = Builders<Pet>.Filter;
-        var filter = builder.Empty;
+        var query = _db.Pets.AsNoTracking().AsQueryable();
 
         if (status.HasValue)
-            filter &= builder.Eq(p => p.Status, status.Value);
+            query = query.Where(p => p.Status == status.Value);
 
         if (petTypeId.HasValue)
-            filter &= builder.Eq(p => p.PetTypeId, petTypeId.Value);
+            query = query.Where(p => p.PetTypeId == petTypeId.Value);
 
-        var total = await _pets.CountDocumentsAsync(filter);
-        var pets = await _pets.Find(filter)
-            .Skip(skip)
-            .Limit(take)
-            .ToListAsync();
+        var total = await query.LongCountAsync();
+        var pets = await query.Skip(skip).Take(take).ToListAsync();
 
         return (pets, total);
     }

@@ -1,6 +1,5 @@
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Exceptions;
 using PetAdoption.PetService.Domain.Interfaces;
@@ -9,148 +8,64 @@ namespace PetAdoption.PetService.Infrastructure.Persistence;
 
 public class PetRepository : IPetRepository
 {
-    private readonly IMongoClient _client;
-    private readonly IMongoDatabase _database;
-    private readonly IMongoCollection<Pet> _pets;
-    private readonly IMongoCollection<OutboxEvent> _outboxEvents;
+    private readonly PetServiceDbContext _db;
 
-    public PetRepository(IConfiguration configuration)
+    public PetRepository(PetServiceDbContext db)
     {
-        _client = new MongoClient(configuration.GetConnectionString("MongoDb"));
-        _database = _client.GetDatabase("PetAdoptionDb");
-        _pets = _database.GetCollection<Pet>("Pets");
-        _outboxEvents = _database.GetCollection<OutboxEvent>("OutboxEvents");
+        _db = db;
     }
 
     public async Task<Pet?> GetById(Guid id)
     {
-        return await _pets.Find(p => p.Id == id).FirstOrDefaultAsync();
+        return await _db.Pets.FindAsync(id);
     }
 
     public async Task Add(Pet pet)
     {
-        await SaveAggregateWithEvents(pet, isNew: true);
+        _db.Pets.Add(pet);
+        AddOutboxEvents(pet);
+        await _db.SaveChangesAsync();
+        pet.ClearDomainEvents();
     }
 
     public async Task Update(Pet pet)
     {
-        await SaveAggregateWithEvents(pet, isNew: false);
+        pet.IncrementVersion();
+        AddOutboxEvents(pet);
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new DomainException(
+                PetDomainErrorCode.ConcurrencyConflict,
+                $"Pet {pet.Id} was modified by another operation. Please reload and try again.",
+                new Dictionary<string, object>
+                {
+                    { "PetId", pet.Id }
+                });
+        }
+
+        pet.ClearDomainEvents();
     }
 
     public async Task Delete(Guid id)
     {
-        await _pets.DeleteOneAsync(p => p.Id == id);
+        await _db.Pets.Where(p => p.Id == id).ExecuteDeleteAsync();
     }
 
-    private async Task SaveAggregateWithEvents(Pet aggregate, bool isNew)
+    private void AddOutboxEvents(Pet aggregate)
     {
-        using var session = await _client.StartSessionAsync();
-
-        try
+        foreach (var domainEvent in aggregate.DomainEvents)
         {
-            session.StartTransaction();
+            var eventData = JsonSerializer.Serialize(
+                domainEvent,
+                domainEvent.GetType(),
+                new JsonSerializerOptions { WriteIndented = false });
 
-            if (isNew)
-            {
-                await _pets.InsertOneAsync(session, aggregate);
-            }
-            else
-            {
-                var currentVersion = aggregate.Version;
-                aggregate.IncrementVersion();
-
-                var result = await _pets.ReplaceOneAsync(
-                    session,
-                    p => p.Id == aggregate.Id && p.Version == currentVersion,
-                    aggregate);
-
-                if (result.MatchedCount == 0)
-                {
-                    throw new DomainException(
-                        PetDomainErrorCode.ConcurrencyConflict,
-                        $"Pet {aggregate.Id} was modified by another operation. Please reload and try again.",
-                        new Dictionary<string, object>
-                        {
-                            { "PetId", aggregate.Id },
-                            { "ExpectedVersion", currentVersion }
-                        });
-                }
-            }
-
-            if (aggregate.DomainEvents.Any())
-            {
-                var outboxEvents = aggregate.DomainEvents
-                    .Select(SerializeEvent)
-                    .ToList();
-
-                await _outboxEvents.InsertManyAsync(session, outboxEvents);
-            }
-
-            await session.CommitTransactionAsync();
-            aggregate.ClearDomainEvents();
+            _db.OutboxEvents.Add(new OutboxEvent(domainEvent, eventData));
         }
-        catch (NotSupportedException)
-        {
-            // MongoDB standalone doesn't support transactions - use non-transactional approach
-            await SaveWithoutTransaction(aggregate, isNew);
-        }
-        catch
-        {
-            if (session.IsInTransaction)
-            {
-                await session.AbortTransactionAsync();
-            }
-            throw;
-        }
-    }
-
-    private async Task SaveWithoutTransaction(Pet aggregate, bool isNew)
-    {
-        if (isNew)
-        {
-            await _pets.InsertOneAsync(aggregate);
-        }
-        else
-        {
-            var currentVersion = aggregate.Version;
-            aggregate.IncrementVersion();
-
-            var result = await _pets.ReplaceOneAsync(
-                p => p.Id == aggregate.Id && p.Version == currentVersion,
-                aggregate);
-
-            if (result.MatchedCount == 0)
-            {
-                throw new DomainException(
-                    PetDomainErrorCode.ConcurrencyConflict,
-                    $"Pet {aggregate.Id} was modified by another operation. Please reload and try again.",
-                    new Dictionary<string, object>
-                    {
-                        { "PetId", aggregate.Id },
-                        { "ExpectedVersion", currentVersion }
-                    });
-            }
-        }
-
-        if (aggregate.DomainEvents.Any())
-        {
-            var outboxEvents = aggregate.DomainEvents
-                .Select(SerializeEvent)
-                .ToList();
-
-            await _outboxEvents.InsertManyAsync(outboxEvents);
-        }
-
-        aggregate.ClearDomainEvents();
-    }
-
-    private static OutboxEvent SerializeEvent(IDomainEvent domainEvent)
-    {
-        var eventData = JsonSerializer.Serialize(
-            domainEvent,
-            domainEvent.GetType(),
-            new JsonSerializerOptions { WriteIndented = false });
-
-        return new OutboxEvent(domainEvent, eventData);
     }
 }

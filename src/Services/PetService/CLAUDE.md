@@ -24,6 +24,7 @@ dotnet test tests/PetService/PetAdoption.PetService.IntegrationTests
 - `builder.AddServiceDefaults()` in Program.cs, `app.MapDefaultEndpoints()` for `/health` and `/alive`
 - RabbitMQ connection bridged via `PostConfigure<RabbitMqOptions>` (parses Aspire's AMQP URI into custom options)
 - Fixed port 8080 (Blazor WASM connects directly, no service discovery)
+- SQL Server connection string: `ConnectionStrings:SqlServer`
 
 ## Domain Model
 
@@ -148,16 +149,20 @@ Available → (Reserve) → Reserved → (Adopt) → Adopted
 | DELETE | `/api/announcements/{id}` | Admin | Delete announcement |
 | GET | `/api/announcements/active` | Anonymous | List active announcements |
 
-## MongoDB
+## Database (SQL Server + EF Core)
 
 - Database: `PetAdoptionDb`
-- Collections: `Pets`, `PetTypes`, `OutboxEvents`, `Favorites`, `Announcements`
-- Custom BSON serializers for value objects: `PetName`, `PetBreed?`, `PetAge?`, `PetDescription?`, `AnnouncementTitle`, `AnnouncementBody`
+- DbContext: `PetServiceDbContext` in `Infrastructure/Persistence/`
+- Tables: `Pets`, `PetTypes`, `OutboxEvents`, `Favorites`, `Announcements`
+- Value objects mapped via `HasConversion` (PetName→string, PetBreed→string, PetAge→int, etc.)
+- Concurrency: `Pet.Version` as concurrency token
+- Indexes: unique Code on PetType, unique compound (UserId, PetId) on Favorite
 - PetTypeSeeder runs on startup (seeds 6 default types)
+- `EnsureCreatedAsync()` on startup (no migrations)
 
 ## Testing Notes
 
-- Integration tests use Testcontainers MongoDB
+- Integration tests use Testcontainers SQL Server
 - `PetServiceWebAppFactory` configures JWT settings and provides `GenerateTestToken()` helper
 - PetTypeSeeder seeds default types on app startup — test helpers must handle existing types gracefully (check for 409 Conflict, fall back to GET)
 - Bearer token required for authenticated/admin endpoints in tests

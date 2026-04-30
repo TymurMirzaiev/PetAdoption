@@ -1,56 +1,40 @@
-namespace PetAdoption.PetService.Infrastructure.Persistence;
-
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain;
 
+namespace PetAdoption.PetService.Infrastructure.Persistence;
+
 public class FavoriteQueryStore : IFavoriteQueryStore
 {
-    private readonly IMongoCollection<Favorite> _favorites;
-    private readonly IMongoCollection<Pet> _pets;
-    private readonly IMongoCollection<PetType> _petTypes;
+    private readonly PetServiceDbContext _db;
 
-    public FavoriteQueryStore(IMongoDatabase database)
+    public FavoriteQueryStore(PetServiceDbContext db)
     {
-        _favorites = database.GetCollection<Favorite>("Favorites");
-        _pets = database.GetCollection<Pet>("Pets");
-        _petTypes = database.GetCollection<PetType>("PetTypes");
+        _db = db;
     }
 
     public async Task<(IEnumerable<FavoriteWithPetDto> Items, long Total)> GetByUserAsync(Guid userId, int skip, int take)
     {
-        var filter = Builders<Favorite>.Filter.Eq("UserId", userId);
-        var total = await _favorites.CountDocumentsAsync(filter);
+        var query = _db.Favorites.AsNoTracking()
+            .Where(f => f.UserId == userId);
 
-        var favorites = await _favorites.Find(filter)
-            .SortByDescending(f => f.CreatedAt)
+        var total = await query.LongCountAsync();
+
+        var items = await query
+            .OrderByDescending(f => f.CreatedAt)
             .Skip(skip)
-            .Limit(take)
+            .Take(take)
+            .Join(_db.Pets.AsNoTracking(), f => f.PetId, p => p.Id, (f, p) => new { f, p })
+            .Join(_db.PetTypes.AsNoTracking(), x => x.p.PetTypeId, pt => pt.Id, (x, pt) => new FavoriteWithPetDto(
+                x.f.Id,
+                x.f.PetId,
+                x.p.Name.Value,
+                pt.Name,
+                x.p.Breed != null ? x.p.Breed.Value : null,
+                x.p.Age != null ? x.p.Age.Months : (int?)null,
+                x.p.Status.ToString(),
+                x.f.CreatedAt))
             .ToListAsync();
-
-        var petIds = favorites.Select(f => f.PetId).ToList();
-        var petFilter = Builders<Pet>.Filter.In(p => p.Id, petIds);
-        var pets = await _pets.Find(petFilter).ToListAsync();
-        var petDict = pets.ToDictionary(p => p.Id);
-
-        var typeIds = pets.Select(p => p.PetTypeId).Distinct().ToList();
-        var typeFilter = Builders<PetType>.Filter.In(t => t.Id, typeIds);
-        var types = await _petTypes.Find(typeFilter).ToListAsync();
-        var typeDict = types.ToDictionary(t => t.Id);
-
-        var items = favorites.Select(f =>
-        {
-            var pet = petDict.GetValueOrDefault(f.PetId);
-            var typeName = pet is not null && typeDict.TryGetValue(pet.PetTypeId, out var pt) ? pt.Name : "Unknown";
-            return new FavoriteWithPetDto(
-                f.Id, f.PetId,
-                pet?.Name.Value ?? "Deleted",
-                typeName,
-                pet?.Breed?.Value,
-                pet?.Age?.Months,
-                pet?.Status.ToString() ?? "Unknown",
-                f.CreatedAt);
-        });
 
         return (items, total);
     }

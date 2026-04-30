@@ -1,8 +1,8 @@
 namespace PetAdoption.UserService.Infrastructure.DependencyInjection;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MongoDB.Driver;
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.Commands;
 using PetAdoption.UserService.Application.DTOs;
@@ -20,19 +20,12 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Configure MongoDB serialization
-        MongoDbConfiguration.Configure();
+        // SQL Server via EF Core
+        var connectionString = configuration.GetConnectionString("SqlServer")
+            ?? throw new InvalidOperationException("SQL Server connection string is not configured");
 
-        // MongoDB
-        var mongoConnectionString = configuration.GetConnectionString("MongoDb")
-            ?? throw new InvalidOperationException("MongoDB connection string is not configured");
-
-        var databaseName = configuration["Database:Name"] ?? "UserDb";
-
-        var mongoClient = new MongoClient(mongoConnectionString);
-        var mongoDatabase = mongoClient.GetDatabase(databaseName);
-
-        services.AddSingleton<IMongoDatabase>(mongoDatabase);
+        services.AddDbContext<UserServiceDbContext>(options =>
+            options.UseSqlServer(connectionString));
 
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();

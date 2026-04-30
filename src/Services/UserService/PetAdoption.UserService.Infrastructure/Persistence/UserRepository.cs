@@ -1,7 +1,7 @@
 namespace PetAdoption.UserService.Infrastructure.Persistence;
 
 using System.Text.Json;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
@@ -9,46 +9,39 @@ using PetAdoption.UserService.Domain.Events;
 
 public class UserRepository : IUserRepository
 {
-    private readonly IMongoCollection<User> _users;
-    private readonly IOutboxRepository _outboxRepository;
+    private readonly UserServiceDbContext _db;
 
-    public UserRepository(IMongoDatabase database, IOutboxRepository outboxRepository)
+    public UserRepository(UserServiceDbContext db)
     {
-        _users = database.GetCollection<User>("Users");
-        _outboxRepository = outboxRepository;
+        _db = db;
     }
 
     public async Task<User?> GetByIdAsync(UserId id)
     {
-        // Use Filter API instead of LINQ to work with custom serializers
-        var filter = Builders<User>.Filter.Eq("_id", id.Value);
-        return await _users.Find(filter).FirstOrDefaultAsync();
+        return await _db.Users.FindAsync(id);
     }
 
     public async Task<User?> GetByEmailAsync(Email email)
     {
-        // Use Filter API instead of LINQ to work with custom serializers
-        var filter = Builders<User>.Filter.Eq("Email", email.Value);
-        return await _users.Find(filter).FirstOrDefaultAsync();
+        return await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
     }
 
     public async Task<bool> ExistsWithEmailAsync(Email email)
     {
-        // Use Filter API instead of LINQ to work with custom serializers
-        var filter = Builders<User>.Filter.Eq("Email", email.Value);
-        var count = await _users.CountDocumentsAsync(filter);
-        return count > 0;
+        return await _db.Users.AnyAsync(u => u.Email == email);
     }
 
     public async Task SaveAsync(User user)
     {
-        // Save user (upsert) - Use Filter API to work with custom serializers
-        var filter = Builders<User>.Filter.Eq("_id", user.Id.Value);
-        await _users.ReplaceOneAsync(
-            filter,
-            user,
-            new ReplaceOptions { IsUpsert = true }
-        );
+        var entry = _db.Entry(user);
+        if (entry.State == EntityState.Detached)
+        {
+            var exists = await _db.Users.AnyAsync(u => u.Id == user.Id);
+            if (exists)
+                _db.Users.Update(user);
+            else
+                _db.Users.Add(user);
+        }
 
         // Save domain events to outbox
         foreach (var domainEvent in user.DomainEvents)
@@ -61,10 +54,10 @@ public class UserRepository : IUserRepository
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _outboxRepository.AddAsync(outboxEvent);
+            _db.OutboxEvents.Add(outboxEvent);
         }
 
-        // Clear events after saving to outbox
+        await _db.SaveChangesAsync();
         user.ClearDomainEvents();
     }
 

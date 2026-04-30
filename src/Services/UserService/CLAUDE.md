@@ -24,6 +24,7 @@ dotnet test tests/UserService/PetAdoption.UserService.IntegrationTests
 - `builder.AddServiceDefaults()` in Program.cs, `app.MapDefaultEndpoints()` for `/health` and `/alive`
 - RabbitMQ connection bridged via `PostConfigure<RabbitMqOptions>` (parses Aspire's AMQP URI into custom options)
 - Fixed port 5001 (Blazor WASM connects directly, no service discovery)
+- SQL Server connection string: `ConnectionStrings:SqlServer`
 
 ## Domain Model
 
@@ -123,17 +124,20 @@ public async Task<IActionResult> Register(
 | POST | `/api/users/{id}/activate` | Activate suspended user |
 | POST | `/api/users/{id}/promote-to-admin` | Promote to admin |
 
-## MongoDB
+## Database (SQL Server + EF Core)
 
 - Database: `UserDb`
-- Collections: `Users`, `OutboxEvents`, `RefreshTokens`
-- Custom serializers for all value objects in `Infrastructure/Persistence/Serializers/`
-- PasswordSerializer handles nullable Password (null for SSO users)
-- **Always use Filter API, never LINQ** (see root CLAUDE.md)
+- DbContext: `UserServiceDbContext` in `Infrastructure/Persistence/`
+- Tables: `Users`, `OutboxEvents`, `RefreshTokens`
+- Value objects mapped via `HasConversion` (UserId→string, Email→string, FullName→string, Password→string nullable, PhoneNumber→string nullable)
+- UserPreferences mapped as owned entity
+- Indexes: unique Email on Users, unique Token on RefreshTokens
+- LINQ is fully supported (no Filter API workaround needed)
+- `EnsureCreatedAsync()` on startup (no migrations)
 
 ## Testing Notes
 
-- Integration tests use Testcontainers MongoDB
+- Integration tests use Testcontainers SQL Server
 - `AuthHelper.RegisterAndLoginAsync()` for authenticated test clients
-- Admin setup requires direct MongoDB update (set `Role` to `1` in `Users` collection)
+- Admin setup requires direct SQL update (`ExecuteSqlInterpolatedAsync` to set Role to Admin)
 - No seeder — tests start with empty database

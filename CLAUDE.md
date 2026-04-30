@@ -7,6 +7,11 @@ This file provides guidance to Claude Code when working with this repository.
 ```bash
 dotnet build PetAdoption.sln
 dotnet test PetAdoption.sln
+
+# Aspire (recommended for local dev — starts all services + infra)
+dotnet run --project src/Aspire/PetAdoption.AppHost
+
+# Docker Compose (alternative)
 docker compose up                          # all services + infra
 docker compose up mongo rabbitmq           # infra only
 ```
@@ -15,9 +20,15 @@ docker compose up mongo rabbitmq           # infra only
 
 ```
 PetAdoption/
-├── src/Services/
-│   ├── PetService/     (.NET 9.0)  — Pet lifecycle management
-│   └── UserService/    (.NET 10.0) — Auth, users, RBAC
+├── src/
+│   ├── Aspire/
+│   │   ├── PetAdoption.AppHost/        (.NET 10.0) — Aspire orchestrator
+│   │   └── PetAdoption.ServiceDefaults/ (net9.0;net10.0) — Shared Aspire defaults
+│   ├── Services/
+│   │   ├── PetService/     (.NET 9.0)  — Pet lifecycle management (port 8080)
+│   │   └── UserService/    (.NET 10.0) — Auth, users, RBAC (port 5001)
+│   └── Web/
+│       └── PetAdoption.Web.BlazorApp/  (.NET 10.0) — Blazor WASM frontend
 ├── tests/
 │   ├── PetService/     UnitTests + IntegrationTests
 │   └── UserService/    UnitTests + IntegrationTests
@@ -34,6 +45,25 @@ PetAdoption/
 - **RabbitMQ** for async event publishing
 - **JWT + RBAC** (UserService)
 - **Custom Mediator** (PetService, not MediatR)
+- **Aspire** for local orchestration (MongoDB, RabbitMQ, all services)
+- **Blazor WASM** standalone frontend with MudBlazor 8.x
+
+## Aspire
+
+- AppHost orchestrates MongoDB (persistent), RabbitMQ (persistent + management), PetService, UserService, Blazor WASM
+- ServiceDefaults multi-targets `net9.0;net10.0` (PetService is .NET 9, UserService is .NET 10)
+- JWT secret shared via `builder.AddParameter("jwt-secret", secret: true)` → `appsettings.json` `Parameters:jwt-secret`
+- Both services use `PostConfigure<RabbitMqOptions>` to bridge Aspire's AMQP connection string to their custom `RabbitMqOptions`
+- Blazor WASM runs in-browser and can't use Aspire service discovery — it uses fixed ports (PetService=8080, UserService=5001)
+- CORS: both services use `SetIsOriginAllowed(_ => true)` in Development to support Aspire's dynamic ports
+
+## Blazor WASM Frontend
+
+- Standalone Blazor WebAssembly (.NET 10.0) with MudBlazor 8.x dark theme
+- API clients: `PetApiClient` (port 8080), `UserApiClient` (port 5001) — configured in `appsettings.json`
+- Auth: `JwtAuthenticationStateProvider` with localStorage token persistence
+- Google SSO: JS interop with Google Identity Services (`wwwroot/index.html`)
+- Route-based auth: `[Authorize]` pages redirect to `/login`, admin pages require `Admin` role
 
 ## Coding Conventions
 
@@ -175,4 +205,6 @@ public class XBuilder
 
 ## Per-Service Docs
 
-See `CLAUDE.md` in each service directory for service-specific guidance.
+See `CLAUDE.md` in each service directory for service-specific guidance:
+- `src/Services/PetService/CLAUDE.md`
+- `src/Services/UserService/CLAUDE.md`

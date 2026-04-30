@@ -7,10 +7,23 @@ Authentication and user management service (.NET 10.0). Handles registration, JW
 ## Build & Test
 
 ```bash
-cd src/Services/UserService && docker-compose up -d --build
+# Run via Aspire (recommended)
+dotnet run --project src/Aspire/PetAdoption.AppHost
+
+# Run standalone
+dotnet run --project src/Services/UserService/PetAdoption.UserService.API
+
+# Tests
 dotnet test tests/UserService/PetAdoption.UserService.UnitTests
 dotnet test tests/UserService/PetAdoption.UserService.IntegrationTests
 ```
+
+## Aspire Integration
+
+- References `PetAdoption.ServiceDefaults` for health checks, OpenTelemetry, resilience
+- `builder.AddServiceDefaults()` in Program.cs, `app.MapDefaultEndpoints()` for `/health` and `/alive`
+- RabbitMQ connection bridged via `PostConfigure<RabbitMqOptions>` (parses Aspire's AMQP URI into custom options)
+- Fixed port 5001 (Blazor WASM connects directly, no service discovery)
 
 ## Domain Model
 

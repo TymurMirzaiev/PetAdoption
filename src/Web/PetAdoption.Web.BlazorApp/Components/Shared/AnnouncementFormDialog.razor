@@ -1,0 +1,46 @@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEdit ? "Edit Announcement" : "New Announcement")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="Title" Label="Title" Required="true" RequiredError="Title is required" Class="mb-4" />
+            <MudTextField @bind-Value="Body" Label="Body" Lines="4" Required="true" RequiredError="Body is required" Class="mb-4" />
+            <MudDatePicker @bind-Date="_startDate" Label="Start Date" Required="true" Class="mb-4" />
+            <MudDatePicker @bind-Date="_endDate" Label="End Date" Required="true" Class="mb-4" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="!_isValid" OnClick="Submit">
+            @(IsEdit ? "Save" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Body { get; set; } = "";
+    [Parameter] public DateTime StartDate { get; set; } = DateTime.UtcNow;
+    [Parameter] public DateTime EndDate { get; set; } = DateTime.UtcNow.AddDays(7);
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+
+    protected override void OnInitialized()
+    {
+        _startDate = StartDate;
+        _endDate = EndDate;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(
+        new AnnouncementFormResult(Title, Body, _startDate ?? DateTime.UtcNow, _endDate ?? DateTime.UtcNow.AddDays(7))));
+
+    public record AnnouncementFormResult(string Title, string Body, DateTime StartDate, DateTime EndDate);
+}

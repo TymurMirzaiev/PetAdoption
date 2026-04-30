@@ -44,6 +44,18 @@ public class PetApiClient
     public async Task<PetTypesResponse?> GetPetTypesAsync(bool includeInactive = false) =>
         await _http.GetFromJsonAsync<PetTypesResponse>($"api/admin/pet-types?includeInactive={includeInactive}");
 
+    public Task<HttpResponseMessage> CreatePetTypeAsync(object request) =>
+        _http.PostAsJsonAsync("api/admin/pet-types", request);
+
+    public Task<HttpResponseMessage> UpdatePetTypeAsync(Guid id, object request) =>
+        _http.PutAsJsonAsync($"api/admin/pet-types/{id}", request);
+
+    public Task<HttpResponseMessage> ActivatePetTypeAsync(Guid id) =>
+        _http.PostAsync($"api/admin/pet-types/{id}/activate", null);
+
+    public Task<HttpResponseMessage> DeactivatePetTypeAsync(Guid id) =>
+        _http.PostAsync($"api/admin/pet-types/{id}/deactivate", null);
+
     public Task<HttpResponseMessage> AddFavoriteAsync(Guid petId) =>
         _http.PostAsJsonAsync("api/favorites", new { PetId = petId });
 

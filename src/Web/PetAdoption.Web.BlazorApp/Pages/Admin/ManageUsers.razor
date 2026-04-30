@@ -1,0 +1,128 @@
+@page "/admin/users"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject UserApiClient UserApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Manage Users</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Manage Users</MudText>
+
+<MudDataGrid T="UserListItem" ServerData="LoadServerData" @ref="_grid" Hover="true" Dense="true">
+    <Columns>
+        <PropertyColumn Property="x => x.Email" Title="Email" />
+        <PropertyColumn Property="x => x.FullName" Title="Name" />
+        <TemplateColumn Title="Role">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Role == "Admin" ? Color.Primary : Color.Default)">
+                    @context.Item.Role
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Status == "Active" ? Color.Success : Color.Error)">
+                    @context.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <div class="d-flex gap-1">
+                    @if (context.Item.Status == "Active")
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Warning" OnClick="@(() => SuspendUser(context.Item))">Suspend</MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => ActivateUser(context.Item))">Activate</MudButton>
+                    }
+                    @if (context.Item.Role != "Admin")
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Primary" OnClick="@(() => PromoteUser(context.Item))">Promote</MudButton>
+                    }
+                </div>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="UserListItem" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    private MudDataGrid<UserListItem> _grid = null!;
+
+    private async Task<GridData<UserListItem>> LoadServerData(GridState<UserListItem> state)
+    {
+        try
+        {
+            var response = await UserApi.GetUsersAsync(skip: state.Page * state.PageSize, take: state.PageSize);
+            return new GridData<UserListItem>
+            {
+                Items = response?.Users ?? [],
+                TotalItems = (int)(response?.TotalCount ?? 0)
+            };
+        }
+        catch
+        {
+            return new GridData<UserListItem> { Items = [], TotalItems = 0 };
+        }
+    }
+
+    private async Task SuspendUser(UserListItem user)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Suspend user {user.Email}?" },
+            { x => x.ButtonText, "Suspend" },
+            { x => x.ButtonColor, Color.Warning }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm Suspend", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            try
+            {
+                var response = await UserApi.SuspendUserAsync(user.Id, "Suspended by admin");
+                if (response.IsSuccessStatusCode) { Snackbar.Add("User suspended", Severity.Info); await _grid.ReloadServerData(); }
+                else Snackbar.Add("Failed to suspend", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private async Task ActivateUser(UserListItem user)
+    {
+        try
+        {
+            var response = await UserApi.ActivateUserAsync(user.Id);
+            if (response.IsSuccessStatusCode) { Snackbar.Add("User activated", Severity.Success); await _grid.ReloadServerData(); }
+            else Snackbar.Add("Failed to activate", Severity.Error);
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+    }
+
+    private async Task PromoteUser(UserListItem user)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Promote {user.Email} to Admin?" },
+            { x => x.ButtonText, "Promote" },
+            { x => x.ButtonColor, Color.Primary }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm Promote", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            try
+            {
+                var response = await UserApi.PromoteToAdminAsync(user.Id);
+                if (response.IsSuccessStatusCode) { Snackbar.Add("User promoted!", Severity.Success); await _grid.ReloadServerData(); }
+                else Snackbar.Add("Failed to promote", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+}

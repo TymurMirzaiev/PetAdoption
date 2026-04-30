@@ -1,0 +1,110 @@
+@page "/admin/pet-types"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject PetApiClient PetApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Pet Types</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h4">Pet Types</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+        OnClick="OpenCreateDialog">Add Type</MudButton>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="_petTypes" Hover="true" Dense="true">
+        <HeaderContent>
+            <MudTh>Code</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Code</MudTd>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                    @(context.IsActive ? "Active" : "Inactive")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                @if (context.IsActive)
+                {
+                    <MudButton Size="Size.Small" Color="Color.Warning" OnClick="@(() => ToggleStatus(context))">Deactivate</MudButton>
+                }
+                else
+                {
+                    <MudButton Size="Size.Small" Color="Color.Success" OnClick="@(() => ToggleStatus(context))">Activate</MudButton>
+                }
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<PetTypeItem> _petTypes = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadPetTypes();
+
+    private async Task LoadPetTypes()
+    {
+        _loading = true;
+        try
+        {
+            var response = await PetApi.GetPetTypesAsync(includeInactive: true);
+            _petTypes = response?.Items?.ToList() ?? [];
+        }
+        catch { Snackbar.Add("Failed to load pet types", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<PetTypeFormDialog>();
+        var dialog = await DialogService.ShowAsync<PetTypeFormDialog>("Add Pet Type", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: PetTypeFormDialog.PetTypeFormResult data })
+        {
+            try
+            {
+                var response = await PetApi.CreatePetTypeAsync(new { Code = data.Code, Name = data.Name });
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Pet type created!", Severity.Success);
+                    await LoadPetTypes();
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to create", Severity.Error);
+                }
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private async Task ToggleStatus(PetTypeItem petType)
+    {
+        try
+        {
+            var response = petType.IsActive
+                ? await PetApi.DeactivatePetTypeAsync(petType.Id)
+                : await PetApi.ActivatePetTypeAsync(petType.Id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add(petType.IsActive ? "Deactivated" : "Activated", Severity.Info);
+                await LoadPetTypes();
+            }
+            else Snackbar.Add("Failed to update status", Severity.Error);
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+    }
+}

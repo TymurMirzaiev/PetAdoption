@@ -1,0 +1,144 @@
+@page "/admin/announcements"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject PetApiClient PetApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Announcements</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h4">Announcements</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+        OnClick="OpenCreateDialog">New Announcement</MudButton>
+</div>
+
+<MudDataGrid T="AnnouncementListItem" ServerData="LoadServerData" @ref="_grid" Hover="true" Dense="true">
+    <Columns>
+        <PropertyColumn Property="x => x.Title" Title="Title" />
+        <TemplateColumn Title="Start">
+            <CellTemplate>@context.Item.StartDate.ToString("yyyy-MM-dd")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="End">
+            <CellTemplate>@context.Item.EndDate.ToString("yyyy-MM-dd")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Status == "Active" ? Color.Success : Color.Default)">
+                    @context.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                    OnClick="@(() => OpenEditDialog(context.Item))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                    OnClick="@(() => DeleteAnnouncement(context.Item))" />
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="AnnouncementListItem" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    private MudDataGrid<AnnouncementListItem> _grid = null!;
+
+    private async Task<GridData<AnnouncementListItem>> LoadServerData(GridState<AnnouncementListItem> state)
+    {
+        try
+        {
+            var response = await PetApi.GetAnnouncementsAsync(skip: state.Page * state.PageSize, take: state.PageSize);
+            return new GridData<AnnouncementListItem>
+            {
+                Items = response?.Items ?? [],
+                TotalItems = (int)(response?.TotalCount ?? 0)
+            };
+        }
+        catch
+        {
+            return new GridData<AnnouncementListItem> { Items = [], TotalItems = 0 };
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<AnnouncementFormDialog>();
+        var dialog = await DialogService.ShowAsync<AnnouncementFormDialog>("New Announcement", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: AnnouncementFormDialog.AnnouncementFormResult data })
+        {
+            try
+            {
+                var response = await PetApi.CreateAnnouncementAsync(new { data.Title, data.Body, data.StartDate, data.EndDate });
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Announcement created!", Severity.Success);
+                    await _grid.ReloadServerData();
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to create", Severity.Error);
+                }
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private async Task OpenEditDialog(AnnouncementListItem item)
+    {
+        AnnouncementDetail? detail;
+        try { detail = await PetApi.GetAnnouncementAsync(item.Id); }
+        catch { Snackbar.Add("Failed to load details", Severity.Error); return; }
+        if (detail is null) return;
+
+        var parameters = new DialogParameters<AnnouncementFormDialog>
+        {
+            { x => x.IsEdit, true },
+            { x => x.Title, detail.Title },
+            { x => x.Body, detail.Body },
+            { x => x.StartDate, detail.StartDate },
+            { x => x.EndDate, detail.EndDate }
+        };
+        var dialog = await DialogService.ShowAsync<AnnouncementFormDialog>("Edit Announcement", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: AnnouncementFormDialog.AnnouncementFormResult data })
+        {
+            try
+            {
+                var response = await PetApi.UpdateAnnouncementAsync(item.Id, new { data.Title, data.Body, data.StartDate, data.EndDate });
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Updated!", Severity.Success);
+                    await _grid.ReloadServerData();
+                }
+                else Snackbar.Add("Failed to update", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private async Task DeleteAnnouncement(AnnouncementListItem item)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Delete announcement \"{item.Title}\"?" },
+            { x => x.ButtonText, "Delete" }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm Delete", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            try
+            {
+                var response = await PetApi.DeleteAnnouncementAsync(item.Id);
+                if (response.IsSuccessStatusCode) { Snackbar.Add("Deleted", Severity.Info); await _grid.ReloadServerData(); }
+                else Snackbar.Add("Failed to delete", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+}

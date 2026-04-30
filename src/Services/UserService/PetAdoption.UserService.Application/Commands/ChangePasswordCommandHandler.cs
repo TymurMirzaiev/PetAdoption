@@ -34,6 +34,9 @@ public class ChangePasswordCommandHandler : ICommandHandler<ChangePasswordComman
         }
 
         // Verify current password
+        if (user.Password is null)
+            throw new InvalidCredentialsException();
+
         var isCurrentPasswordValid = _passwordHasher.VerifyPassword(
             command.CurrentPassword,
             user.Password.HashedValue

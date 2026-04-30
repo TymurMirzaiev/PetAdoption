@@ -48,6 +48,9 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         }
 
         // Verify password
+        if (user.Password is null)
+            throw new InvalidCredentialsException();
+
         var isPasswordValid = _passwordHasher.VerifyPassword(
             command.Password,
             user.Password.HashedValue

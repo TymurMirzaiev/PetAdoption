@@ -9,11 +9,13 @@ public class User
     public UserId Id { get; private set; } = null!;
     public Email Email { get; private set; } = null!;
     public FullName FullName { get; private set; } = null!;
-    public Password Password { get; private set; } = null!;
+    public Password? Password { get; private set; }
     public UserRole Role { get; private set; }
     public PhoneNumber? PhoneNumber { get; private set; }
     public UserPreferences Preferences { get; private set; } = null!;
     public UserStatus Status { get; private set; }
+    public string? ExternalProvider { get; private set; }
+    public bool HasPassword => Password is not null;
     public DateTime RegisteredAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
@@ -56,6 +58,34 @@ public class User
             user.Role.ToString(),
             user.RegisteredAt
         ));
+
+        return user;
+    }
+
+    /// <summary>
+    /// Factory method for creating a user from Google SSO
+    /// </summary>
+    public static User RegisterFromGoogle(string email, string fullName)
+    {
+        var user = new User
+        {
+            Id = UserId.Create(),
+            Email = Email.From(email),
+            FullName = FullName.From(fullName),
+            Password = null,
+            Role = UserRole.User,
+            PhoneNumber = null,
+            Preferences = UserPreferences.Default(),
+            Status = UserStatus.Active,
+            ExternalProvider = "Google",
+            RegisteredAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            LastLoginAt = null
+        };
+
+        user.AddDomainEvent(new UserRegisteredEvent(
+            user.Id.Value, user.Email.Value, user.FullName.Value,
+            user.Role.ToString(), user.RegisteredAt));
 
         return user;
     }
@@ -109,6 +139,9 @@ public class User
     /// </summary>
     public void ChangePassword(string newHashedPassword)
     {
+        if (!HasPassword)
+            throw new InvalidOperationException("Cannot change password for SSO user");
+
         if (Status == UserStatus.Suspended)
             throw new InvalidOperationException("Cannot change password of suspended user");
 

@@ -31,16 +31,25 @@ public class FullNameSerializer : SerializerBase<FullName>
     }
 }
 
-public class PasswordSerializer : SerializerBase<Password>
+public class PasswordSerializer : SerializerBase<Password?>
 {
-    public override Password Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+    public override Password? Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
     {
+        var type = context.Reader.GetCurrentBsonType();
+        if (type == BsonType.Null)
+        {
+            context.Reader.ReadNull();
+            return null;
+        }
         return Password.FromHash(context.Reader.ReadString());
     }
 
-    public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, Password value)
+    public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, Password? value)
     {
-        context.Writer.WriteString(value?.HashedValue);
+        if (value is null)
+            context.Writer.WriteNull();
+        else
+            context.Writer.WriteString(value.HashedValue);
     }
 }
 

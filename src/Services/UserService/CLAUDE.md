@@ -2,7 +2,7 @@
 
 ## Overview
 
-Authentication and user management service (.NET 10.0). Handles registration, JWT auth, RBAC, profile management, and admin operations.
+Authentication and user management service (.NET 10.0). Handles registration, JWT auth, refresh tokens, Google SSO, RBAC, profile management, and admin operations.
 
 ## Build & Test
 
@@ -16,10 +16,19 @@ dotnet test tests/UserService/PetAdoption.UserService.IntegrationTests
 
 ### User Aggregate
 
-- Factory: `User.Register(email, fullName, password, role, phoneNumber, preferences)`
+- Factory: `User.Register(email, fullName, password, role, phoneNumber)`
+- Factory: `User.RegisterFromGoogle(email, fullName)` — SSO users, no password, ExternalProvider="Google"
 - Methods: `UpdateProfile()`, `ChangePassword()`, `PromoteToAdmin()`, `Suspend()`, `Activate()`, `RecordLogin()`
+- Properties: `ExternalProvider` (string?, "Google" for SSO), `HasPassword` (bool, false for SSO users)
+- Password is nullable (`Password?`) — null for SSO users
 - Statuses: `Active`, `Suspended`
 - Roles: `User`, `Admin`
+
+### RefreshToken Entity
+
+- `RefreshToken.Create(userId, lifetime)` — generates secure random token
+- Methods: `Revoke()`, computed `IsValid` (not revoked and not expired)
+- Stored in `RefreshTokens` MongoDB collection with unique index on Token
 
 ### Value Objects
 
@@ -65,7 +74,10 @@ public async Task<IActionResult> Register(
 
 - JWT: HMAC SHA-256, configurable secret/issuer/audience
 - Token claims: `sub`, `email`, `role`, `jti`, custom `userId`
+- Refresh tokens: 30-day lifetime, stored in MongoDB, revoked on use (rotation)
 - Password: BCrypt work factor 12
+- Google SSO: validates ID token via Google's tokeninfo endpoint
+- CORS: configured via `Cors:AllowedOrigins` in appsettings
 - Policies: `AdminOnly` (Admin role), `UserOrAdmin` (User or Admin)
 
 ## API Endpoints
@@ -75,7 +87,9 @@ public async Task<IActionResult> Register(
 | Method | Route | Description |
 |--------|-------|-------------|
 | POST | `/api/users/register` | Register user |
-| POST | `/api/users/login` | Login, get JWT |
+| POST | `/api/users/login` | Login, get JWT + refresh token |
+| POST | `/api/users/refresh` | Refresh access token |
+| POST | `/api/users/auth/google` | Google SSO (auto-registers new users) |
 
 ### Authenticated (JWT required)
 
@@ -83,7 +97,8 @@ public async Task<IActionResult> Register(
 |--------|-------|-------------|
 | GET | `/api/users/me` | Get profile |
 | PUT | `/api/users/me` | Update profile |
-| POST | `/api/users/me/change-password` | Change password |
+| POST | `/api/users/me/change-password` | Change password (not for SSO users) |
+| POST | `/api/users/logout` | Logout (revoke refresh token) |
 
 ### Admin only
 
@@ -92,13 +107,15 @@ public async Task<IActionResult> Register(
 | GET | `/api/users` | List users (paginated) |
 | GET | `/api/users/{id}` | Get user by ID |
 | POST | `/api/users/{id}/suspend` | Suspend user |
+| POST | `/api/users/{id}/activate` | Activate suspended user |
 | POST | `/api/users/{id}/promote-to-admin` | Promote to admin |
 
 ## MongoDB
 
 - Database: `UserDb`
-- Collections: `Users`, `OutboxEvents`
+- Collections: `Users`, `OutboxEvents`, `RefreshTokens`
 - Custom serializers for all value objects in `Infrastructure/Persistence/Serializers/`
+- PasswordSerializer handles nullable Password (null for SSO users)
 - **Always use Filter API, never LINQ** (see root CLAUDE.md)
 
 ## Testing Notes

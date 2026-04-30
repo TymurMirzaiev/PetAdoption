@@ -42,7 +42,7 @@ dotnet test tests/UserService/PetAdoption.UserService.IntegrationTests
 
 - `RefreshToken.Create(userId, lifetime)` — generates secure random token
 - Methods: `Revoke()`, computed `IsValid` (not revoked and not expired)
-- Stored in `RefreshTokens` MongoDB collection with unique index on Token
+- Stored in `RefreshTokens` table with unique index on Token
 
 ### Value Objects
 
@@ -88,7 +88,7 @@ public async Task<IActionResult> Register(
 
 - JWT: HMAC SHA-256, configurable secret/issuer/audience
 - Token claims: `sub`, `email`, `role`, `jti`, custom `userId`
-- Refresh tokens: 30-day lifetime, stored in MongoDB, revoked on use (rotation)
+- Refresh tokens: 30-day lifetime, stored in SQL Server, revoked on use (rotation)
 - Password: BCrypt work factor 12
 - Google SSO: validates ID token via Google's tokeninfo endpoint
 - CORS: configured via `Cors:AllowedOrigins` in appsettings

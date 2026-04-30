@@ -13,7 +13,7 @@ dotnet run --project src/Aspire/PetAdoption.AppHost
 
 # Docker Compose (alternative)
 docker compose up                          # all services + infra
-docker compose up mongo rabbitmq           # infra only
+docker compose up mssql rabbitmq           # infra only
 ```
 
 ## Project Structure
@@ -45,12 +45,12 @@ PetAdoption/
 - **RabbitMQ** for async event publishing
 - **JWT + RBAC** (UserService)
 - **Custom Mediator** (PetService, not MediatR)
-- **Aspire** for local orchestration (MongoDB, RabbitMQ, all services)
+- **Aspire** for local orchestration (SQL Server, RabbitMQ, all services)
 - **Blazor WASM** standalone frontend with MudBlazor 8.x
 
 ## Aspire
 
-- AppHost orchestrates MongoDB (persistent), RabbitMQ (persistent + management), PetService, UserService, Blazor WASM
+- AppHost orchestrates SQL Server (persistent), RabbitMQ (persistent + management), PetService, UserService, Blazor WASM
 - ServiceDefaults multi-targets `net9.0;net10.0` (PetService is .NET 9, UserService is .NET 10)
 - JWT secret shared via `builder.AddParameter("jwt-secret", secret: true)` → `appsettings.json` `Parameters:jwt-secret`
 - SQL Server password via `builder.AddParameter("sql-password", secret: true)` → `appsettings.json` `Parameters:sql-password`

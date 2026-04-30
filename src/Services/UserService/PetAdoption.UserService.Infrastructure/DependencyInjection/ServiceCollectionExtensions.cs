@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         // Security Services
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddHttpClient<IGoogleTokenValidator, GoogleTokenValidator>();
 
         // JWT Configuration
         services.Configure<JwtOptions>(
@@ -68,6 +69,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICommandHandler<PromoteToAdminCommand, PromoteToAdminResponse>, PromoteToAdminCommandHandler>();
         services.AddScoped<ICommandHandler<SuspendUserCommand, SuspendUserResponse>, SuspendUserCommandHandler>();
         services.AddScoped<ICommandHandler<RefreshTokenCommand, RefreshTokenResponse>, RefreshTokenCommandHandler>();
+        services.AddScoped<ICommandHandler<GoogleAuthCommand, GoogleAuthResponse>, GoogleAuthCommandHandler>();
 
         // Query Handlers
         services.AddScoped<IQueryHandler<GetUserByIdQuery, UserDto>, GetUserByIdQueryHandler>();

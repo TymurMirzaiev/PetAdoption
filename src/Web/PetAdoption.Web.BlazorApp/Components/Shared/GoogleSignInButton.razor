@@ -1,0 +1,56 @@
+@inject IJSRuntime JS
+@inject UserApiClient UserApi
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<div id="@_buttonId" class="d-flex justify-center"></div>
+
+@code {
+    private readonly string _buttonId = $"google-btn-{Guid.NewGuid():N}";
+    private DotNetObjectReference<GoogleSignInButton>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _dotNetRef = DotNetObjectReference.Create(this);
+        var clientId = Configuration["Google:ClientId"] ?? "";
+        try
+        {
+            await JS.InvokeVoidAsync("googleSignIn.initialize", clientId, _dotNetRef);
+            await JS.InvokeVoidAsync("googleSignIn.renderButton", _buttonId);
+        }
+        catch { }
+    }
+
+    [JSInvokable]
+    public async Task OnGoogleSignIn(string idToken)
+    {
+        try
+        {
+            var response = await UserApi.GoogleAuthAsync(new GoogleAuthRequest(idToken));
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GoogleAuthResponse>();
+                if (result is not null)
+                {
+                    await AuthProvider.Login(result.AccessToken, result.RefreshToken);
+                    Navigation.NavigateTo("/discover");
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Google sign-in failed", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Google sign-in error", Severity.Error);
+        }
+    }
+
+    public void Dispose() => _dotNetRef?.Dispose();
+}

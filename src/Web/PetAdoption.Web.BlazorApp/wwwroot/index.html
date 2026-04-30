@@ -11,7 +11,33 @@
 </head>
 <body>
     <div id="app">Loading...</div>
+    <script src="https://accounts.google.com/gsi/client" async></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        window.googleSignIn = {
+            initialize: function (clientId, dotNetRef) {
+                if (!google || !google.accounts) return;
+                google.accounts.id.initialize({
+                    client_id: clientId,
+                    callback: function (response) {
+                        dotNetRef.invokeMethodAsync('OnGoogleSignIn', response.credential);
+                    }
+                });
+            },
+            renderButton: function (elementId) {
+                if (!google || !google.accounts) return;
+                var element = document.getElementById(elementId);
+                if (element) {
+                    google.accounts.id.renderButton(element, {
+                        theme: 'filled_black',
+                        size: 'large',
+                        width: '100%',
+                        text: 'signin_with'
+                    });
+                }
+            }
+        };
+    </script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

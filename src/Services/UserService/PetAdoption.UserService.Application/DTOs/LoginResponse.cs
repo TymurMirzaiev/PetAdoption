@@ -3,6 +3,7 @@ namespace PetAdoption.UserService.Application.DTOs;
 public record LoginResponse(
     bool Success,
     string Token,
+    string RefreshToken,
     string UserId,
     string Email,
     string FullName,

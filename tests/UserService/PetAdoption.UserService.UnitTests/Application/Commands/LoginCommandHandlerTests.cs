@@ -15,6 +15,7 @@ public class LoginCommandHandlerTests
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IPasswordHasher> _mockPasswordHasher;
     private readonly Mock<IJwtTokenGenerator> _mockJwtTokenGenerator;
+    private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepo;
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
@@ -22,10 +23,12 @@ public class LoginCommandHandlerTests
         _mockUserRepository = new Mock<IUserRepository>();
         _mockPasswordHasher = new Mock<IPasswordHasher>();
         _mockJwtTokenGenerator = new Mock<IJwtTokenGenerator>();
+        _mockRefreshTokenRepo = new Mock<IRefreshTokenRepository>();
         _handler = new LoginCommandHandler(
             _mockUserRepository.Object,
             _mockPasswordHasher.Object,
-            _mockJwtTokenGenerator.Object
+            _mockJwtTokenGenerator.Object,
+            _mockRefreshTokenRepo.Object
         );
     }
 
@@ -64,6 +67,7 @@ public class LoginCommandHandlerTests
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
         result.Token.Should().Be("jwt.token.here");
+        result.RefreshToken.Should().NotBeNullOrEmpty();
         result.Email.Should().Be("test@example.com");
         result.FullName.Should().Be("John Doe");
         result.Role.Should().Be("User");

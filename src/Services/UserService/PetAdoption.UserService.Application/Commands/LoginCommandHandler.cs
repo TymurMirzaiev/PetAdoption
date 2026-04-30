@@ -5,6 +5,7 @@ using PetAdoption.UserService.Application.DTOs;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
 using PetAdoption.UserService.Domain.Exceptions;
+using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Enums;
 
 public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
@@ -12,15 +13,18 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IRefreshTokenRepository _refreshTokenRepo;
 
     public LoginCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        IJwtTokenGenerator jwtTokenGenerator)
+        IJwtTokenGenerator jwtTokenGenerator,
+        IRefreshTokenRepository refreshTokenRepo)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _refreshTokenRepo = refreshTokenRepo;
     }
 
     public async Task<LoginResponse> HandleAsync(
@@ -61,6 +65,10 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             user.Role.ToString()
         );
 
+        // Create refresh token
+        var refreshToken = RefreshToken.Create(user.Id.Value, TimeSpan.FromDays(30));
+        await _refreshTokenRepo.SaveAsync(refreshToken);
+
         // Record login
         user.RecordLogin();
         await _userRepository.SaveAsync(user);
@@ -68,6 +76,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         return new LoginResponse(
             Success: true,
             Token: token,
+            RefreshToken: refreshToken.Token,
             UserId: user.Id.Value,
             Email: user.Email.Value,
             FullName: user.FullName.Value,

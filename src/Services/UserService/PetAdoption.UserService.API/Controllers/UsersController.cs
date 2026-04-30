@@ -206,6 +206,20 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Activate a suspended user (Admin only)
+    /// </summary>
+    [HttpPost("{id}/activate")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> ActivateUser(
+        string id,
+        [FromServices] ICommandHandler<ActivateUserCommand, ActivateUserResponse> handler)
+    {
+        var command = new ActivateUserCommand(id);
+        var response = await handler.HandleAsync(command);
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Promote user to admin (Admin only)
     /// </summary>
     [HttpPost("{id}/promote-to-admin")]

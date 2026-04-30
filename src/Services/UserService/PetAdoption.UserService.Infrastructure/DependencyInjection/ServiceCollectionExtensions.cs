@@ -68,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICommandHandler<ChangePasswordCommand, ChangePasswordResponse>, ChangePasswordCommandHandler>();
         services.AddScoped<ICommandHandler<PromoteToAdminCommand, PromoteToAdminResponse>, PromoteToAdminCommandHandler>();
         services.AddScoped<ICommandHandler<SuspendUserCommand, SuspendUserResponse>, SuspendUserCommandHandler>();
+        services.AddScoped<ICommandHandler<ActivateUserCommand, ActivateUserResponse>, ActivateUserCommandHandler>();
         services.AddScoped<ICommandHandler<RefreshTokenCommand, RefreshTokenResponse>, RefreshTokenCommandHandler>();
         services.AddScoped<ICommandHandler<GoogleAuthCommand, GoogleAuthResponse>, GoogleAuthCommandHandler>();
 

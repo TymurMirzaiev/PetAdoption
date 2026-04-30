@@ -1,12 +1,41 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject JwtAuthenticationStateProvider AuthProvider
 
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudText Typo="Typo.h6">PetAdoption</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <AuthorizeView Roles="Admin" Context="adminContext">
+                    <MudButton Color="Color.Inherit" Href="/admin">Admin</MudButton>
+                </AuthorizeView>
+                <MudButton Color="Color.Inherit" Href="/discover">Discover</MudButton>
+                <MudButton Color="Color.Inherit" Href="/favorites">Favorites</MudButton>
+                <MudButton Color="Color.Inherit" Href="/reservations">Reservations</MudButton>
+                <MudButton Color="Color.Inherit" Href="/profile">Profile</MudButton>
+                <MudButton Color="Color.Inherit" OnClick="LogoutAsync">Logout</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit" Href="/login">Login</MudButton>
+                <MudButton Color="Color.Inherit" Href="/register">Register</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
     </MudAppBar>
+
     <MudMainContent>
+        <AnnouncementBanner />
         <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
             @Body
         </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthProvider.Logout();
+        Navigation.NavigateTo("/");
+    }
+}

@@ -1,0 +1,42 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject JwtAuthenticationStateProvider AuthProvider
+@attribute [Authorize(Roles = "Admin")]
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6">PetAdoption Admin</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Inherit" Href="/">User View</MudButton>
+        <MudButton Color="Color.Inherit" OnClick="LogoutAsync">Logout</MudButton>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Mini">
+        <MudNavMenu>
+            <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+            <MudNavLink Href="/admin/pets" Icon="@Icons.Material.Filled.Pets">Pets</MudNavLink>
+            <MudNavLink Href="/admin/pet-types" Icon="@Icons.Material.Filled.Category">Pet Types</MudNavLink>
+            <MudNavLink Href="/admin/announcements" Icon="@Icons.Material.Filled.Announcement">Announcements</MudNavLink>
+            <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">Users</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task LogoutAsync()
+    {
+        await AuthProvider.Logout();
+        Navigation.NavigateTo("/");
+    }
+}

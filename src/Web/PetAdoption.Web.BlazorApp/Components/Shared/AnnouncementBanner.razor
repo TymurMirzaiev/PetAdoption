@@ -1,0 +1,21 @@
+@inject PetApiClient PetApi
+
+@if (_announcements?.Any() == true)
+{
+    @foreach (var a in _announcements)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-0 rounded-0">
+            <strong>@a.Title</strong> — @a.Body
+        </MudAlert>
+    }
+}
+
+@code {
+    private IEnumerable<ActiveAnnouncement>? _announcements;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _announcements = await PetApi.GetActiveAnnouncementsAsync(); }
+        catch { }
+    }
+}

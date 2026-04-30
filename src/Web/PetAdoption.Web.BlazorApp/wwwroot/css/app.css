@@ -7,3 +7,123 @@ html, body {
 #app {
     min-height: 100vh;
 }
+
+/* ──────────────────────────────────────────────
+   Swipe Card Stack
+   ────────────────────────────────────────────── */
+
+.swipe-card-area {
+    position: relative;
+    width: 300px;
+    height: 420px;
+    overflow: hidden;
+}
+
+.swipe-top-card {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    will-change: transform;
+}
+.swipe-top-card.dragging { cursor: grabbing; }
+.swipe-top-card.returning {
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+.swipe-top-card.swipe-card-exiting {
+    transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+    pointer-events: none;
+}
+
+/* ── Swipe Hint Labels ── */
+
+.swipe-hint {
+    position: absolute;
+    top: 16px;
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    opacity: 0;
+    z-index: 20;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+.swipe-hint--adopt {
+    right: 16px;
+    color: #22c55e;
+    border: 2px solid #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+}
+.swipe-hint--reject {
+    left: 16px;
+    color: #ef4444;
+    border: 2px solid #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* ── Emoji Particles ── */
+
+.swipe-emoji-particle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+}
+
+@keyframes swipe-emoji-pop-up {
+    0%   { opacity: 0; transform: scale(0) translateY(0) rotate(var(--r, 0deg)); }
+    20%  { opacity: 1; transform: scale(1.3) translateY(-5px) rotate(var(--r, 0deg)); }
+    50%  { opacity: 0.9; transform: scale(1) translateY(-15px) rotate(var(--r, 0deg)); }
+    80%  { opacity: 0.5; transform: scale(0.9) translateY(-28px) rotate(var(--r, 0deg)); }
+    100% { opacity: 0; transform: scale(0.6) translateY(-40px) rotate(var(--r, 0deg)); }
+}
+
+@keyframes swipe-emoji-sink {
+    0%   { opacity: 0; transform: scale(0) translateY(0) rotate(var(--r, 0deg)); }
+    20%  { opacity: 0.7; transform: scale(1.1) translateY(3px) rotate(var(--r, 0deg)); }
+    50%  { opacity: 0.5; transform: scale(0.9) translateY(12px) rotate(var(--r, 0deg)); }
+    100% { opacity: 0; transform: scale(0.4) translateY(30px) rotate(var(--r, 0deg)); }
+}
+
+/* ── Paw Prints ── */
+
+.swipe-print {
+    position: absolute;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 6;
+}
+
+@keyframes swipe-print-stamp {
+    0%   { opacity: 0; transform: scale(0) rotate(var(--rot, 0deg)); }
+    25%  { opacity: var(--peak, 0.7); transform: scale(1.15) rotate(var(--rot, 0deg)); }
+    45%  { transform: scale(1) rotate(var(--rot, 0deg)); }
+    100% { opacity: 0; transform: scale(0.85) rotate(var(--rot, 0deg)); }
+}
+
+@keyframes swipe-print-reject {
+    0%   { opacity: 0; transform: scale(0) rotate(var(--rot, 0deg)) translateY(0); }
+    20%  { opacity: 0.45; transform: scale(1.1) rotate(var(--rot, 0deg)) translateY(0); }
+    40%  { opacity: 0.35; transform: scale(0.95) rotate(var(--rot, 0deg)) translateY(4px); }
+    100% { opacity: 0; transform: scale(0.6) rotate(var(--rot, 0deg)) translateY(12px); }
+}
+
+/* ── Sound Text ── */
+
+.swipe-sound {
+    position: absolute;
+    pointer-events: none;
+    font-weight: 800;
+    font-style: italic;
+    font-size: 15px;
+    opacity: 0;
+    z-index: 7;
+    font-family: 'Comic Sans MS', cursive;
+}
+
+@keyframes swipe-sound-float {
+    0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+    25%  { opacity: 0.9; transform: translateY(-10px) scale(1.1); }
+    60%  { opacity: 0.5; transform: translateY(-18px) scale(1); }
+    100% { opacity: 0; transform: translateY(-30px) scale(0.8); }
+}

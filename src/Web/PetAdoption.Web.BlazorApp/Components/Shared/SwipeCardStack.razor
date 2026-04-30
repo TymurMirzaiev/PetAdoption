@@ -1,37 +1,55 @@
 @using PetAdoption.Web.BlazorApp.Models
+@inject IJSRuntime JS
 
 <div class="d-flex flex-column align-center">
     @if (Pets.Any())
     {
-        <div style="position: relative; width: 300px; height: 420px;">
+        <div class="swipe-card-area" id="@_containerId">
+            <div class="swipe-hint swipe-hint--adopt" style="opacity: @HintOpacity("adopt")">ADOPT</div>
+            <div class="swipe-hint swipe-hint--reject" style="opacity: @HintOpacity("reject")">NOPE</div>
+
             @for (var i = Math.Min(Pets.Count - 1, 2); i >= 0; i--)
             {
                 var pet = Pets[i];
                 var isTop = i == 0;
                 var offset = i * 4;
                 var scale = 1.0 - i * 0.03;
-                var style = $"position: absolute; top: {offset}px; left: {offset}px; transform: scale({scale}); transform-origin: top left; z-index: {10 - i};";
+                var zIndex = 10 - i;
+
+                var style = $"position:absolute;top:{offset}px;left:{offset}px;transform-origin:top left;z-index:{zIndex};";
                 if (isTop)
                 {
-                    style += $" transition: transform 0.1s; transform: translateX({_offsetX}px) rotate({_offsetX * 0.05}deg) scale(1);";
+                    var dragTransform = _dragging
+                        ? $"translateX({_offsetX:F0}px) rotate({_offsetX * 0.04:F1}deg) scale(1)"
+                        : "scale(1)";
+                    style += $"transform:{dragTransform};";
+
+                    <div class="swipe-top-card @(_dragging ? "dragging" : "")" style="@style"
+                         @ontouchstart="OnTouchStart" @ontouchstart:preventDefault
+                         @ontouchmove="OnTouchMove" @ontouchmove:preventDefault
+                         @ontouchend="OnTouchEnd"
+                         @onmousedown="OnMouseDown"
+                         @onmousemove="OnMouseMove"
+                         @onmouseup="OnMouseUp"
+                         @onmouseleave="OnMouseUp">
+                        <PetCard Pet="pet" />
+                    </div>
                 }
-                <div style="@style"
-                     @ontouchstart="OnTouchStart" @ontouchstart:preventDefault
-                     @ontouchmove="OnTouchMove" @ontouchmove:preventDefault
-                     @ontouchend="OnTouchEnd"
-                     @onmousedown="OnMouseDown"
-                     @onmousemove="OnMouseMove"
-                     @onmouseup="OnMouseUp">
-                    <PetCard Pet="pet" />
-                </div>
+                else
+                {
+                    style += $"transform:scale({scale:F2});";
+                    <div style="@style">
+                        <PetCard Pet="pet" />
+                    </div>
+                }
             }
         </div>
 
         <div class="d-flex gap-4 mt-4">
             <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Size="Size.Large"
-                OnClick="Skip" Variant="Variant.Outlined" />
+                OnClick="() => TriggerAction(false)" Variant="Variant.Outlined" Disabled="_animating" />
             <MudIconButton Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Size="Size.Large"
-                OnClick="Favorite" Variant="Variant.Outlined" />
+                OnClick="() => TriggerAction(true)" Variant="Variant.Outlined" Disabled="_animating" />
         </div>
     }
 </div>
@@ -45,10 +63,23 @@
     private double _offsetX;
     private double _startX;
     private bool _dragging;
-    private const double SwipeThreshold = 100;
+    private bool _animating;
+    private const double SwipeThreshold = 80;
+
+    private readonly string _containerId = $"swipe-stack-{Guid.NewGuid():N}";
+
+    private string HintOpacity(string action)
+    {
+        if (!_dragging) return "0";
+        var progress = Math.Min(Math.Abs(_offsetX) / SwipeThreshold, 1.0);
+        if (action == "adopt" && _offsetX > 20) return progress.ToString("F2");
+        if (action == "reject" && _offsetX < -20) return progress.ToString("F2");
+        return "0";
+    }
 
     private void OnTouchStart(TouchEventArgs e)
     {
+        if (_animating) return;
         _startX = e.ChangedTouches[0].ClientX;
         _dragging = true;
     }
@@ -61,17 +92,19 @@
 
     private async Task OnTouchEnd(TouchEventArgs e)
     {
+        if (!_dragging) return;
         _dragging = false;
         if (Math.Abs(_offsetX) > SwipeThreshold)
         {
-            if (_offsetX > 0) await Favorite();
-            else await Skip();
+            var isFavorite = _offsetX > 0;
+            await PlayAnimationAndRemove(isFavorite, _offsetX * 0.85);
         }
         _offsetX = 0;
     }
 
     private void OnMouseDown(MouseEventArgs e)
     {
+        if (_animating) return;
         _startX = e.ClientX;
         _dragging = true;
     }
@@ -84,32 +117,51 @@
 
     private async Task OnMouseUp(MouseEventArgs e)
     {
+        if (!_dragging) return;
         _dragging = false;
         if (Math.Abs(_offsetX) > SwipeThreshold)
         {
-            if (_offsetX > 0) await Favorite();
-            else await Skip();
+            var isFavorite = _offsetX > 0;
+            await PlayAnimationAndRemove(isFavorite, _offsetX * 0.85);
         }
         _offsetX = 0;
     }
 
-    private async Task Favorite()
+    private async Task TriggerAction(bool isFavorite)
     {
-        if (!Pets.Any()) return;
-        var pet = Pets[0];
-        Pets.RemoveAt(0);
-        _offsetX = 0;
-        await OnFavorite.InvokeAsync(pet);
-        await CheckNeedMore();
+        if (_animating || !Pets.Any()) return;
+        await PlayAnimationAndRemove(isFavorite, 0);
     }
 
-    private async Task Skip()
+    private async Task PlayAnimationAndRemove(bool isFavorite, double dragOffset)
     {
         if (!Pets.Any()) return;
-        var pet = Pets[0];
-        Pets.RemoveAt(0);
+        _animating = true;
         _offsetX = 0;
-        await OnSkip.InvokeAsync(pet);
+        StateHasChanged();
+
+        var pet = Pets[0];
+        var action = isFavorite ? "adopt" : "reject";
+        var selector = $"#{_containerId}";
+
+        try
+        {
+            await JS.InvokeVoidAsync("swipeAnimations.playSwipeAnimation", selector, action, pet.Type, dragOffset);
+        }
+        catch
+        {
+            // JS interop can fail if component disposes during animation
+        }
+
+        Pets.RemoveAt(0);
+        _animating = false;
+        StateHasChanged();
+
+        if (isFavorite)
+            await OnFavorite.InvokeAsync(pet);
+        else
+            await OnSkip.InvokeAsync(pet);
+
         await CheckNeedMore();
     }
 

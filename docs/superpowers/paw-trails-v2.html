@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paw Trail Animations - Dogs & Cats</title>
+<style>
+  /* ──────────────────────────────────────────────
+     Reset & Base
+     ────────────────────────────────────────────── */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0f1a;
+    color: #eee;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  /* ──────────────────────────────────────────────
+     Layout
+     ────────────────────────────────────────────── */
+  .page-header { text-align: center; padding: 24px 20px 8px; }
+  .page-header h1 { font-size: 22px; color: #e0e0ff; }
+  .page-header p { color: #666; font-size: 13px; margin-top: 4px; }
+
+  .demos {
+    display: flex; gap: 32px; margin-top: 20px;
+    flex-wrap: wrap; justify-content: center; padding: 0 20px 40px;
+  }
+
+  /* ──────────────────────────────────────────────
+     Phone Frame
+     ────────────────────────────────────────────── */
+  .phone {
+    position: relative; width: 340px; height: 640px;
+    background: #111827; border-radius: 36px;
+    border: 3px solid #374151; overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .phone-header {
+    height: 48px; display: flex; align-items: flex-end;
+    justify-content: center; padding-bottom: 8px;
+    font-size: 13px; color: #9ca3af; font-weight: 600; flex-shrink: 0;
+  }
+  .phone-label {
+    text-align: center; margin-top: 12px;
+    font-size: 13px; color: #888; font-weight: 600;
+  }
+
+  /* ──────────────────────────────────────────────
+     Swipe Area
+     ────────────────────────────────────────────── */
+  .swipe-area {
+    position: relative; flex: 1; margin: 0 14px;
+    overflow: hidden;
+  }
+
+  /* ──────────────────────────────────────────────
+     Pet Card
+     ────────────────────────────────────────────── */
+  .pet-card {
+    position: absolute; inset: 8px;
+    background: linear-gradient(180deg, #1e293b, #0f172a);
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    z-index: 5; display: flex; flex-direction: column;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    will-change: transform;
+    transition: none;
+  }
+  .pet-card.dragging { cursor: grabbing; }
+  .pet-card.returning {
+    transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  .pet-card.exiting {
+    transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+    pointer-events: none;
+    cursor: default;
+  }
+
+  .pet-card__photo {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 90px; position: relative;
+    background: linear-gradient(135deg, #334155, #1e293b);
+    pointer-events: none;
+  }
+  .pet-card__photo::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 50px; background: linear-gradient(transparent, #0f172a);
+  }
+  .pet-card__info { padding: 14px 18px; pointer-events: none; }
+  .pet-card__name { font-size: 22px; font-weight: 700; }
+  .pet-card__breed { font-size: 13px; color: #9ca3af; margin-top: 2px; }
+  .pet-card__tags { display: flex; gap: 8px; margin-top: 10px; }
+  .pet-card__tag {
+    background: #1e293b; border: 1px solid #374151;
+    padding: 3px 10px; border-radius: 16px; font-size: 11px; color: #9ca3af;
+  }
+
+  /* ──────────────────────────────────────────────
+     Swipe Hint Indicators (shown during drag)
+     ────────────────────────────────────────────── */
+  .swipe-hint {
+    position: absolute; top: 16px;
+    padding: 6px 14px; border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+    opacity: 0; z-index: 20;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .swipe-hint--adopt {
+    right: 16px; color: #22c55e;
+    border: 2px solid #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+  }
+  .swipe-hint--reject {
+    left: 16px; color: #ef4444;
+    border: 2px solid #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  /* ──────────────────────────────────────────────
+     Action Buttons
+     ────────────────────────────────────────────── */
+  .actions {
+    display: flex; justify-content: center; gap: 24px;
+    padding: 14px; flex-shrink: 0;
+  }
+  .action-btn {
+    width: 52px; height: 52px; border-radius: 50%;
+    border: 2px solid; background: #1e293b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; cursor: pointer;
+    transition: transform 0.15s, background 0.15s; user-select: none;
+  }
+  .action-btn:active { transform: scale(0.9); }
+  .action-btn--reject { border-color: #ef4444; color: #ef4444; }
+  .action-btn--reject:hover { background: rgba(239,68,68,0.15); }
+  .action-btn--adopt { border-color: #22c55e; color: #22c55e; }
+  .action-btn--adopt:hover { background: rgba(34,197,94,0.15); }
+
+  /* ──────────────────────────────────────────────
+     Floating Emoji Particles
+     ────────────────────────────────────────────── */
+  .emoji-particle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+  }
+
+  @keyframes emoji-pop-up {
+    0%   { opacity: 0; transform: scale(0) translateY(0) rotate(var(--r, 0deg)); }
+    20%  { opacity: 1; transform: scale(1.3) translateY(-5px) rotate(var(--r, 0deg)); }
+    50%  { opacity: 0.9; transform: scale(1) translateY(-15px) rotate(var(--r, 0deg)); }
+    80%  { opacity: 0.5; transform: scale(0.9) translateY(-28px) rotate(var(--r, 0deg)); }
+    100% { opacity: 0; transform: scale(0.6) translateY(-40px) rotate(var(--r, 0deg)); }
+  }
+
+  @keyframes emoji-sink {
+    0%   { opacity: 0; transform: scale(0) translateY(0) rotate(var(--r, 0deg)); }
+    20%  { opacity: 0.7; transform: scale(1.1) translateY(3px) rotate(var(--r, 0deg)); }
+    50%  { opacity: 0.5; transform: scale(0.9) translateY(12px) rotate(var(--r, 0deg)); }
+    100% { opacity: 0; transform: scale(0.4) translateY(30px) rotate(var(--r, 0deg)); }
+  }
+
+  /* ──────────────────────────────────────────────
+     Paw Prints
+     ────────────────────────────────────────────── */
+  .print {
+    position: absolute; pointer-events: none; opacity: 0; z-index: 6;
+  }
+
+  @keyframes print-stamp {
+    0%   { opacity: 0; transform: scale(0) rotate(var(--rot, 0deg)); }
+    25%  { opacity: var(--peak, 0.7); transform: scale(1.15) rotate(var(--rot, 0deg)); }
+    45%  { transform: scale(1) rotate(var(--rot, 0deg)); }
+    100% { opacity: 0; transform: scale(0.85) rotate(var(--rot, 0deg)); }
+  }
+
+  @keyframes print-reject {
+    0%   { opacity: 0; transform: scale(0) rotate(var(--rot, 0deg)) translateY(0); }
+    20%  { opacity: 0.45; transform: scale(1.1) rotate(var(--rot, 0deg)) translateY(0); }
+    40%  { opacity: 0.35; transform: scale(0.95) rotate(var(--rot, 0deg)) translateY(4px); }
+    100% { opacity: 0; transform: scale(0.6) rotate(var(--rot, 0deg)) translateY(12px); }
+  }
+
+  /* ──────────────────────────────────────────────
+     Sound Text
+     ────────────────────────────────────────────── */
+  .sound {
+    position: absolute; pointer-events: none;
+    font-weight: 800; font-style: italic; font-size: 15px;
+    opacity: 0; z-index: 7;
+    font-family: 'Comic Sans MS', cursive;
+  }
+
+  @keyframes sound-float {
+    0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+    25%  { opacity: 0.9; transform: translateY(-10px) scale(1.1); }
+    60%  { opacity: 0.5; transform: translateY(-18px) scale(1); }
+    100% { opacity: 0; transform: translateY(-30px) scale(0.8); }
+  }
+
+  /* ──────────────────────────────────────────────
+     Card Exit
+     ────────────────────────────────────────────── */
+  @keyframes card-exit-right {
+    0%   { transform: translateX(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateX(140px) rotate(10deg); opacity: 0.15; }
+  }
+  @keyframes card-exit-left {
+    0%   { transform: translateX(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateX(-140px) rotate(-10deg); opacity: 0.15; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Paw Trail Animations — Dogs & Cats</h1>
+  <p>Swipe the card or use the buttons — adopt right, reject left</p>
+</div>
+
+<div class="demos">
+
+  <!-- ── DOG ── -->
+  <div>
+    <div class="phone" id="phone-dog" data-animal="dog">
+      <div class="phone-header">PetAdoption</div>
+      <div class="swipe-area">
+        <div class="swipe-hint swipe-hint--adopt">ADOPT</div>
+        <div class="swipe-hint swipe-hint--reject">NOPE</div>
+        <div class="pet-card">
+          <div class="pet-card__photo">🐕</div>
+          <div class="pet-card__info">
+            <div class="pet-card__name">Buddy</div>
+            <div class="pet-card__breed">Golden Retriever, 2 years</div>
+            <div class="pet-card__tags">
+              <span class="pet-card__tag">Friendly</span>
+              <span class="pet-card__tag">Vaccinated</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="action-btn action-btn--reject" onclick="play('phone-dog','reject')">✕</div>
+        <div class="action-btn action-btn--adopt"  onclick="play('phone-dog','adopt')">♥</div>
+      </div>
+    </div>
+    <div class="phone-label">Dog — Big Paw Prints</div>
+  </div>
+
+  <!-- ── CAT ── -->
+  <div>
+    <div class="phone" id="phone-cat" data-animal="cat">
+      <div class="phone-header">PetAdoption</div>
+      <div class="swipe-area">
+        <div class="swipe-hint swipe-hint--adopt">ADOPT</div>
+        <div class="swipe-hint swipe-hint--reject">NOPE</div>
+        <div class="pet-card">
+          <div class="pet-card__photo">🐈</div>
+          <div class="pet-card__info">
+            <div class="pet-card__name">Shadow</div>
+            <div class="pet-card__breed">Black Cat, 1 year</div>
+            <div class="pet-card__tags">
+              <span class="pet-card__tag">Calm</span>
+              <span class="pet-card__tag">Indoor</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="action-btn action-btn--reject" onclick="play('phone-cat','reject')">✕</div>
+        <div class="action-btn action-btn--adopt"  onclick="play('phone-cat','adopt')">♥</div>
+      </div>
+    </div>
+    <div class="phone-label">Cat — Dainty Paw Prints</div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   SVG Factories — Paw Prints
+   ══════════════════════════════════════════════════════════════ */
+
+function createDogPaw(color) {
+  const el = document.createElement('div');
+  el.className = 'print';
+  el.innerHTML = `<svg width="36" height="36" viewBox="0 0 40 40">
+    <ellipse cx="20" cy="26" rx="10" ry="12" fill="${color}" opacity="0.8"/>
+    <ellipse cx="10" cy="12" rx="5.5" ry="6.5" fill="${color}" opacity="0.8"/>
+    <ellipse cx="20" cy="8"  rx="5"   ry="6"   fill="${color}" opacity="0.8"/>
+    <ellipse cx="30" cy="12" rx="5.5" ry="6.5" fill="${color}" opacity="0.8"/>
+  </svg>`;
+  return el;
+}
+
+function createCatPaw(color) {
+  const el = document.createElement('div');
+  el.className = 'print';
+  el.innerHTML = `<svg width="26" height="26" viewBox="0 0 32 32">
+    <ellipse cx="16" cy="20" rx="7"   ry="9"   fill="${color}" opacity="0.7"/>
+    <ellipse cx="8"  cy="10" rx="4"   ry="5"   fill="${color}" opacity="0.7"/>
+    <ellipse cx="16" cy="7"  rx="3.5" ry="4.5" fill="${color}" opacity="0.7"/>
+    <ellipse cx="24" cy="10" rx="4"   ry="5"   fill="${color}" opacity="0.7"/>
+  </svg>`;
+  return el;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Emoji Spawner — random positions across the swipe area
+   ══════════════════════════════════════════════════════════════ */
+
+const ADOPT_EMOJIS = ['❤️','💖','💕','🎉','✨','💗','🩷','🎊','💝','🥳','🎆','✨','❤️','💖'];
+const REJECT_EMOJIS = ['😢','😿','🥺','😞','💔','😢','😿','🥺','💔','😞','😿','😢'];
+
+function spawnEmojis(area, action) {
+  const isAdopt = action === 'adopt';
+  const pool = isAdopt ? ADOPT_EMOJIS : REJECT_EMOJIS;
+  const anim = isAdopt ? 'emoji-pop-up' : 'emoji-sink';
+  const count = isAdopt ? 14 : 10;
+  const w = area.clientWidth;
+  const h = area.clientHeight;
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'emoji-particle';
+    el.textContent = pool[Math.floor(Math.random() * pool.length)];
+
+    const x = 10 + Math.random() * (w - 40);
+    const y = 20 + Math.random() * (h - 60);
+    const size = 18 + Math.random() * 18;
+    const rot = -25 + Math.random() * 50;
+    const delay = Math.random() * 0.6;
+    const dur = 0.9 + Math.random() * 0.5;
+
+    el.style.cssText = `
+      left: ${x}px; top: ${y}px;
+      font-size: ${size}px;
+      --r: ${rot}deg;
+      animation: ${anim} ${dur}s ease-out ${delay}s forwards;
+    `;
+    area.appendChild(el);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Sound Text Factory
+   ══════════════════════════════════════════════════════════════ */
+
+function createSound(text, x, y, color, delay) {
+  const el = document.createElement('div');
+  el.className = 'sound';
+  el.textContent = text;
+  el.style.cssText = `left:${x}px; top:${y}px; color:${color};
+    animation: sound-float 0.9s ease-out ${delay}s forwards;`;
+  return el;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Trail Configuration
+   ══════════════════════════════════════════════════════════════ */
+
+const TRAILS = {
+  dog: {
+    adopt: {
+      color: '#d4a574', factory: createDogPaw,
+      count: 7, spacing: 36, sway: 18,
+      rotBase: -15, rotRange: 8, peakOpacity: 0.75,
+      anim: 'print-stamp', stagger: 0.11,
+      sounds: [
+        { text: 'Woof!',        offset: 0.28, color: '#fbbf24', yOff: -55 },
+        { text: '*tap tap tap*', offset: 0.65, color: '#d4a574', yOff: 40 },
+      ],
+    },
+    reject: {
+      color: '#7a6050', factory: createDogPaw,
+      count: 5, spacing: 32, sway: 14,
+      rotBase: 10, rotRange: 10, peakOpacity: 0.45,
+      anim: 'print-reject', stagger: 0.09,
+      sounds: [
+        { text: '*whimper*', offset: 0.3, color: '#9ca3af', yOff: -45 },
+      ],
+    },
+  },
+  cat: {
+    adopt: {
+      color: '#c0a0d0', factory: createCatPaw,
+      count: 9, spacing: 26, sway: 5,
+      rotBase: -8, rotRange: 6, peakOpacity: 0.65,
+      anim: 'print-stamp', stagger: 0.08,
+      sounds: [
+        { text: 'Prr~',         offset: 0.25, color: '#c4b5fd', yOff: -45 },
+        { text: '*tip tip tip*', offset: 0.6,  color: '#a78bfa', yOff: 35 },
+      ],
+    },
+    reject: {
+      color: '#6a5a70', factory: createCatPaw,
+      count: 6, spacing: 22, sway: 4,
+      rotBase: 5, rotRange: 8, peakOpacity: 0.4,
+      anim: 'print-reject', stagger: 0.07,
+      sounds: [
+        { text: 'Hisss~', offset: 0.25, color: '#9ca3af', yOff: -40 },
+      ],
+    },
+  },
+};
+
+/* ══════════════════════════════════════════════════════════════
+   Animation Runner (shared by buttons and swipe)
+   ══════════════════════════════════════════════════════════════ */
+
+const busyPhones = new Set();
+
+function play(phoneId, action, dragOffset) {
+  if (busyPhones.has(phoneId)) return;
+  busyPhones.add(phoneId);
+
+  const phone = document.getElementById(phoneId);
+  const area  = phone.querySelector('.swipe-area');
+  const card  = phone.querySelector('.pet-card');
+  const animal = phone.dataset.animal;
+  const isAdopt = action === 'adopt';
+  const dir = isAdopt ? 1 : -1;
+  const cfg = TRAILS[animal][action];
+
+  // Clean previous elements
+  area.querySelectorAll('.print, .sound, .emoji-particle').forEach(el => el.remove());
+
+  const areaW = area.clientWidth;
+  const centerY = area.clientHeight / 2;
+
+  const startX = isAdopt
+    ? areaW * 0.12
+    : areaW * 0.88 - cfg.count * cfg.spacing;
+
+  // ── 1. Emoji reaction — random positions ──
+  spawnEmojis(area, action);
+
+  // ── 2. Card exit (continues from current drag position) ──
+  const fromX = dragOffset || 0;
+  const exitX = isAdopt ? 350 : -350;
+  const exitRot = isAdopt ? 15 : -15;
+  // Force current position first (no transition), then animate out
+  card.style.transition = 'none';
+  card.style.transform = `translateX(${fromX}px) rotate(${(fromX / 300) * 12}deg)`;
+  card.style.opacity = '1';
+  // Trigger reflow so the browser registers the starting position
+  card.offsetHeight;
+  card.classList.add('exiting');
+  card.style.pointerEvents = 'none';
+  card.style.transform = `translateX(${exitX}px) rotate(${exitRot}deg)`;
+  card.style.opacity = '0.15';
+
+  // ── 3. Paw prints ──
+  for (let i = 0; i < cfg.count; i++) {
+    const print = cfg.factory(cfg.color);
+    const x = startX + i * cfg.spacing * dir;
+    const yOff = (i % 2 === 0 ? -1 : 1) * cfg.sway;
+    const rot = cfg.rotBase * dir + (Math.random() * cfg.rotRange - cfg.rotRange / 2);
+
+    print.style.left = x + 'px';
+    print.style.top = (centerY + yOff - 18) + 'px';
+    print.style.setProperty('--rot', rot + 'deg');
+    print.style.setProperty('--peak', String(cfg.peakOpacity));
+    print.style.animation = `${cfg.anim} 1s ease-out ${i * cfg.stagger}s forwards`;
+    area.appendChild(print);
+  }
+
+  // ── 4. Sound texts ──
+  for (const s of cfg.sounds) {
+    const sx = startX + cfg.count * cfg.spacing * dir * s.offset;
+    area.appendChild(createSound(s.text, sx, centerY + s.yOff, s.color, s.offset));
+  }
+
+  // ── 5. Reset ──
+  const totalDuration = cfg.count * cfg.stagger * 1000 + 1400;
+  setTimeout(() => {
+    card.classList.remove('exiting', 'dragging');
+    card.style.transition = 'none';
+    card.style.transform = '';
+    card.style.opacity = '';
+    card.style.pointerEvents = '';
+    area.querySelectorAll('.print, .sound, .emoji-particle').forEach(el => el.remove());
+    busyPhones.delete(phoneId);
+  }, totalDuration);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Swipe / Drag Gesture Handler
+   ══════════════════════════════════════════════════════════════ */
+
+const SWIPE_THRESHOLD = 80; // px to trigger action
+const MAX_ROTATION = 15;    // degrees at full swipe
+
+function initSwipe(phoneId) {
+  const phone = document.getElementById(phoneId);
+  const card  = phone.querySelector('.pet-card');
+  const hintAdopt  = phone.querySelector('.swipe-hint--adopt');
+  const hintReject = phone.querySelector('.swipe-hint--reject');
+
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+
+  function onStart(e) {
+    if (busyPhones.has(phoneId)) return;
+    isDragging = true;
+    card.classList.add('dragging');
+    card.classList.remove('returning');
+    const point = e.touches ? e.touches[0] : e;
+    startX = point.clientX;
+    startY = point.clientY;
+    currentX = 0;
+  }
+
+  function onMove(e) {
+    if (!isDragging) return;
+    const point = e.touches ? e.touches[0] : e;
+    currentX = point.clientX - startX;
+
+    // Dampen the movement slightly for a natural feel
+    const dampened = currentX * 0.85;
+    const rotation = (dampened / 300) * MAX_ROTATION;
+
+    card.style.transform = `translateX(${dampened}px) rotate(${rotation}deg)`;
+
+    // Show hint labels based on swipe direction
+    const progress = Math.min(Math.abs(currentX) / SWIPE_THRESHOLD, 1);
+    if (currentX > 20) {
+      hintAdopt.style.opacity = progress;
+      hintReject.style.opacity = 0;
+    } else if (currentX < -20) {
+      hintReject.style.opacity = progress;
+      hintAdopt.style.opacity = 0;
+    } else {
+      hintAdopt.style.opacity = 0;
+      hintReject.style.opacity = 0;
+    }
+  }
+
+  function onEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+    card.classList.remove('dragging');
+
+    // Hide hints
+    hintAdopt.style.opacity = 0;
+    hintReject.style.opacity = 0;
+
+    if (Math.abs(currentX) >= SWIPE_THRESHOLD) {
+      // Swipe committed — trigger animation from current drag position
+      const action = currentX > 0 ? 'adopt' : 'reject';
+      const dampened = currentX * 0.85;
+      play(phoneId, action, dampened);
+    } else {
+      // Snap back to center
+      card.classList.add('returning');
+      card.style.transform = 'translateX(0) rotate(0deg)';
+      setTimeout(() => card.classList.remove('returning'), 350);
+    }
+
+    currentX = 0;
+  }
+
+  // Mouse events
+  card.addEventListener('mousedown', onStart);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onEnd);
+
+  // Touch events
+  card.addEventListener('touchstart', onStart, { passive: true });
+  window.addEventListener('touchmove', onMove, { passive: true });
+  window.addEventListener('touchend', onEnd);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Initialize swipe on both phones
+   ══════════════════════════════════════════════════════════════ */
+
+initSwipe('phone-dog');
+initSwipe('phone-cat');
+</script>
+
+</body>
+</html>

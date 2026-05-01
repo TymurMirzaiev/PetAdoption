@@ -42,40 +42,44 @@ public class DevDataSeeder
     {
         _logger.LogInformation("Checking if dev data needs to be seeded...");
 
-        // Idempotency check: if platform admin exists, skip seeding
+        // Idempotency check: if platform admin exists, the org/admin block is done.
         var existingAdmin = await _userRepository.GetByEmailAsync(
             Email.From("platform-admin@petadoption.local"));
-        if (existingAdmin is not null)
+
+        if (existingAdmin is null)
         {
-            _logger.LogInformation("Dev data already exists. Skipping seed.");
-            return;
+            _logger.LogInformation("Seeding platform admin and organizations...");
+
+            await SeedPlatformAdminAsync();
+
+            await SeedOrganizationAsync(
+                HappyPawsOrgId,
+                "Happy Paws Shelter",
+                "happy-paws",
+                "A no-kill shelter dedicated to finding forever homes");
+
+            await SeedOrganizationAsync(
+                CityRescueOrgId,
+                "City Animal Rescue",
+                "city-rescue",
+                "Urban rescue center specializing in abandoned pets");
+
+            await SeedOrganizationAsync(
+                CountrysideHavenOrgId,
+                "Countryside Haven",
+                "countryside-haven",
+                "Rural sanctuary for all animals");
+        }
+        else
+        {
+            _logger.LogInformation("Platform admin and organizations already seeded. Skipping.");
         }
 
-        _logger.LogInformation("Seeding dev data...");
+        // Seed simple non-org user separately so it can be added to existing dev databases
+        // without dropping data.
+        await SeedSimpleUserAsync();
 
-        // 1. Seed platform admin
-        await SeedPlatformAdminAsync();
-
-        // 2. Seed organizations and their members
-        await SeedOrganizationAsync(
-            HappyPawsOrgId,
-            "Happy Paws Shelter",
-            "happy-paws",
-            "A no-kill shelter dedicated to finding forever homes");
-
-        await SeedOrganizationAsync(
-            CityRescueOrgId,
-            "City Animal Rescue",
-            "city-rescue",
-            "Urban rescue center specializing in abandoned pets");
-
-        await SeedOrganizationAsync(
-            CountrysideHavenOrgId,
-            "Countryside Haven",
-            "countryside-haven",
-            "Rural sanctuary for all animals");
-
-        _logger.LogInformation("Dev data seeded successfully.");
+        _logger.LogInformation("Dev data seed pass complete.");
     }
 
     private async Task SeedPlatformAdminAsync()
@@ -89,6 +93,30 @@ public class DevDataSeeder
 
         await _userRepository.SaveAsync(admin);
         _logger.LogInformation("Seeded platform admin: platform-admin@petadoption.local");
+    }
+
+    /// <summary>
+    /// Seeds a plain non-org user for testing the browse/swipe/favorite/adopt flows
+    /// from the perspective of an end user (no org admin/moderator powers).
+    /// </summary>
+    private async Task SeedSimpleUserAsync()
+    {
+        var email = Email.From("simple-user@petadoption.local");
+        var existing = await _userRepository.GetByEmailAsync(email);
+        if (existing is not null)
+        {
+            _logger.LogInformation("Simple user already exists. Skipping.");
+            return;
+        }
+
+        var hashedPassword = _passwordHasher.HashPassword("User123!");
+        var user = User.Register(
+            "simple-user@petadoption.local",
+            "Simple User",
+            hashedPassword);
+
+        await _userRepository.SaveAsync(user);
+        _logger.LogInformation("Seeded simple user: simple-user@petadoption.local");
     }
 
     private async Task SeedOrganizationAsync(Guid orgId, string name, string slug, string description)

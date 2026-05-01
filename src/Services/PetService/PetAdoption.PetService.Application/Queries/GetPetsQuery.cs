@@ -9,7 +9,10 @@ public record GetPetsQuery(
     PetStatus? Status,
     Guid? PetTypeId,
     int Skip = 0,
-    int Take = 20) : IRequest<GetPetsResponse>;
+    int Take = 20,
+    int? MinAgeMonths = null,
+    int? MaxAgeMonths = null,
+    string? BreedSearch = null) : IRequest<GetPetsResponse>;
 
 public record GetPetsResponse(
     List<PetListItemDto> Pets,
@@ -34,7 +37,10 @@ public class GetPetsQueryHandler : IRequestHandler<GetPetsQuery, GetPetsResponse
             request.Status,
             request.PetTypeId,
             request.Skip,
-            request.Take);
+            request.Take,
+            request.MinAgeMonths,
+            request.MaxAgeMonths,
+            request.BreedSearch);
 
         var petTypes = await _petTypeRepository.GetAllAsync(cancellationToken);
         var petTypeDict = petTypes.ToDictionary(pt => pt.Id, pt => pt.Name);

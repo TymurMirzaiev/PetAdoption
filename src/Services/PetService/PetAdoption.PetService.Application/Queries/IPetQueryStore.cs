@@ -14,5 +14,8 @@ public interface IPetQueryStore
         PetStatus? status,
         Guid? petTypeId,
         int skip,
-        int take);
+        int take,
+        int? minAgeMonths = null,
+        int? maxAgeMonths = null,
+        string? breedSearch = null);
 }

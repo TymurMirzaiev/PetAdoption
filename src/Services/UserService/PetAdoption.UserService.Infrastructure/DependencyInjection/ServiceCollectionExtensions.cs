@@ -5,8 +5,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.Commands;
+using PetAdoption.UserService.Application.Commands.Organizations;
 using PetAdoption.UserService.Application.DTOs;
 using PetAdoption.UserService.Application.Queries;
+using PetAdoption.UserService.Application.Queries.Organizations;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Infrastructure.BackgroundServices;
 using PetAdoption.UserService.Infrastructure.Messaging;
@@ -71,6 +73,20 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQueryHandler<GetUserByIdQuery, UserDto>, GetUserByIdQueryHandler>();
         services.AddScoped<IQueryHandler<GetUserByEmailQuery, UserDto>, GetUserByEmailQueryHandler>();
         services.AddScoped<IQueryHandler<GetUsersQuery, GetUsersResponse>, GetUsersQueryHandler>();
+
+        // Organization Command Handlers
+        services.AddScoped<ICommandHandler<CreateOrganizationCommand, CreateOrganizationResponse>, CreateOrganizationCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateOrganizationCommand, UpdateOrganizationResponse>, UpdateOrganizationCommandHandler>();
+        services.AddScoped<ICommandHandler<DeactivateOrganizationCommand, DeactivateOrganizationResponse>, DeactivateOrganizationCommandHandler>();
+        services.AddScoped<ICommandHandler<ActivateOrganizationCommand, ActivateOrganizationResponse>, ActivateOrganizationCommandHandler>();
+        services.AddScoped<ICommandHandler<AddOrganizationMemberCommand, AddOrganizationMemberResponse>, AddOrganizationMemberCommandHandler>();
+        services.AddScoped<ICommandHandler<RemoveOrganizationMemberCommand, RemoveOrganizationMemberResponse>, RemoveOrganizationMemberCommandHandler>();
+
+        // Organization Query Handlers
+        services.AddScoped<IQueryHandler<GetOrganizationsQuery, GetOrganizationsResponse>, GetOrganizationsQueryHandler>();
+        services.AddScoped<IQueryHandler<GetOrganizationByIdQuery, OrganizationDetailResponse?>, GetOrganizationByIdQueryHandler>();
+        services.AddScoped<IQueryHandler<GetOrganizationMembersQuery, GetOrganizationMembersResponse>, GetOrganizationMembersQueryHandler>();
+        services.AddScoped<IQueryHandler<GetMyOrganizationsQuery, GetMyOrganizationsResponse>, GetMyOrganizationsQueryHandler>();
 
         return services;
     }

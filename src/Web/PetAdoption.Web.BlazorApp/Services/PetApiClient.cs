@@ -104,4 +104,26 @@ public class PetApiClient
 
     public Task<HttpResponseMessage> DeleteAnnouncementAsync(Guid id) =>
         _http.DeleteAsync($"api/announcements/{id}");
+
+    public Task<HttpResponseMessage> TrackInteractionAsync(Guid petId, string type) =>
+        _http.PostAsJsonAsync($"api/pets/{petId}/interactions", new { Type = type });
+
+    public Task<HttpResponseMessage> TrackBatchImpressionsAsync(IEnumerable<Guid> petIds) =>
+        _http.PostAsJsonAsync("api/pets/interactions/batch", new { PetIds = petIds });
+
+    public async Task<OrgMetricsResponse?> GetOrgMetricsAsync(
+        Guid orgId, DateTime? from = null, DateTime? to = null,
+        string? sortBy = null, bool descending = true)
+    {
+        var query = $"api/organizations/{orgId}/metrics?descending={descending}";
+        if (from.HasValue) query += $"&from={from.Value:yyyy-MM-ddTHH:mm:ss}";
+        if (to.HasValue) query += $"&to={to.Value:yyyy-MM-ddTHH:mm:ss}";
+        if (sortBy is not null) query += $"&sortBy={sortBy}";
+        return await _http.GetFromJsonAsync<OrgMetricsResponse>(query);
+    }
+
+    public async Task<PetMetricsDetailResponse?> GetPetMetricsAsync(Guid petId)
+    {
+        return await _http.GetFromJsonAsync<PetMetricsDetailResponse>($"api/pets/{petId}/metrics");
+    }
 }

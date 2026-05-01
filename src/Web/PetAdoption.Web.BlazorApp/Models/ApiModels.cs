@@ -32,3 +32,10 @@ public record UserListItem(string Id, string Email, string FullName, string Stat
 public record UsersResponse(IEnumerable<UserListItem> Users, long TotalCount);
 
 public record ApiError(string ErrorCode, string Message);
+
+public record PetMetricsSummaryItem(
+    Guid PetId, string PetName, string PetType,
+    long ImpressionCount, long SwipeCount, long RejectionCount,
+    long FavoriteCount, double SwipeRate, double RejectionRate);
+public record OrgMetricsResponse(IEnumerable<PetMetricsSummaryItem> Metrics);
+public record PetMetricsDetailResponse(PetMetricsSummaryItem Metrics);

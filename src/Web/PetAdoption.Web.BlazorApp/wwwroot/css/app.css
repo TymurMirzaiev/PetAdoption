@@ -127,3 +127,43 @@ html, body {
     60%  { opacity: 0.5; transform: translateY(-18px) scale(1); }
     100% { opacity: 0; transform: translateY(-30px) scale(0.8); }
 }
+
+/* ──────────────────────────────────────────────
+   Onboarding Dialog
+   ────────────────────────────────────────────── */
+
+.onboarding-container {
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.onboarding-step {
+    animation: onboarding-fade-in 0.35s ease-out;
+}
+
+.onboarding-step-enter {
+    animation: onboarding-fade-in 0.35s ease-out;
+}
+
+@keyframes onboarding-fade-in {
+    0%   { opacity: 0; transform: translateX(20px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Step indicator dots */
+
+.onboarding-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.onboarding-dot--active {
+    background: var(--mud-palette-primary);
+    transform: scale(1.3);
+    box-shadow: 0 0 8px var(--mud-palette-primary);
+}

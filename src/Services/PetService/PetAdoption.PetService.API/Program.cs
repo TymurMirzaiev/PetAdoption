@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PetAdoption.PetService.API.Authorization;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.DependencyInjection;
@@ -117,6 +118,7 @@ builder.Services.AddAuthorization(options =>
 
 // Register seeder
 builder.Services.AddTransient<PetTypeSeeder>();
+builder.Services.AddScoped<OrgAuthorizationFilter>();
 
 // Dev data seeder (development only)
 if (builder.Environment.IsDevelopment())

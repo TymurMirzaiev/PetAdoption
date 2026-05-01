@@ -89,6 +89,7 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.InvalidPetBreed => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidPetAge => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidPetDescription => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.InvalidPetTag => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidAnnouncementTitle => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidAnnouncementBody => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidAnnouncementDates => HttpStatusCode.BadRequest,

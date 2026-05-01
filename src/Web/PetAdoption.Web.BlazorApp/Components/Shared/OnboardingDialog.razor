@@ -1,0 +1,209 @@
+<MudDialog>
+    <DialogContent>
+        <div class="onboarding-container">
+            @switch (_step)
+            {
+                case 0:
+                    <div class="onboarding-step @(_animating ? "onboarding-step-enter" : "")">
+                        <div class="d-flex justify-center mb-4">
+                            <MudIcon Icon="@Icons.Material.Filled.Pets" Size="Size.Large" Color="Color.Primary"
+                                     Style="font-size: 4rem;" />
+                        </div>
+                        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-2" Color="Color.Primary">
+                            Welcome to PetAdoption!
+                        </MudText>
+                        <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary" Class="mb-4">
+                            Every pet deserves a loving home. Let's find yours!
+                        </MudText>
+                        <MudText Typo="Typo.body2" Align="Align.Center">
+                            We'll show you how everything works in just a few steps.
+                        </MudText>
+                    </div>
+                    break;
+
+                case 1:
+                    <div class="onboarding-step @(_animating ? "onboarding-step-enter" : "")">
+                        <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4" Color="Color.Primary">
+                            How It Works
+                        </MudText>
+
+                        <MudPaper Class="pa-4 mb-3" Elevation="0"
+                                  Style="background: rgba(76, 175, 80, 0.08); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px;">
+                            <div class="d-flex align-center gap-3">
+                                <MudIcon Icon="@Icons.Material.Filled.SwipeRight" Color="Color.Success"
+                                         Style="font-size: 2.5rem;" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Swipe Right</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Love it! Add this pet to your favorites.
+                                    </MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4 mb-3" Elevation="0"
+                                  Style="background: rgba(244, 67, 54, 0.08); border: 1px solid rgba(244, 67, 54, 0.3); border-radius: 12px;">
+                            <div class="d-flex align-center gap-3">
+                                <MudIcon Icon="@Icons.Material.Filled.SwipeLeft" Color="Color.Error"
+                                         Style="font-size: 2.5rem;" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Swipe Left</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Not for me right now. Skip to the next pet.
+                                    </MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+
+                        <MudPaper Class="pa-4" Elevation="0"
+                                  Style="background: rgba(33, 150, 243, 0.08); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: 12px;">
+                            <div class="d-flex align-center gap-3">
+                                <MudIcon Icon="@Icons.Material.Filled.TouchApp" Color="Color.Info"
+                                         Style="font-size: 2.5rem;" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Tap the Card</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Curious? Tap to see more details about a pet.
+                                    </MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </div>
+                    break;
+
+                case 2:
+                    <div class="onboarding-step @(_animating ? "onboarding-step-enter" : "")">
+                        <div class="d-flex justify-center mb-4">
+                            <MudIcon Icon="@Icons.Material.Filled.FavoriteBorder" Color="Color.Error"
+                                     Style="font-size: 3.5rem;" />
+                        </div>
+                        <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4" Color="Color.Primary">
+                            Your Favorites
+                        </MudText>
+                        <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-3">
+                            Every pet you swipe right on is saved to your
+                            <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" />
+                            <strong>Favorites</strong> list.
+                        </MudText>
+                        <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-3">
+                            Visit your favorites anytime from the top menu. When you've found the one,
+                            you can <strong>reserve</strong> a pet and begin the adoption process.
+                        </MudText>
+                        <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                            Take your time -- there's no rush. The right match is worth the wait.
+                        </MudText>
+                    </div>
+                    break;
+
+                case 3:
+                    <div class="onboarding-step @(_animating ? "onboarding-step-enter" : "")">
+                        <div class="d-flex justify-center mb-4">
+                            <MudIcon Icon="@Icons.Material.Filled.VolunteerActivism" Color="Color.Warning"
+                                     Style="font-size: 3.5rem;" />
+                        </div>
+                        <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-3" Color="Color.Primary">
+                            A Promise, Not Just a Match
+                        </MudText>
+                        <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-3">
+                            Behind every card is a real animal with a beating heart, a wagging tail,
+                            or a gentle purr -- waiting for someone to call their own.
+                        </MudText>
+                        <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-3">
+                            Adopting a pet is one of the most beautiful things you can do.
+                            But it's also a promise -- a promise of morning walks and midnight comfort,
+                            of vet visits and belly rubs, of patience on hard days and joy on all the rest.
+                        </MudText>
+                        <MudText Typo="Typo.body1" Align="Align.Center" Class="mb-4" Style="font-style: italic;">
+                            They will love you unconditionally. They will depend on you for everything.
+                            And in return, they will fill your life with a kind of warmth that nothing else can.
+                        </MudText>
+
+                        <MudPaper Class="pa-4" Elevation="0"
+                                  Style="background: rgba(255, 167, 38, 0.08); border: 1px solid rgba(255, 167, 38, 0.3); border-radius: 12px;">
+                            <div class="d-flex align-center gap-2">
+                                <MudCheckBox @bind-Value="_acceptedResponsibility" Color="Color.Warning" />
+                                <MudText Typo="Typo.body2">
+                                    I understand that adoption is a lifelong commitment, and I'm here with good intentions.
+                                </MudText>
+                            </div>
+                        </MudPaper>
+                    </div>
+                    break;
+            }
+
+            @* Step indicator dots *@
+            <div class="d-flex justify-center gap-2 mt-4">
+                @for (var i = 0; i < TotalSteps; i++)
+                {
+                    var stepIndex = i;
+                    <div class="onboarding-dot @(stepIndex == _step ? "onboarding-dot--active" : "")" />
+                }
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <div class="d-flex justify-space-between flex-grow-1 px-2">
+            @if (_step > 0)
+            {
+                <MudButton OnClick="PreviousStep" Variant="Variant.Text">
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" Class="mr-1" /> Back
+                </MudButton>
+            }
+            else
+            {
+                <MudSpacer />
+            }
+
+            @if (_step < TotalSteps - 1)
+            {
+                <MudButton OnClick="NextStep" Variant="Variant.Filled" Color="Color.Primary">
+                    Next <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="ml-1" />
+                </MudButton>
+            }
+            else
+            {
+                <MudButton OnClick="Complete" Variant="Variant.Filled" Color="Color.Success"
+                           Disabled="@(!_acceptedResponsibility)">
+                    <MudIcon Icon="@Icons.Material.Filled.Pets" Size="Size.Small" Class="mr-1" />
+                    Start Exploring!
+                </MudButton>
+            }
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private int _step;
+    private bool _animating;
+    private bool _acceptedResponsibility;
+    private const int TotalSteps = 4;
+
+    private async Task NextStep()
+    {
+        if (_step >= TotalSteps - 1) return;
+        _animating = true;
+        _step++;
+        StateHasChanged();
+        await Task.Delay(50);
+        _animating = false;
+        StateHasChanged();
+    }
+
+    private async Task PreviousStep()
+    {
+        if (_step <= 0) return;
+        _animating = true;
+        _step--;
+        StateHasChanged();
+        await Task.Delay(50);
+        _animating = false;
+        StateHasChanged();
+    }
+
+    private void Complete()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -48,6 +48,7 @@ builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
 builder.Services.AddScoped<IPetTypeRepository, PetTypeRepository>();
 builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 builder.Services.AddScoped<IFavoriteQueryStore, FavoriteQueryStore>();
+builder.Services.AddScoped<IPetSkipRepository, PetSkipRepository>();
 builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<IAnnouncementQueryStore, AnnouncementQueryStore>();
 builder.Services.AddScoped<IAdoptionRequestRepository, AdoptionRequestRepository>();

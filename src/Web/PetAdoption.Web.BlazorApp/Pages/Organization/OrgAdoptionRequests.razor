@@ -1,0 +1,155 @@
+@page "/organization/{OrganizationId:guid}/adoption-requests"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject ISnackbar Snackbar
+
+<PageTitle>Adoption Requests</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Adoption Requests</MudText>
+
+    <MudSelect T="string" Label="Filter by Status" @bind-Value="_statusFilter" @bind-Value:after="LoadRequests" Class="mb-4" Clearable="true">
+        <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+        <MudSelectItem Value="@("Approved")">Approved</MudSelectItem>
+        <MudSelectItem Value="@("Rejected")">Rejected</MudSelectItem>
+        <MudSelectItem Value="@("Cancelled")">Cancelled</MudSelectItem>
+    </MudSelect>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (!_requests.Any())
+    {
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Align="Align.Center" Class="mt-8">
+            No adoption requests found.
+        </MudText>
+    }
+    else
+    {
+        <MudTable Items="_requests" Hover="true" Elevation="3">
+            <HeaderContent>
+                <MudTh>Pet</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Message</MudTh>
+                <MudTh>Submitted</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.PetName</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+                </MudTd>
+                <MudTd>@(context.Message ?? "-")</MudTd>
+                <MudTd>@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
+                <MudTd>
+                    @if (context.Status == "Pending")
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
+                            OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
+                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                            OnClick="@(() => OpenRejectDialog(context.Id, context.PetName))">Reject</MudButton>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+    <MudDialog @bind-Visible="_rejectDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Reject Request for @_rejectPetName</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudTextField @bind-Value="_rejectReason" Label="Rejection reason" Lines="3" Variant="Variant.Outlined" Required="true" />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _rejectDialogVisible = false)">Cancel</MudButton>
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="SubmitReject"
+                Disabled="@string.IsNullOrWhiteSpace(_rejectReason)">Reject</MudButton>
+        </DialogActions>
+    </MudDialog>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid OrganizationId { get; set; }
+
+    private List<OrgAdoptionRequestItem> _requests = [];
+    private bool _loading = true;
+    private string? _statusFilter;
+
+    private bool _rejectDialogVisible;
+    private Guid _rejectRequestId;
+    private string _rejectPetName = "";
+    private string _rejectReason = "";
+
+    protected override async Task OnInitializedAsync() => await LoadRequests();
+
+    private async Task LoadRequests()
+    {
+        _loading = true;
+        try
+        {
+            var response = await PetApi.GetOrgAdoptionRequestsAsync(OrganizationId, _statusFilter, take: 50);
+            _requests = response?.Items?.ToList() ?? [];
+        }
+        catch { Snackbar.Add("Failed to load adoption requests", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task ApproveRequest(Guid requestId)
+    {
+        try
+        {
+            var response = await PetApi.ApproveAdoptionRequestAsync(requestId);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Request approved! Pet has been reserved.", Severity.Success);
+                await LoadRequests();
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to approve", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+    }
+
+    private void OpenRejectDialog(Guid requestId, string petName)
+    {
+        _rejectRequestId = requestId;
+        _rejectPetName = petName;
+        _rejectReason = "";
+        _rejectDialogVisible = true;
+    }
+
+    private async Task SubmitReject()
+    {
+        try
+        {
+            var response = await PetApi.RejectAdoptionRequestAsync(_rejectRequestId, _rejectReason);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Request rejected", Severity.Info);
+                _rejectDialogVisible = false;
+                await LoadRequests();
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to reject", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "Approved" => Color.Success,
+        "Rejected" => Color.Error,
+        "Cancelled" => Color.Default,
+        _ => Color.Default
+    };
+}

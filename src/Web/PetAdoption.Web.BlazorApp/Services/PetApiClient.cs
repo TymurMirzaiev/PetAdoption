@@ -104,4 +104,27 @@ public class PetApiClient
 
     public Task<HttpResponseMessage> DeleteAnnouncementAsync(Guid id) =>
         _http.DeleteAsync($"api/announcements/{id}");
+
+    public Task<HttpResponseMessage> CreateAdoptionRequestAsync(Guid petId, string? message = null) =>
+        _http.PostAsJsonAsync("api/adoption-requests", new { PetId = petId, Message = message });
+
+    public async Task<AdoptionRequestsResponse?> GetMyAdoptionRequestsAsync(int skip = 0, int take = 20) =>
+        await _http.GetFromJsonAsync<AdoptionRequestsResponse>($"api/adoption-requests/mine?skip={skip}&take={take}");
+
+    public async Task<OrgAdoptionRequestsResponse?> GetOrgAdoptionRequestsAsync(
+        Guid organizationId, string? status = null, int skip = 0, int take = 20)
+    {
+        var url = $"api/adoption-requests/organization/{organizationId}?skip={skip}&take={take}";
+        if (status is not null) url += $"&status={status}";
+        return await _http.GetFromJsonAsync<OrgAdoptionRequestsResponse>(url);
+    }
+
+    public Task<HttpResponseMessage> ApproveAdoptionRequestAsync(Guid requestId) =>
+        _http.PostAsync($"api/adoption-requests/{requestId}/approve", null);
+
+    public Task<HttpResponseMessage> RejectAdoptionRequestAsync(Guid requestId, string reason) =>
+        _http.PostAsJsonAsync($"api/adoption-requests/{requestId}/reject", new { Reason = reason });
+
+    public Task<HttpResponseMessage> CancelAdoptionRequestAsync(Guid requestId) =>
+        _http.PostAsync($"api/adoption-requests/{requestId}/cancel", null);
 }

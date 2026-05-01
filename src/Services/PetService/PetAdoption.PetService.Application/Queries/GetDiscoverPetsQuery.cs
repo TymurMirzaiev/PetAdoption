@@ -9,7 +9,8 @@ public record GetDiscoverPetsQuery(
     Guid? PetTypeId,
     int? MinAgeMonths,
     int? MaxAgeMonths,
-    int Take = 10) : IRequest<GetDiscoverPetsResponse>;
+    int Take = 10,
+    string? BreedSearch = null) : IRequest<GetDiscoverPetsResponse>;
 
 public record GetDiscoverPetsResponse(
     List<PetListItemDto> Pets,
@@ -51,7 +52,8 @@ public class GetDiscoverPetsQueryHandler : IRequestHandler<GetDiscoverPetsQuery,
             request.PetTypeId,
             request.MinAgeMonths,
             request.MaxAgeMonths,
-            request.Take + 1);
+            request.Take + 1,
+            request.BreedSearch);
 
         var petList = pets.ToList();
         var hasMore = petList.Count > request.Take;

@@ -29,8 +29,29 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
         _userClient = _factory.CreateClient();
         _userClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer", PetServiceWebAppFactory.GenerateTestToken(userId: TestUserId, role: "Admin"));
+            "Bearer", PetServiceWebAppFactory.GenerateTestToken(
+                userId: TestUserId,
+                role: "Admin",
+                additionalClaims: new Dictionary<string, string>
+                {
+                    { "organizationId", TestOrganizationId.ToString() },
+                    { "orgRole", "Admin" }
+                }));
         await Task.CompletedTask;
+    }
+
+    private HttpClient CreateClientWithOrg(Guid? orgId = null, string? orgRole = "Admin", string? userId = null)
+    {
+        var client = _factory.CreateClient();
+        var claims = new Dictionary<string, string>();
+        if (orgId is not null) claims["organizationId"] = orgId.Value.ToString();
+        if (orgRole is not null) claims["orgRole"] = orgRole;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", PetServiceWebAppFactory.GenerateTestToken(
+                userId: userId ?? Guid.NewGuid().ToString(),
+                role: "Admin",
+                additionalClaims: claims.Count > 0 ? claims : null));
+        return client;
     }
 
     public async Task DisposeAsync()
@@ -179,15 +200,14 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     public async Task GetOrgAdoptionRequests_FilteredByStatus_ReturnsMatchingItems()
     {
         // Arrange
-        var orgId = Guid.NewGuid();
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("OrgPet", petTypeId, orgId);
+        var petId = await SeedPetWithOrgAsync("OrgPet", petTypeId, TestOrganizationId);
         await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Hi" });
 
         // Act
         var response = await _userClient.GetFromJsonAsync<OrgAdoptionRequestListDto>(
-            $"/api/adoption-requests/organization/{orgId}?status=Pending");
+            $"/api/adoption-requests/organization/{TestOrganizationId}?status=Pending");
 
         // Assert
         response.Should().NotBeNull();
@@ -328,6 +348,121 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ApproveAdoptionRequest_WithDifferentOrg_ReturnsForbidden()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await SeedPetWithOrgAsync("DiffOrgApprove", petTypeId, TestOrganizationId);
+        var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
+            new { PetId = petId, Message = "Will be denied at approval" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
+
+        using var otherOrgClient = CreateClientWithOrg(orgId: Guid.NewGuid(), orgRole: "Admin");
+
+        // Act
+        var response = await otherOrgClient.PostAsync($"/api/adoption-requests/{created!.Id}/approve", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ApproveAdoptionRequest_WithoutOrgClaims_ReturnsForbidden()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await SeedPetWithOrgAsync("NoOrgClaims", petTypeId, TestOrganizationId);
+        var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
+            new { PetId = petId, Message = "No claims approve" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
+
+        using var noClaimsClient = CreateClientWithOrg(orgId: null, orgRole: null);
+
+        // Act
+        var response = await noClaimsClient.PostAsync($"/api/adoption-requests/{created!.Id}/approve", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task RejectAdoptionRequest_WithDifferentOrg_ReturnsForbidden()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await SeedPetWithOrgAsync("DiffOrgReject", petTypeId, TestOrganizationId);
+        var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
+            new { PetId = petId, Message = "Will be denied at reject" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
+
+        using var otherOrgClient = CreateClientWithOrg(orgId: Guid.NewGuid(), orgRole: "Admin");
+
+        // Act
+        var response = await otherOrgClient.PostAsJsonAsync(
+            $"/api/adoption-requests/{created!.Id}/reject",
+            new { Reason = "no" });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetOrgAdoptionRequests_WithDifferentOrg_ReturnsForbidden()
+    {
+        // Arrange
+        using var otherOrgClient = CreateClientWithOrg(orgId: Guid.NewGuid(), orgRole: "Admin");
+
+        // Act
+        var response = await otherOrgClient.GetAsync(
+            $"/api/adoption-requests/organization/{TestOrganizationId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Outbox / Domain events
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ApproveAdoptionRequest_WritesApprovedEventToOutbox()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await SeedPetWithOrgAsync("OutboxApprove", petTypeId, TestOrganizationId);
+        var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
+            new { PetId = petId, Message = "Outbox test" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
+
+        // Act
+        var response = await _userClient.PostAsync($"/api/adoption-requests/{created!.Id}/approve", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await using var db = _factory.CreateDbContext();
+        var approvedEvent = db.OutboxEvents
+            .Where(e => e.EventType == nameof(AdoptionRequestApprovedEvent))
+            .ToList()
+            .FirstOrDefault(e => e.EventData.Contains(created.Id.ToString()));
+        approvedEvent.Should().NotBeNull("an AdoptionRequestApprovedEvent should be written to the outbox");
+    }
+
+    [Fact]
+    public async Task GetOrgAdoptionRequests_WithoutOrgClaims_ReturnsForbidden()
+    {
+        // Arrange
+        using var noClaimsClient = CreateClientWithOrg(orgId: null, orgRole: null);
+
+        // Act
+        var response = await noClaimsClient.GetAsync(
+            $"/api/adoption-requests/organization/{TestOrganizationId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     // ──────────────────────────────────────────────────────────────

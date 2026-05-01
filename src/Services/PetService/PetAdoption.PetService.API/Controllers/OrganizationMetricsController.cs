@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PetAdoption.PetService.API.Authorization;
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.Queries;
 
@@ -17,7 +18,7 @@ public class OrganizationMetricsController : ControllerBase
     }
 
     [HttpGet("api/organizations/{orgId:guid}/metrics")]
-    [Authorize(Policy = "AdminOnly")] // TODO: Replace with org-level auth once Plan 4 roles exist
+    [ServiceFilter(typeof(OrgAuthorizationFilter))]
     public async Task<IActionResult> GetOrgMetrics(
         Guid orgId,
         [FromQuery] DateTime? from = null,
@@ -35,7 +36,9 @@ public class OrganizationMetricsController : ControllerBase
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null)
     {
-        var result = await _mediator.Send(new GetPetMetricsQuery(petId, from, to));
+        Guid? callerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var id) ? id : null;
+        var callerOrgRole = User.FindFirst("orgRole")?.Value;
+        var result = await _mediator.Send(new GetPetMetricsQuery(petId, from, to, callerOrgId, callerOrgRole));
         return Ok(result);
     }
 }

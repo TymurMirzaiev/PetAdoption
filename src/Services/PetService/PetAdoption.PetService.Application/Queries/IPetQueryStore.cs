@@ -30,5 +30,6 @@ public interface IPetQueryStore
         Guid? petTypeId,
         int? minAgeMonths,
         int? maxAgeMonths,
-        int take);
+        int take,
+        string? breedSearch = null);
 }

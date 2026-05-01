@@ -167,6 +167,90 @@ public class AdoptionRequestTests
     }
 
     // ──────────────────────────────────────────────────────────────
+    // Domain Events
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Create_ShouldRaiseAdoptionRequestCreatedEvent()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var petId = Guid.NewGuid();
+        var orgId = Guid.NewGuid();
+
+        // Act
+        var request = AdoptionRequest.Create(userId, petId, orgId);
+
+        // Assert
+        request.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<AdoptionRequestCreatedEvent>()
+            .Which.Should().Match<AdoptionRequestCreatedEvent>(e =>
+                e.AggregateId == request.Id &&
+                e.UserId == userId &&
+                e.PetId == petId &&
+                e.OrganizationId == orgId);
+    }
+
+    [Fact]
+    public void Approve_ShouldRaiseAdoptionRequestApprovedEvent()
+    {
+        // Arrange
+        var request = AdoptionRequest.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        request.ClearDomainEvents();
+
+        // Act
+        request.Approve();
+
+        // Assert
+        request.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<AdoptionRequestApprovedEvent>();
+    }
+
+    [Fact]
+    public void Reject_ShouldRaiseAdoptionRequestRejectedEventWithReason()
+    {
+        // Arrange
+        var request = AdoptionRequest.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        request.ClearDomainEvents();
+
+        // Act
+        request.Reject("Not a fit");
+
+        // Assert
+        var raised = request.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<AdoptionRequestRejectedEvent>().Subject;
+        raised.Reason.Should().Be("Not a fit");
+    }
+
+    [Fact]
+    public void Cancel_ShouldRaiseAdoptionRequestCancelledEvent()
+    {
+        // Arrange
+        var request = AdoptionRequest.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        request.ClearDomainEvents();
+
+        // Act
+        request.Cancel();
+
+        // Assert
+        request.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<AdoptionRequestCancelledEvent>();
+    }
+
+    [Fact]
+    public void ClearDomainEvents_ShouldEmptyTheList()
+    {
+        // Arrange
+        var request = AdoptionRequest.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        // Act
+        request.ClearDomainEvents();
+
+        // Assert
+        request.DomainEvents.Should().BeEmpty();
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────
 

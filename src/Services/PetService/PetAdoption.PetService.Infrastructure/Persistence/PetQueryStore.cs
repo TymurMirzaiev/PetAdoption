@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain;
@@ -60,17 +62,7 @@ public class PetQueryStore : IPetQueryStore
             query = query.Where(p => p.Breed != null && EF.Functions.Like((string)p.Breed, $"%{trimmed}%"));
         }
 
-        // Tag filtering in memory (JSON columns don't support LINQ Contains in EF Core SQL Server)
-        if (tags is not null)
-        {
-            var tagList = tags.Select(t => t.Trim().ToLowerInvariant()).ToList();
-            if (tagList.Count > 0)
-            {
-                var allPets = await query.OrderBy(p => p.Name).ToListAsync();
-                var filtered = allPets.Where(p => tagList.All(tag => p.Tags.Any(t => t.Value == tag))).ToList();
-                return (filtered.Skip(skip).Take(take), filtered.Count);
-            }
-        }
+        query = await ApplyTagFilterAsync(query, tags);
 
         var total = await query.LongCountAsync();
         var pets = await query.OrderBy(p => p.Name).Skip(skip).Take(take).ToListAsync();
@@ -83,7 +75,8 @@ public class PetQueryStore : IPetQueryStore
         Guid? petTypeId,
         int? minAgeMonths,
         int? maxAgeMonths,
-        int take)
+        int take,
+        string? breedSearch = null)
     {
         var query = _db.Pets.AsNoTracking()
             .Where(p => p.Status == PetStatus.Available);
@@ -106,8 +99,15 @@ public class PetQueryStore : IPetQueryStore
             query = query.Where(p => p.Age != null && p.Age <= maxAge);
         }
 
+        if (!string.IsNullOrWhiteSpace(breedSearch))
+        {
+            var trimmed = breedSearch.Trim();
+            query = query.Where(p => p.Breed != null && EF.Functions.Like((string)p.Breed, $"%{trimmed}%"));
+        }
+
         var total = await query.LongCountAsync();
-        var pets = await query.Take(take).ToListAsync();
+        // Order by Id (Guid.NewGuid is uniformly distributed) for a deterministic-yet-varied feed.
+        var pets = await query.OrderBy(p => p.Id).Take(take).ToListAsync();
 
         return (pets, total);
     }
@@ -125,20 +125,39 @@ public class PetQueryStore : IPetQueryStore
         if (status.HasValue)
             query = query.Where(p => p.Status == status.Value);
 
-        if (tags is not null)
-        {
-            var tagList = tags.Select(t => t.Trim().ToLowerInvariant()).ToList();
-            if (tagList.Count > 0)
-            {
-                var allPets = await query.OrderBy(p => p.Name).ToListAsync();
-                var filtered = allPets.Where(p => tagList.All(tag => p.Tags.Any(t => t.Value == tag))).ToList();
-                return (filtered.Skip(skip).Take(take), filtered.Count);
-            }
-        }
+        query = await ApplyTagFilterAsync(query, tags);
 
         var total = await query.LongCountAsync();
         var pets = await query.OrderBy(p => p.Name).Skip(skip).Take(take).ToListAsync();
 
         return (pets, total);
+    }
+
+    /// <summary>
+    /// Pushes tag filtering down to SQL Server via OPENJSON, returning a query restricted to
+    /// pets that contain ALL specified tag values. EF Core can't translate List queries against
+    /// the JSON-converted Tags column, so we resolve matching ids in a single OPENJSON query
+    /// and chain the result back into the LINQ pipeline.
+    /// </summary>
+    private async Task<IQueryable<Pet>> ApplyTagFilterAsync(IQueryable<Pet> query, IEnumerable<string>? tags)
+    {
+        if (tags is null) return query;
+
+        var tagList = tags.Select(t => t.Trim().ToLowerInvariant()).ToList();
+        if (tagList.Count == 0) return query;
+
+        var sql = new StringBuilder("SELECT Id FROM Pets WHERE Tags IS NOT NULL");
+        var parameters = new List<SqlParameter>();
+        for (var i = 0; i < tagList.Count; i++)
+        {
+            sql.Append($" AND EXISTS (SELECT 1 FROM OPENJSON(Tags) WHERE [value] = @t{i})");
+            parameters.Add(new SqlParameter($"@t{i}", tagList[i]));
+        }
+
+        var matchingIds = await _db.Database
+            .SqlQueryRaw<Guid>(sql.ToString(), parameters.Cast<object>().ToArray())
+            .ToListAsync();
+
+        return query.Where(p => matchingIds.Contains(p.Id));
     }
 }

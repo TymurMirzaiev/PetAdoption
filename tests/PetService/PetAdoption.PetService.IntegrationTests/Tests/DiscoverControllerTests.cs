@@ -287,6 +287,57 @@ public class DiscoverControllerTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────
+    // Filter: breed
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Discover_WithBreedFilter_ReturnsOnlyMatchingBreed()
+    {
+        // Arrange
+        var typeId = await SeedPetTypeAsync(code: "breed_dog", name: "Breed Dog");
+        var goldenRequest = new CreatePetRequestBuilder()
+            .WithName($"Goldie-{Guid.NewGuid():N}").WithPetTypeId(typeId).WithBreed("Golden Retriever").Build();
+        var huskyRequest = new CreatePetRequestBuilder()
+            .WithName($"Husk-{Guid.NewGuid():N}").WithPetTypeId(typeId).WithBreed("Siberian Husky").Build();
+        await _client.PostAsJsonAsync("/api/pets", goldenRequest);
+        await _client.PostAsJsonAsync("/api/pets", huskyRequest);
+
+        // Act
+        var response = await _client.GetAsync("/api/discover?breed=Golden&take=100");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<DiscoverResponseDto>();
+        body.Should().NotBeNull();
+        body!.Pets.Should().OnlyContain(p => p.Breed != null && p.Breed.Contains("Golden"));
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Ordering
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Discover_TwoCalls_ReturnPetsInDeterministicOrder()
+    {
+        // Arrange
+        var typeId = await SeedPetTypeAsync(code: "order_dog", name: "Order Dog");
+        for (var i = 0; i < 5; i++)
+        {
+            await _client.PostAsJsonAsync("/api/pets",
+                new CreatePetRequestBuilder().WithName($"Order-{Guid.NewGuid():N}").WithPetTypeId(typeId).Build());
+        }
+
+        // Act
+        var first = await _client.GetFromJsonAsync<DiscoverResponseDto>("/api/discover?take=100");
+        var second = await _client.GetFromJsonAsync<DiscoverResponseDto>("/api/discover?take=100");
+
+        // Assert
+        first.Should().NotBeNull();
+        second.Should().NotBeNull();
+        first!.Pets.Select(p => p.Id).Should().Equal(second!.Pets.Select(p => p.Id));
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Auth
     // ──────────────────────────────────────────────────────────────
 

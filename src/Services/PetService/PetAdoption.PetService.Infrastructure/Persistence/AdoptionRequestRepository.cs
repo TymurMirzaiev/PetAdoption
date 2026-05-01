@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
@@ -27,12 +28,29 @@ public class AdoptionRequestRepository : IAdoptionRequestRepository
     public async Task AddAsync(AdoptionRequest request, CancellationToken ct = default)
     {
         await _context.AdoptionRequests.AddAsync(request, ct);
+        AddOutboxEvents(request);
         await _context.SaveChangesAsync(ct);
+        request.ClearDomainEvents();
     }
 
     public async Task UpdateAsync(AdoptionRequest request, CancellationToken ct = default)
     {
         _context.AdoptionRequests.Update(request);
+        AddOutboxEvents(request);
         await _context.SaveChangesAsync(ct);
+        request.ClearDomainEvents();
+    }
+
+    private void AddOutboxEvents(AdoptionRequest aggregate)
+    {
+        foreach (var domainEvent in aggregate.DomainEvents)
+        {
+            var eventData = JsonSerializer.Serialize(
+                domainEvent,
+                domainEvent.GetType(),
+                new JsonSerializerOptions { WriteIndented = false });
+
+            _context.OutboxEvents.Add(new OutboxEvent(domainEvent, eventData));
+        }
     }
 }

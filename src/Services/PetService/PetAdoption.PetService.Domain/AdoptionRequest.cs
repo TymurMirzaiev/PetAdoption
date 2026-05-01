@@ -1,9 +1,12 @@
 using PetAdoption.PetService.Domain.Exceptions;
+using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Domain;
 
-public class AdoptionRequest
+public class AdoptionRequest : IAggregateRoot
 {
+    private readonly List<IDomainEvent> _domainEvents = new();
+
     public Guid Id { get; private set; }
     public Guid UserId { get; private set; }
     public Guid PetId { get; private set; }
@@ -14,6 +17,8 @@ public class AdoptionRequest
     public DateTime CreatedAt { get; private set; }
     public DateTime? ReviewedAt { get; private set; }
 
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
     private AdoptionRequest() { }
 
     public static AdoptionRequest Create(Guid userId, Guid petId, Guid organizationId, string? message = null)
@@ -22,7 +27,7 @@ public class AdoptionRequest
         if (petId == Guid.Empty) throw new ArgumentException("PetId cannot be empty.", nameof(petId));
         if (organizationId == Guid.Empty) throw new ArgumentException("OrganizationId cannot be empty.", nameof(organizationId));
 
-        return new AdoptionRequest
+        var request = new AdoptionRequest
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -32,6 +37,11 @@ public class AdoptionRequest
             Message = message?.Trim(),
             CreatedAt = DateTime.UtcNow
         };
+
+        request._domainEvents.Add(new AdoptionRequestCreatedEvent(
+            request.Id, request.UserId, request.PetId, request.OrganizationId));
+
+        return request;
     }
 
     public void Approve()
@@ -50,6 +60,8 @@ public class AdoptionRequest
 
         Status = AdoptionRequestStatus.Approved;
         ReviewedAt = DateTime.UtcNow;
+
+        _domainEvents.Add(new AdoptionRequestApprovedEvent(Id, UserId, PetId, OrganizationId));
     }
 
     public void Reject(string reason)
@@ -77,6 +89,8 @@ public class AdoptionRequest
         Status = AdoptionRequestStatus.Rejected;
         RejectionReason = reason.Trim();
         ReviewedAt = DateTime.UtcNow;
+
+        _domainEvents.Add(new AdoptionRequestRejectedEvent(Id, UserId, PetId, OrganizationId, RejectionReason));
     }
 
     public void Cancel()
@@ -95,5 +109,9 @@ public class AdoptionRequest
 
         Status = AdoptionRequestStatus.Cancelled;
         ReviewedAt = DateTime.UtcNow;
+
+        _domainEvents.Add(new AdoptionRequestCancelledEvent(Id, UserId, PetId, OrganizationId));
     }
+
+    public void ClearDomainEvents() => _domainEvents.Clear();
 }

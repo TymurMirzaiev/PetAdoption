@@ -423,6 +423,34 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    // ──────────────────────────────────────────────────────────────
+    // Outbox / Domain events
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ApproveAdoptionRequest_WritesApprovedEventToOutbox()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var petId = await SeedPetWithOrgAsync("OutboxApprove", petTypeId, TestOrganizationId);
+        var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
+            new { PetId = petId, Message = "Outbox test" });
+        var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
+
+        // Act
+        var response = await _userClient.PostAsync($"/api/adoption-requests/{created!.Id}/approve", null);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await using var db = _factory.CreateDbContext();
+        var approvedEvent = db.OutboxEvents
+            .Where(e => e.EventType == nameof(AdoptionRequestApprovedEvent))
+            .ToList()
+            .FirstOrDefault(e => e.EventData.Contains(created.Id.ToString()));
+        approvedEvent.Should().NotBeNull("an AdoptionRequestApprovedEvent should be written to the outbox");
+    }
+
     [Fact]
     public async Task GetOrgAdoptionRequests_WithoutOrgClaims_ReturnsForbidden()
     {

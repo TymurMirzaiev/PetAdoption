@@ -2,7 +2,7 @@ namespace PetAdoption.PetService.Domain.ValueObjects;
 
 using PetAdoption.PetService.Domain.Exceptions;
 
-public sealed class PetAge : IEquatable<PetAge>
+public sealed class PetAge : IEquatable<PetAge>, IComparable<PetAge>
 {
     public int Months { get; }
 
@@ -19,6 +19,12 @@ public sealed class PetAge : IEquatable<PetAge>
     public override int GetHashCode() => Months.GetHashCode();
     public override string ToString() => $"{Months} months";
 
+    public int CompareTo(PetAge? other) => other is null ? 1 : Months.CompareTo(other.Months);
+
     public static bool operator ==(PetAge? left, PetAge? right) => Equals(left, right);
     public static bool operator !=(PetAge? left, PetAge? right) => !Equals(left, right);
+    public static bool operator <(PetAge? left, PetAge? right) => Comparer<PetAge>.Default.Compare(left, right) < 0;
+    public static bool operator <=(PetAge? left, PetAge? right) => Comparer<PetAge>.Default.Compare(left, right) <= 0;
+    public static bool operator >(PetAge? left, PetAge? right) => Comparer<PetAge>.Default.Compare(left, right) > 0;
+    public static bool operator >=(PetAge? left, PetAge? right) => Comparer<PetAge>.Default.Compare(left, right) >= 0;
 }

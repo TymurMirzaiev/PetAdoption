@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain;
+using PetAdoption.PetService.Domain.ValueObjects;
 
 namespace PetAdoption.PetService.Infrastructure.Persistence;
 
@@ -41,13 +42,22 @@ public class PetQueryStore : IPetQueryStore
             query = query.Where(p => p.PetTypeId == petTypeId.Value);
 
         if (minAgeMonths.HasValue)
-            query = query.Where(p => p.Age != null && p.Age.Months >= minAgeMonths.Value);
+        {
+            var minAge = new PetAge(minAgeMonths.Value);
+            query = query.Where(p => p.Age != null && p.Age >= minAge);
+        }
 
         if (maxAgeMonths.HasValue)
-            query = query.Where(p => p.Age != null && p.Age.Months <= maxAgeMonths.Value);
+        {
+            var maxAge = new PetAge(maxAgeMonths.Value);
+            query = query.Where(p => p.Age != null && p.Age <= maxAge);
+        }
 
         if (!string.IsNullOrWhiteSpace(breedSearch))
-            query = query.Where(p => p.Breed != null && p.Breed.Value.Contains(breedSearch.Trim()));
+        {
+            var trimmed = breedSearch.Trim();
+            query = query.Where(p => p.Breed != null && EF.Functions.Like((string)p.Breed, $"%{trimmed}%"));
+        }
 
         var total = await query.LongCountAsync();
         var pets = await query.OrderBy(p => p.Name).Skip(skip).Take(take).ToListAsync();

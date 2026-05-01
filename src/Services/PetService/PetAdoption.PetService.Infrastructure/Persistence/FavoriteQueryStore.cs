@@ -32,7 +32,7 @@ public class FavoriteQueryStore : IFavoriteQueryStore
         var orderedQuery = sortBy switch
         {
             "oldest" => query.OrderBy(x => x.f.CreatedAt).ThenBy(x => x.f.Id),
-            "name" => query.OrderBy(x => x.p.Name.Value).ThenBy(x => x.f.Id),
+            "name" => query.OrderBy(x => x.p.Name).ThenBy(x => x.f.Id),
             _ => query.OrderByDescending(x => x.f.CreatedAt).ThenBy(x => x.f.Id)
         };
 

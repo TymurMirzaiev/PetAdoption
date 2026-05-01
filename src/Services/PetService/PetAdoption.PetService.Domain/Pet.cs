@@ -17,12 +17,15 @@ public class Pet : IAggregateRoot, IEntity
     public Guid? OrganizationId { get; private set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
+    private readonly List<PetTag> _tags = new();
+    public IReadOnlyList<PetTag> Tags => _tags.AsReadOnly();
 
     // Private parameterless constructor for ORM/MongoDB deserialization
     private Pet() { }
 
     // Private constructor for creating new pets
-    private Pet(Guid id, PetName name, Guid petTypeId, PetBreed? breed = null, PetAge? age = null, PetDescription? description = null)
+    private Pet(Guid id, PetName name, Guid petTypeId, PetBreed? breed = null, PetAge? age = null,
+        PetDescription? description = null, IEnumerable<PetTag>? tags = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("Pet ID cannot be empty.", nameof(id));
@@ -37,12 +40,22 @@ public class Pet : IAggregateRoot, IEntity
         Age = age;
         Description = description;
         Status = PetStatus.Available;
+
+        if (tags is not null)
+        {
+            foreach (var tag in tags)
+            {
+                if (!_tags.Contains(tag))
+                    _tags.Add(tag);
+            }
+        }
     }
 
     /// <summary>
     /// Factory method to create a new available pet with validated pet type.
     /// </summary>
-    public static Pet Create(string name, Guid petTypeId, string? breed = null, int? ageMonths = null, string? description = null)
+    public static Pet Create(string name, Guid petTypeId, string? breed = null, int? ageMonths = null,
+        string? description = null, IEnumerable<string>? tags = null)
     {
         return new Pet(
             Guid.NewGuid(),
@@ -50,7 +63,8 @@ public class Pet : IAggregateRoot, IEntity
             petTypeId,
             breed is not null ? new PetBreed(breed) : null,
             ageMonths.HasValue ? new PetAge(ageMonths.Value) : null,
-            description is not null ? new PetDescription(description) : null);
+            description is not null ? new PetDescription(description) : null,
+            tags?.Select(t => new PetTag(t)));
     }
 
     public static Pet Create(string name, Guid petTypeId, string? breed, int? ageMonths, string? description, Guid organizationId)
@@ -136,6 +150,30 @@ public class Pet : IAggregateRoot, IEntity
     public void UpdateDescription(string? description)
     {
         Description = description is not null ? new PetDescription(description) : null;
+    }
+
+    public void AddTag(string tag)
+    {
+        var petTag = new PetTag(tag);
+        if (!_tags.Contains(petTag))
+            _tags.Add(petTag);
+    }
+
+    public void RemoveTag(string tag)
+    {
+        var petTag = new PetTag(tag);
+        _tags.Remove(petTag);
+    }
+
+    public void SetTags(IEnumerable<string> tags)
+    {
+        _tags.Clear();
+        foreach (var tag in tags)
+        {
+            var petTag = new PetTag(tag);
+            if (!_tags.Contains(petTag))
+                _tags.Add(petTag);
+        }
     }
 
     public void AssignToOrganization(Guid organizationId)

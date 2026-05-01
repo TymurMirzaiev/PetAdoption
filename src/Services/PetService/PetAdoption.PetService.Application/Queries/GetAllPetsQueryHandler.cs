@@ -34,7 +34,8 @@ public class GetAllPetsQueryHandler : IRequestHandler<GetAllPetsQuery, IEnumerab
             p.Status.ToString(),
             p.Breed?.Value,
             p.Age?.Months,
-            p.Description?.Value
+            p.Description?.Value,
+            p.Tags.Select(t => t.Value).ToList()
         ));
     }
 }

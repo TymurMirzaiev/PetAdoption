@@ -14,6 +14,7 @@ public class Pet : IAggregateRoot, IEntity
     public PetBreed? Breed { get; private set; }
     public PetAge? Age { get; private set; }
     public PetDescription? Description { get; private set; }
+    public Guid? OrganizationId { get; private set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
 
@@ -50,6 +51,13 @@ public class Pet : IAggregateRoot, IEntity
             breed is not null ? new PetBreed(breed) : null,
             ageMonths.HasValue ? new PetAge(ageMonths.Value) : null,
             description is not null ? new PetDescription(description) : null);
+    }
+
+    public static Pet Create(string name, Guid petTypeId, string? breed, int? ageMonths, string? description, Guid organizationId)
+    {
+        var pet = Create(name, petTypeId, breed, ageMonths, description);
+        pet.OrganizationId = organizationId;
+        return pet;
     }
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
@@ -128,6 +136,13 @@ public class Pet : IAggregateRoot, IEntity
     public void UpdateDescription(string? description)
     {
         Description = description is not null ? new PetDescription(description) : null;
+    }
+
+    public void AssignToOrganization(Guid organizationId)
+    {
+        if (organizationId == Guid.Empty)
+            throw new ArgumentException("Organization ID cannot be empty.", nameof(organizationId));
+        OrganizationId = organizationId;
     }
 
     public void EnsureCanBeDeleted()

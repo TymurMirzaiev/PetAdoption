@@ -39,6 +39,8 @@ public class PetServiceDbContext : DbContext
                     v => v == null ? null : v.Value,
                     v => v == null ? null : new PetDescription(v))
                 .HasMaxLength(2000);
+            entity.Property(p => p.OrganizationId);
+            entity.HasIndex(p => p.OrganizationId);
             entity.Property(p => p.Status).HasConversion<int>();
             entity.Property(p => p.Version).IsConcurrencyToken();
             entity.Ignore(p => p.DomainEvents);

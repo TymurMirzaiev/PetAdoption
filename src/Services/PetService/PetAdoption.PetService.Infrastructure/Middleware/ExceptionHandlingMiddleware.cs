@@ -82,6 +82,7 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.PetTypeNotFound => HttpStatusCode.NotFound,
             PetDomainErrorCode.FavoriteNotFound => HttpStatusCode.NotFound,
             PetDomainErrorCode.AnnouncementNotFound => HttpStatusCode.NotFound,
+            PetDomainErrorCode.AdoptionRequestNotFound => HttpStatusCode.NotFound,
 
             // Validation errors
             PetDomainErrorCode.InvalidPetName => HttpStatusCode.BadRequest,
@@ -92,6 +93,7 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.InvalidAnnouncementTitle => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidAnnouncementBody => HttpStatusCode.BadRequest,
             PetDomainErrorCode.InvalidAnnouncementDates => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.InvalidRejectionReason => HttpStatusCode.BadRequest,
 
             // Business rule violations
             PetDomainErrorCode.PetNotAvailable => HttpStatusCode.Conflict,
@@ -101,6 +103,8 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.InvalidOperation => HttpStatusCode.Conflict,
             PetDomainErrorCode.PetTypeAlreadyExists => HttpStatusCode.Conflict,
             PetDomainErrorCode.FavoriteAlreadyExists => HttpStatusCode.Conflict,
+            PetDomainErrorCode.AdoptionRequestNotPending => HttpStatusCode.Conflict,
+            PetDomainErrorCode.AdoptionRequestAlreadyExists => HttpStatusCode.Conflict,
 
             // Unknown/default
             _ => HttpStatusCode.InternalServerError

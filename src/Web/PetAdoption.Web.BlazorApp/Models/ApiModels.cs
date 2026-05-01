@@ -32,3 +32,15 @@ public record UserListItem(string Id, string Email, string FullName, string Stat
 public record UsersResponse(IEnumerable<UserListItem> Users, long TotalCount);
 
 public record ApiError(string ErrorCode, string Message);
+
+public record AdoptionRequestItem(
+    Guid Id, Guid PetId, string PetName, string PetType, Guid OrganizationId,
+    string Status, string? Message, string? RejectionReason,
+    DateTime CreatedAt, DateTime? ReviewedAt);
+public record AdoptionRequestsResponse(
+    IEnumerable<AdoptionRequestItem> Items, long Total, int Skip, int Take);
+public record OrgAdoptionRequestItem(
+    Guid Id, Guid UserId, Guid PetId, string PetName,
+    string Status, string? Message, DateTime CreatedAt);
+public record OrgAdoptionRequestsResponse(
+    IEnumerable<OrgAdoptionRequestItem> Items, long Total, int Skip, int Take);

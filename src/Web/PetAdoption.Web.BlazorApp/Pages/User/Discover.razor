@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
 <PageTitle>Discover Pets</PageTitle>
 
@@ -31,10 +32,6 @@
                 <MudItem xs="6" sm="3">
                     <MudNumericField T="int?" Label="Max Age (months)" @bind-Value="_maxAge" Min="0" />
                 </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField T="string?" Label="Breed" @bind-Value="_breedSearch"
-                        Placeholder="e.g. Golden Retriever" Clearable="true" />
-                </MudItem>
                 <MudItem xs="12" sm="6" Class="d-flex align-end">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mr-2">
                         Apply Filters
@@ -60,9 +57,20 @@
     }
     else if (!_pets.Any())
     {
-        <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Secondary" Class="mt-8">
-            No more pets to discover. Try adjusting your filters!
-        </MudText>
+        <div class="d-flex flex-column align-center mt-8 gap-4">
+            <MudIcon Icon="@Icons.Material.Filled.Pets" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Secondary">
+                You've seen all available pets matching your filters!
+            </MudText>
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetAndReload">
+                    Reset and discover again
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => Nav.NavigateTo("/favorites"))">
+                    View favorites
+                </MudButton>
+            </div>
+        </div>
     }
     else
     {
@@ -76,7 +84,6 @@
     private List<PetListItem> _pets = [];
     private List<PetTypeItem>? _petTypes;
     private bool _loading = true;
-    private int _skip;
     private bool _hasMore = true;
     private const string OnboardingSeenKey = "petadoption_onboarding_seen";
 
@@ -84,7 +91,6 @@
     private Guid? _selectedTypeId;
     private int? _minAge;
     private int? _maxAge;
-    private string? _breedSearch;
 
     protected override async Task OnInitializedAsync()
     {
@@ -105,7 +111,6 @@
     private async Task LoadPets()
     {
         _loading = true;
-        _skip = 0;
         _pets.Clear();
         _hasMore = true;
         await FetchBatch();
@@ -117,20 +122,16 @@
         if (!_hasMore) return;
         try
         {
-            var response = await PetApi.GetPetsAsync(
-                status: "Available",
+            var response = await PetApi.GetDiscoverPetsAsync(
                 petTypeId: _selectedTypeId,
-                skip: _skip,
-                take: 10,
                 minAge: _minAge,
                 maxAge: _maxAge,
-                breed: string.IsNullOrWhiteSpace(_breedSearch) ? null : _breedSearch.Trim());
+                take: 10);
             if (response?.Pets is not null)
             {
                 var newPets = response.Pets.ToList();
                 _pets.AddRange(newPets);
-                _skip += newPets.Count;
-                _hasMore = newPets.Count == 10;
+                _hasMore = response.HasMore;
 
                 // Fire-and-forget: track impressions for loaded pets
                 if (newPets.Any())
@@ -152,7 +153,6 @@
         _selectedTypeId = null;
         _minAge = null;
         _maxAge = null;
-        _breedSearch = null;
         await LoadPets();
     }
 
@@ -174,13 +174,49 @@
         }
     }
 
-    private Task HandleSkip(PetListItem pet)
+    private async Task HandleSkip(PetListItem pet)
     {
+        // Analytics: track rejection event (Plan 13 -- PetInteraction)
         _ = PetApi.TrackInteractionAsync(pet.Id, "Rejection");
-        return Task.CompletedTask;
+
+        // Discovery feed exclusion: track skip so this pet won't reappear
+        try
+        {
+            var response = await PetApi.TrackSkipAsync(pet.Id);
+            if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.Conflict)
+            {
+                // Non-critical -- skip tracking failure shouldn't block the UX
+                Snackbar.Add("Failed to track skip", Severity.Warning);
+            }
+        }
+        catch
+        {
+            // Silently fail -- skip tracking is best-effort from UX perspective
+        }
     }
 
     private async Task LoadMore() => await FetchBatch();
+
+    private async Task ResetAndReload()
+    {
+        try
+        {
+            var response = await PetApi.ResetSkipsAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadPets();
+                Snackbar.Add("Skips reset! Discover pets again.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to reset skips", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Connection error", Severity.Error);
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

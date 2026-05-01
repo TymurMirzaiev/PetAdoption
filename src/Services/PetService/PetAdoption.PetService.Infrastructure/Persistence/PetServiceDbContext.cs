@@ -10,6 +10,7 @@ public class PetServiceDbContext : DbContext
     public DbSet<PetType> PetTypes => Set<PetType>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AdoptionRequest> AdoptionRequests => Set<AdoptionRequest>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
 
     public PetServiceDbContext(DbContextOptions<PetServiceDbContext> options) : base(options) { }
@@ -84,6 +85,29 @@ public class PetServiceDbContext : DbContext
             entity.Property(e => e.EventData).IsRequired();
             entity.Property(e => e.LastError).HasMaxLength(2000);
             entity.HasIndex(e => new { e.IsProcessed, e.OccurredOn });
+        });
+
+        modelBuilder.Entity<AdoptionRequest>(entity =>
+        {
+            entity.ToTable("AdoptionRequests");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.PetId).IsRequired();
+            entity.Property(e => e.OrganizationId).IsRequired();
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(20);
+            entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.Property(e => e.RejectionReason).HasMaxLength(2000);
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasIndex(e => new { e.UserId, e.PetId, e.Status })
+                .HasFilter("[Status] = 'Pending'")
+                .IsUnique();
+
+            entity.HasIndex(e => e.OrganizationId);
+            entity.HasIndex(e => e.PetId);
         });
     }
 }

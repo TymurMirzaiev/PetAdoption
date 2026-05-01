@@ -89,6 +89,10 @@
                     _isFavorited = false;
                     Snackbar.Add("Removed from favorites", Severity.Info);
                 }
+                else
+                {
+                    Snackbar.Add("Could not update favorite — please try again.", Severity.Warning);
+                }
             }
             else
             {
@@ -97,6 +101,10 @@
                 {
                     _isFavorited = true;
                     Snackbar.Add("Added to favorites!", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Could not update favorite — please try again.", Severity.Warning);
                 }
             }
         }

@@ -78,6 +78,40 @@ public class PetQueryStore : IPetQueryStore
         return (pets, total);
     }
 
+    public async Task<(IEnumerable<Pet> Pets, long Total)> GetDiscoverable(
+        HashSet<Guid> excludedPetIds,
+        Guid? petTypeId,
+        int? minAgeMonths,
+        int? maxAgeMonths,
+        int take)
+    {
+        var query = _db.Pets.AsNoTracking()
+            .Where(p => p.Status == PetStatus.Available);
+
+        if (excludedPetIds.Count > 0)
+            query = query.Where(p => !excludedPetIds.Contains(p.Id));
+
+        if (petTypeId.HasValue)
+            query = query.Where(p => p.PetTypeId == petTypeId.Value);
+
+        if (minAgeMonths.HasValue)
+        {
+            var minAge = new PetAge(minAgeMonths.Value);
+            query = query.Where(p => p.Age != null && p.Age >= minAge);
+        }
+
+        if (maxAgeMonths.HasValue)
+        {
+            var maxAge = new PetAge(maxAgeMonths.Value);
+            query = query.Where(p => p.Age != null && p.Age <= maxAge);
+        }
+
+        var total = await query.LongCountAsync();
+        var pets = await query.Take(take).ToListAsync();
+
+        return (pets, total);
+    }
+
     public async Task<(IEnumerable<Pet> Pets, long Total)> GetFilteredByOrg(
         Guid organizationId,
         PetStatus? status,

@@ -104,6 +104,7 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.InvalidOperation => HttpStatusCode.Conflict,
             PetDomainErrorCode.PetTypeAlreadyExists => HttpStatusCode.Conflict,
             PetDomainErrorCode.FavoriteAlreadyExists => HttpStatusCode.Conflict,
+            PetDomainErrorCode.SkipAlreadyExists => HttpStatusCode.Conflict,
             PetDomainErrorCode.AdoptionRequestNotPending => HttpStatusCode.Conflict,
             PetDomainErrorCode.AdoptionRequestAlreadyExists => HttpStatusCode.Conflict,
 

@@ -61,6 +61,21 @@ public class PetApiClient
     public Task<HttpResponseMessage> DeactivatePetTypeAsync(Guid id) =>
         _http.PostAsync($"api/admin/pet-types/{id}/deactivate", null);
 
+    public async Task<DiscoverPetsResponse?> GetDiscoverPetsAsync(Guid? petTypeId = null, int? minAge = null, int? maxAge = null, int take = 10)
+    {
+        var query = $"api/discover?take={take}";
+        if (petTypeId.HasValue) query += $"&petTypeId={petTypeId}";
+        if (minAge.HasValue) query += $"&minAge={minAge}";
+        if (maxAge.HasValue) query += $"&maxAge={maxAge}";
+        return await _http.GetFromJsonAsync<DiscoverPetsResponse>(query);
+    }
+
+    public Task<HttpResponseMessage> TrackSkipAsync(Guid petId) =>
+        _http.PostAsJsonAsync("api/skips", new { PetId = petId });
+
+    public Task<HttpResponseMessage> ResetSkipsAsync() =>
+        _http.DeleteAsync("api/skips");
+
     public Task<HttpResponseMessage> AddFavoriteAsync(Guid petId) =>
         _http.PostAsJsonAsync("api/favorites", new { PetId = petId });
 

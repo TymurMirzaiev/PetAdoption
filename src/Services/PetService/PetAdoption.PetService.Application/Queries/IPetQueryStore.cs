@@ -25,4 +25,10 @@ public interface IPetQueryStore
         int skip,
         int take,
         IEnumerable<string>? tags = null);
+    Task<(IEnumerable<Pet> Pets, long Total)> GetDiscoverable(
+        HashSet<Guid> excludedPetIds,
+        Guid? petTypeId,
+        int? minAgeMonths,
+        int? maxAgeMonths,
+        int take);
 }

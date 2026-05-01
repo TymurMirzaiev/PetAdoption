@@ -36,4 +36,13 @@ public class FavoriteRepository : IFavoriteRepository
     {
         return await _db.Favorites.AnyAsync(f => f.UserId == userId && f.PetId == petId, ct);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetPetIdsByUserAsync(Guid userId)
+    {
+        return await _db.Favorites
+            .AsNoTracking()
+            .Where(f => f.UserId == userId)
+            .Select(f => f.PetId)
+            .ToListAsync();
+    }
 }

@@ -10,6 +10,7 @@ public class PetServiceDbContext : DbContext
     public DbSet<Pet> Pets => Set<Pet>();
     public DbSet<PetType> PetTypes => Set<PetType>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
+    public DbSet<PetSkip> PetSkips => Set<PetSkip>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<AdoptionRequest> AdoptionRequests => Set<AdoptionRequest>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
@@ -74,6 +75,13 @@ public class PetServiceDbContext : DbContext
             entity.ToTable("Favorites");
             entity.HasKey(f => f.Id);
             entity.HasIndex(f => new { f.UserId, f.PetId }).IsUnique();
+        });
+
+        modelBuilder.Entity<PetSkip>(entity =>
+        {
+            entity.ToTable("PetSkips");
+            entity.HasKey(s => s.Id);
+            entity.HasIndex(s => new { s.UserId, s.PetId }).IsUnique();
         });
 
         modelBuilder.Entity<Announcement>(entity =>

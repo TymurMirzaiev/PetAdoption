@@ -99,6 +99,13 @@ public static class PetDomainErrorCode
     /// </summary>
     public const string FavoriteNotFound = "favorite_not_found";
 
+    // Skip errors
+
+    /// <summary>
+    /// Pet is already in the user's skips.
+    /// </summary>
+    public const string SkipAlreadyExists = "skip_already_exists";
+
     // Announcement errors
 
     /// <summary>

@@ -75,7 +75,8 @@ public class PetQueryStore : IPetQueryStore
         Guid? petTypeId,
         int? minAgeMonths,
         int? maxAgeMonths,
-        int take)
+        int take,
+        string? breedSearch = null)
     {
         var query = _db.Pets.AsNoTracking()
             .Where(p => p.Status == PetStatus.Available);
@@ -98,8 +99,15 @@ public class PetQueryStore : IPetQueryStore
             query = query.Where(p => p.Age != null && p.Age <= maxAge);
         }
 
+        if (!string.IsNullOrWhiteSpace(breedSearch))
+        {
+            var trimmed = breedSearch.Trim();
+            query = query.Where(p => p.Breed != null && EF.Functions.Like((string)p.Breed, $"%{trimmed}%"));
+        }
+
         var total = await query.LongCountAsync();
-        var pets = await query.Take(take).ToListAsync();
+        // Order by Id (Guid.NewGuid is uniformly distributed) for a deterministic-yet-varied feed.
+        var pets = await query.OrderBy(p => p.Id).Take(take).ToListAsync();
 
         return (pets, total);
     }

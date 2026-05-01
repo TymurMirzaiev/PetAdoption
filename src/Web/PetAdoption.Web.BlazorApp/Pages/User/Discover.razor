@@ -32,6 +32,9 @@
                 <MudItem xs="6" sm="3">
                     <MudNumericField T="int?" Label="Max Age (months)" @bind-Value="_maxAge" Min="0" />
                 </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Breed contains" @bind-Value="_breedSearch" Clearable="true" />
+                </MudItem>
                 <MudItem xs="12" sm="6" Class="d-flex align-end">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mr-2">
                         Apply Filters
@@ -91,6 +94,7 @@
     private Guid? _selectedTypeId;
     private int? _minAge;
     private int? _maxAge;
+    private string? _breedSearch;
 
     protected override async Task OnInitializedAsync()
     {
@@ -126,7 +130,8 @@
                 petTypeId: _selectedTypeId,
                 minAge: _minAge,
                 maxAge: _maxAge,
-                take: 10);
+                take: 10,
+                breed: _breedSearch);
             if (response?.Pets is not null)
             {
                 var newPets = response.Pets.ToList();
@@ -153,6 +158,7 @@
         _selectedTypeId = null;
         _minAge = null;
         _maxAge = null;
+        _breedSearch = null;
         await LoadPets();
     }
 

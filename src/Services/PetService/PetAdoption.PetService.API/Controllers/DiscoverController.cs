@@ -31,14 +31,16 @@ public class DiscoverController : ControllerBase
         [FromQuery] Guid? petTypeId = null,
         [FromQuery] int? minAge = null,
         [FromQuery] int? maxAge = null,
-        [FromQuery] int take = 10)
+        [FromQuery] int take = 10,
+        [FromQuery] string? breed = null)
     {
         var result = await _mediator.Send(new GetDiscoverPetsQuery(
             GetUserId(),
             petTypeId,
             minAge,
             maxAge,
-            take));
+            take,
+            breed));
 
         return Ok(result);
     }

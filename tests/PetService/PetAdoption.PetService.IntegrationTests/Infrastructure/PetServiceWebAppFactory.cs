@@ -52,7 +52,7 @@ internal class PetServiceWebAppFactory : WebApplicationFactory<Program>
             services.RemoveAll<IHostedService>();
         });
 
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment("Testing");
     }
 
     public PetServiceDbContext CreateDbContext()

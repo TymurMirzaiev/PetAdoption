@@ -41,7 +41,7 @@ internal class UserServiceWebAppFactory : WebApplicationFactory<Program>
             services.RemoveAll<IHostedService>();
         });
 
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment("Testing");
     }
 
     public UserServiceDbContext CreateDbContext()

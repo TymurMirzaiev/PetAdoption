@@ -118,16 +118,28 @@ builder.Services.AddAuthorization(options =>
 // Register seeder
 builder.Services.AddTransient<PetTypeSeeder>();
 
+// Dev data seeder (development only)
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddTransient<DevDataSeeder>();
+}
+
 var app = builder.Build();
 
-// Ensure database is created and seed pet types on startup
+// Ensure database is created and seed data on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PetServiceDbContext>();
     await db.Database.EnsureCreatedAsync();
 
-    var seeder = scope.ServiceProvider.GetRequiredService<PetTypeSeeder>();
-    await seeder.SeedAsync();
+    var petTypeSeeder = scope.ServiceProvider.GetRequiredService<PetTypeSeeder>();
+    await petTypeSeeder.SeedAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        var devSeeder = scope.ServiceProvider.GetRequiredService<DevDataSeeder>();
+        await devSeeder.SeedAsync();
+    }
 }
 
 // Configure the HTTP request pipeline.

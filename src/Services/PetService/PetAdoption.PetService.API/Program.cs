@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PetAdoption.PetService.API.Authorization;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.DependencyInjection;
@@ -49,6 +50,10 @@ builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 builder.Services.AddScoped<IFavoriteQueryStore, FavoriteQueryStore>();
 builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<IAnnouncementQueryStore, AnnouncementQueryStore>();
+builder.Services.AddScoped<IAdoptionRequestRepository, AdoptionRequestRepository>();
+builder.Services.AddScoped<IAdoptionRequestQueryStore, AdoptionRequestQueryStore>();
+builder.Services.AddScoped<IPetInteractionRepository, PetInteractionRepository>();
+builder.Services.AddScoped<IPetMetricsQueryStore, PetMetricsQueryStore>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
@@ -117,6 +122,7 @@ builder.Services.AddAuthorization(options =>
 
 // Register seeder
 builder.Services.AddTransient<PetTypeSeeder>();
+builder.Services.AddScoped<OrgAuthorizationFilter>();
 
 // Dev data seeder (development only)
 if (builder.Environment.IsDevelopment())

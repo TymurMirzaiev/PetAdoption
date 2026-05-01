@@ -87,6 +87,8 @@
                             {
                                 <MudButton Size="Size.Small" Color="Color.Success"
                                     OnClick="@(() => ReservePet(fav.PetId))">Reserve</MudButton>
+                                <MudButton Size="Size.Small" Color="Color.Tertiary"
+                                    OnClick="@(() => OpenAdoptionDialog(fav.PetId, fav.PetName))">Adopt</MudButton>
                             }
                             <MudIconButton Icon="@Icons.Material.Filled.HeartBroken" Size="Size.Small" Color="Color.Error"
                                 OnClick="@(() => ConfirmRemoveFavorite(fav.PetId, fav.PetName))" />
@@ -106,6 +108,22 @@
             </div>
         }
     }
+
+    <MudDialog @bind-Visible="_adoptDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Adopt @_adoptPetName</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudText Typo="Typo.body1" Class="mb-4">
+                Tell the organization why you'd like to adopt this pet (optional):
+            </MudText>
+            <MudTextField @bind-Value="_adoptMessage" Label="Your message" Lines="3" Variant="Variant.Outlined" />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _adoptDialogVisible = false)">Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SubmitAdoptionRequest">Send Request</MudButton>
+        </DialogActions>
+    </MudDialog>
 </MudContainer>
 
 @code {
@@ -202,6 +220,38 @@
             {
                 var error = await response.Content.ReadFromJsonAsync<ApiError>();
                 Snackbar.Add(error?.Message ?? "Failed to reserve", Severity.Error);
+            }
+        }
+        catch { Snackbar.Add("Connection error", Severity.Error); }
+    }
+
+    private bool _adoptDialogVisible;
+    private string _adoptMessage = "";
+    private Guid _adoptPetId;
+    private string _adoptPetName = "";
+
+    private void OpenAdoptionDialog(Guid petId, string petName)
+    {
+        _adoptPetId = petId;
+        _adoptPetName = petName;
+        _adoptMessage = "";
+        _adoptDialogVisible = true;
+    }
+
+    private async Task SubmitAdoptionRequest()
+    {
+        try
+        {
+            var response = await PetApi.CreateAdoptionRequestAsync(_adoptPetId, _adoptMessage);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Adoption request sent for {_adoptPetName}!", Severity.Success);
+                _adoptDialogVisible = false;
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                Snackbar.Add(error?.Message ?? "Failed to send adoption request", Severity.Error);
             }
         }
         catch { Snackbar.Add("Connection error", Severity.Error); }

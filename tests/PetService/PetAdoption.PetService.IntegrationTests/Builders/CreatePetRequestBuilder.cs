@@ -9,6 +9,7 @@ public class CreatePetRequestBuilder
     private string? _breed = null;
     private int? _ageMonths = null;
     private string? _description = null;
+    private List<string>? _tags = null;
 
     public CreatePetRequestBuilder WithName(string name)
     {
@@ -40,7 +41,13 @@ public class CreatePetRequestBuilder
         return this;
     }
 
-    public CreatePetRequest Build() => new(_name, _petTypeId, _breed, _ageMonths, _description);
+    public CreatePetRequestBuilder WithTags(params string[] tags)
+    {
+        _tags = tags.ToList();
+        return this;
+    }
+
+    public CreatePetRequest Build() => new(_name, _petTypeId, _breed, _ageMonths, _description, _tags);
 
     public static CreatePetRequestBuilder Default() => new();
 }

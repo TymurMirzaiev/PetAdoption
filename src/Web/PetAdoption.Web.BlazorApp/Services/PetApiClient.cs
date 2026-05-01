@@ -104,4 +104,69 @@ public class PetApiClient
 
     public Task<HttpResponseMessage> DeleteAnnouncementAsync(Guid id) =>
         _http.DeleteAsync($"api/announcements/{id}");
+
+    // Organization-scoped pet management
+    public async Task<OrgPetsResponse?> GetOrgPetsAsync(Guid orgId, string? status = null, string? tags = null, int skip = 0, int take = 20)
+    {
+        var query = $"api/organizations/{orgId}/pets?skip={skip}&take={take}";
+        if (status is not null) query += $"&status={status}";
+        if (tags is not null) query += $"&tags={Uri.EscapeDataString(tags)}";
+        return await _http.GetFromJsonAsync<OrgPetsResponse>(query);
+    }
+
+    public Task<HttpResponseMessage> CreateOrgPetAsync(Guid orgId, CreateOrgPetRequest request) =>
+        _http.PostAsJsonAsync($"api/organizations/{orgId}/pets", request);
+
+    public Task<HttpResponseMessage> UpdateOrgPetAsync(Guid orgId, Guid petId, UpdateOrgPetRequest request) =>
+        _http.PutAsJsonAsync($"api/organizations/{orgId}/pets/{petId}", request);
+
+    public Task<HttpResponseMessage> DeleteOrgPetAsync(Guid orgId, Guid petId) =>
+        _http.DeleteAsync($"api/organizations/{orgId}/pets/{petId}");
+
+    // Adoption requests
+    public Task<HttpResponseMessage> CreateAdoptionRequestAsync(Guid petId, string? message = null) =>
+        _http.PostAsJsonAsync("api/adoption-requests", new { PetId = petId, Message = message });
+
+    public async Task<AdoptionRequestsResponse?> GetMyAdoptionRequestsAsync(int skip = 0, int take = 20) =>
+        await _http.GetFromJsonAsync<AdoptionRequestsResponse>($"api/adoption-requests/mine?skip={skip}&take={take}");
+
+    public async Task<OrgAdoptionRequestsResponse?> GetOrgAdoptionRequestsAsync(
+        Guid organizationId, string? status = null, int skip = 0, int take = 20)
+    {
+        var url = $"api/adoption-requests/organization/{organizationId}?skip={skip}&take={take}";
+        if (status is not null) url += $"&status={status}";
+        return await _http.GetFromJsonAsync<OrgAdoptionRequestsResponse>(url);
+    }
+
+    public Task<HttpResponseMessage> ApproveAdoptionRequestAsync(Guid requestId) =>
+        _http.PostAsync($"api/adoption-requests/{requestId}/approve", null);
+
+    public Task<HttpResponseMessage> RejectAdoptionRequestAsync(Guid requestId, string reason) =>
+        _http.PostAsJsonAsync($"api/adoption-requests/{requestId}/reject", new { Reason = reason });
+
+    public Task<HttpResponseMessage> CancelAdoptionRequestAsync(Guid requestId) =>
+        _http.PostAsync($"api/adoption-requests/{requestId}/cancel", null);
+
+    // Pet interaction metrics
+    public Task<HttpResponseMessage> TrackInteractionAsync(Guid petId, string type) =>
+        _http.PostAsJsonAsync($"api/pets/{petId}/interactions", new { Type = type });
+
+    public Task<HttpResponseMessage> TrackBatchImpressionsAsync(IEnumerable<Guid> petIds) =>
+        _http.PostAsJsonAsync("api/pets/interactions/batch", new { PetIds = petIds });
+
+    public async Task<OrgMetricsResponse?> GetOrgMetricsAsync(
+        Guid orgId, DateTime? from = null, DateTime? to = null,
+        string? sortBy = null, bool descending = true)
+    {
+        var query = $"api/organizations/{orgId}/metrics?descending={descending}";
+        if (from.HasValue) query += $"&from={from.Value:yyyy-MM-ddTHH:mm:ss}";
+        if (to.HasValue) query += $"&to={to.Value:yyyy-MM-ddTHH:mm:ss}";
+        if (sortBy is not null) query += $"&sortBy={sortBy}";
+        return await _http.GetFromJsonAsync<OrgMetricsResponse>(query);
+    }
+
+    public async Task<PetMetricsDetailResponse?> GetPetMetricsAsync(Guid petId)
+    {
+        return await _http.GetFromJsonAsync<PetMetricsDetailResponse>($"api/pets/{petId}/metrics");
+    }
 }

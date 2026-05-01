@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.ValueObjects;
@@ -10,7 +11,9 @@ public class PetServiceDbContext : DbContext
     public DbSet<PetType> PetTypes => Set<PetType>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AdoptionRequest> AdoptionRequests => Set<AdoptionRequest>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+    public DbSet<PetInteraction> PetInteractions => Set<PetInteraction>();
 
     public PetServiceDbContext(DbContextOptions<PetServiceDbContext> options) : base(options) { }
 
@@ -44,6 +47,17 @@ public class PetServiceDbContext : DbContext
             entity.Property(p => p.Status).HasConversion<int>();
             entity.Property(p => p.Version).IsConcurrencyToken();
             entity.Ignore(p => p.DomainEvents);
+            entity.Property(p => p.Tags)
+                .HasField("_tags")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v.Select(t => t.Value).ToList(), (JsonSerializerOptions?)null),
+                    v => string.IsNullOrEmpty(v)
+                        ? new List<PetTag>()
+                        : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null)!
+                            .Select(s => new PetTag(s)).ToList())
+                .HasColumnName("Tags")
+                .HasColumnType("nvarchar(max)")
+                .IsRequired(false);
         });
 
         modelBuilder.Entity<PetType>(entity =>
@@ -84,6 +98,39 @@ public class PetServiceDbContext : DbContext
             entity.Property(e => e.EventData).IsRequired();
             entity.Property(e => e.LastError).HasMaxLength(2000);
             entity.HasIndex(e => new { e.IsProcessed, e.OccurredOn });
+        });
+
+        modelBuilder.Entity<AdoptionRequest>(entity =>
+        {
+            entity.ToTable("AdoptionRequests");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.PetId).IsRequired();
+            entity.Property(e => e.OrganizationId).IsRequired();
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(20);
+            entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.Property(e => e.RejectionReason).HasMaxLength(2000);
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasIndex(e => new { e.UserId, e.PetId, e.Status })
+                .HasFilter("[Status] = 'Pending'")
+                .IsUnique();
+
+            entity.HasIndex(e => e.OrganizationId);
+            entity.HasIndex(e => e.PetId);
+        });
+
+        modelBuilder.Entity<PetInteraction>(entity =>
+        {
+            entity.ToTable("PetInteractions");
+            entity.HasKey(pi => pi.Id);
+            entity.Property(pi => pi.Type).HasConversion<int>();
+            entity.HasIndex(pi => new { pi.PetId, pi.Type });
+            entity.HasIndex(pi => pi.CreatedAt);
+            entity.HasIndex(pi => pi.PetId);
         });
     }
 }

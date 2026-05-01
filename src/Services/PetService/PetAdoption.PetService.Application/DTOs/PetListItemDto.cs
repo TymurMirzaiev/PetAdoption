@@ -7,5 +7,6 @@ public record PetListItemDto(
     string Status,
     string? Breed,
     int? AgeMonths,
-    string? Description
+    string? Description,
+    List<string> Tags
 );

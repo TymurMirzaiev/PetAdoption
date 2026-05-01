@@ -9,11 +9,15 @@ public record GoogleAuthResponse(string AccessToken, string RefreshToken);
 public record RefreshTokenRequest(string RefreshToken);
 public record RefreshTokenResponse(string AccessToken, string RefreshToken);
 
-public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
-public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
+public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
+public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
 public record PetsResponse(IEnumerable<PetListItem> Pets, long Total);
-public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null);
-public record UpdatePetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null);
+public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record UpdatePetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+
+public record CreateOrgPetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record UpdateOrgPetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record OrgPetsResponse(IEnumerable<PetListItem> Pets, long Total, int Skip, int Take);
 
 public record PetTypeItem(Guid Id, string Code, string Name, bool IsActive);
 public record PetTypesResponse(IEnumerable<PetTypeItem> Items);
@@ -32,3 +36,22 @@ public record UserListItem(string Id, string Email, string FullName, string Stat
 public record UsersResponse(IEnumerable<UserListItem> Users, long TotalCount);
 
 public record ApiError(string ErrorCode, string Message);
+
+public record AdoptionRequestItem(
+    Guid Id, Guid PetId, string PetName, string PetType, Guid OrganizationId,
+    string Status, string? Message, string? RejectionReason,
+    DateTime CreatedAt, DateTime? ReviewedAt);
+public record AdoptionRequestsResponse(
+    IEnumerable<AdoptionRequestItem> Items, long Total, int Skip, int Take);
+public record OrgAdoptionRequestItem(
+    Guid Id, Guid UserId, Guid PetId, string PetName,
+    string Status, string? Message, DateTime CreatedAt);
+public record OrgAdoptionRequestsResponse(
+    IEnumerable<OrgAdoptionRequestItem> Items, long Total, int Skip, int Take);
+
+public record PetMetricsSummaryItem(
+    Guid PetId, string PetName, string PetType,
+    long ImpressionCount, long SwipeCount, long RejectionCount,
+    long FavoriteCount, double SwipeRate, double RejectionRate);
+public record OrgMetricsResponse(IEnumerable<PetMetricsSummaryItem> Metrics);
+public record PetMetricsDetailResponse(PetMetricsSummaryItem Metrics);

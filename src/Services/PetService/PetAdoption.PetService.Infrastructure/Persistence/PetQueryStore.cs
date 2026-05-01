@@ -31,7 +31,8 @@ public class PetQueryStore : IPetQueryStore
         int take,
         int? minAgeMonths = null,
         int? maxAgeMonths = null,
-        string? breedSearch = null)
+        string? breedSearch = null,
+        IEnumerable<string>? tags = null)
     {
         var query = _db.Pets.AsNoTracking().AsQueryable();
 
@@ -57,6 +58,48 @@ public class PetQueryStore : IPetQueryStore
         {
             var trimmed = breedSearch.Trim();
             query = query.Where(p => p.Breed != null && EF.Functions.Like((string)p.Breed, $"%{trimmed}%"));
+        }
+
+        // Tag filtering in memory (JSON columns don't support LINQ Contains in EF Core SQL Server)
+        if (tags is not null)
+        {
+            var tagList = tags.Select(t => t.Trim().ToLowerInvariant()).ToList();
+            if (tagList.Count > 0)
+            {
+                var allPets = await query.OrderBy(p => p.Name).ToListAsync();
+                var filtered = allPets.Where(p => tagList.All(tag => p.Tags.Any(t => t.Value == tag))).ToList();
+                return (filtered.Skip(skip).Take(take), filtered.Count);
+            }
+        }
+
+        var total = await query.LongCountAsync();
+        var pets = await query.OrderBy(p => p.Name).Skip(skip).Take(take).ToListAsync();
+
+        return (pets, total);
+    }
+
+    public async Task<(IEnumerable<Pet> Pets, long Total)> GetFilteredByOrg(
+        Guid organizationId,
+        PetStatus? status,
+        int skip,
+        int take,
+        IEnumerable<string>? tags = null)
+    {
+        var query = _db.Pets.AsNoTracking()
+            .Where(p => p.OrganizationId == organizationId);
+
+        if (status.HasValue)
+            query = query.Where(p => p.Status == status.Value);
+
+        if (tags is not null)
+        {
+            var tagList = tags.Select(t => t.Trim().ToLowerInvariant()).ToList();
+            if (tagList.Count > 0)
+            {
+                var allPets = await query.OrderBy(p => p.Name).ToListAsync();
+                var filtered = allPets.Where(p => tagList.All(tag => p.Tags.Any(t => t.Value == tag))).ToList();
+                return (filtered.Skip(skip).Take(take), filtered.Count);
+            }
         }
 
         var total = await query.LongCountAsync();

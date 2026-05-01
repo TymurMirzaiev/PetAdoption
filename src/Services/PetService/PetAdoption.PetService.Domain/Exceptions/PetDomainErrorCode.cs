@@ -61,6 +61,11 @@ public static class PetDomainErrorCode
     public const string InvalidPetDescription = "invalid_pet_description";
 
     /// <summary>
+    /// Pet tag is invalid (empty, too long, etc.).
+    /// </summary>
+    public const string InvalidPetTag = "invalid_pet_tag";
+
+    /// <summary>
     /// Pet type with the given code already exists.
     /// </summary>
     public const string PetTypeAlreadyExists = "pet_type_already_exists";
@@ -115,4 +120,26 @@ public static class PetDomainErrorCode
     /// Announcement was not found.
     /// </summary>
     public const string AnnouncementNotFound = "announcement_not_found";
+
+    // Adoption request errors
+
+    /// <summary>
+    /// Adoption request was not found.
+    /// </summary>
+    public const string AdoptionRequestNotFound = "adoption_request_not_found";
+
+    /// <summary>
+    /// Adoption request is not pending and cannot transition.
+    /// </summary>
+    public const string AdoptionRequestNotPending = "adoption_request_not_pending";
+
+    /// <summary>
+    /// A pending adoption request already exists for this user/pet pair.
+    /// </summary>
+    public const string AdoptionRequestAlreadyExists = "adoption_request_already_exists";
+
+    /// <summary>
+    /// Rejection reason is invalid (empty or whitespace).
+    /// </summary>
+    public const string InvalidRejectionReason = "invalid_rejection_reason";
 }

@@ -19,14 +19,17 @@ public class PetsController : ControllerBase
         _mediator = mediator;
     }
 
-    // GET /api/pets?status=Available&petTypeId=...&skip=0&take=20
+    // GET /api/pets?status=Available&petTypeId=...&skip=0&take=20&minAge=6&maxAge=24&breed=Golden
     [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<GetPetsResponse>> GetAll(
         [FromQuery] string? status = null,
         [FromQuery] Guid? petTypeId = null,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 20)
+        [FromQuery] int take = 20,
+        [FromQuery] int? minAge = null,
+        [FromQuery] int? maxAge = null,
+        [FromQuery] string? breed = null)
     {
         PetStatus? petStatus = null;
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<PetStatus>(status, true, out var parsed))
@@ -34,7 +37,7 @@ public class PetsController : ControllerBase
             petStatus = parsed;
         }
 
-        var result = await _mediator.Send(new GetPetsQuery(petStatus, petTypeId, skip, take));
+        var result = await _mediator.Send(new GetPetsQuery(petStatus, petTypeId, skip, take, minAge, maxAge, breed));
         return Ok(result);
     }
 

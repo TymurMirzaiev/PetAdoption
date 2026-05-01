@@ -17,5 +17,12 @@ public interface IPetQueryStore
         int take,
         int? minAgeMonths = null,
         int? maxAgeMonths = null,
-        string? breedSearch = null);
+        string? breedSearch = null,
+        IEnumerable<string>? tags = null);
+    Task<(IEnumerable<Pet> Pets, long Total)> GetFilteredByOrg(
+        Guid organizationId,
+        PetStatus? status,
+        int skip,
+        int take,
+        IEnumerable<string>? tags = null);
 }

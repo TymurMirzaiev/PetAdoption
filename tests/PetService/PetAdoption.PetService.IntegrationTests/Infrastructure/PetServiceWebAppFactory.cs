@@ -64,17 +64,23 @@ internal class PetServiceWebAppFactory : WebApplicationFactory<Program>
         return new PetServiceDbContext(options);
     }
 
-    public static string GenerateTestToken(string userId = "test-user-id", string role = "Admin")
+    public static string GenerateTestToken(string userId = "test-user-id", string role = "Admin",
+        Dictionary<string, string>? additionalClaims = null)
     {
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes("test-secret-key-minimum-32-characters-long-for-testing!"));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId),
-            new Claim(ClaimTypes.Role, role),
-            new Claim("userId", userId)
+            new(JwtRegisteredClaimNames.Sub, userId),
+            new(ClaimTypes.Role, role),
+            new("userId", userId)
         };
+        if (additionalClaims is not null)
+        {
+            foreach (var (claimType, claimValue) in additionalClaims)
+                claims.Add(new Claim(claimType, claimValue));
+        }
         var token = new JwtSecurityToken(
             issuer: "PetAdoption.UserService",
             audience: "PetAdoption.Services",

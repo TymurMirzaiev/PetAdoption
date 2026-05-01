@@ -1,0 +1,173 @@
+@page "/org/{OrgId:guid}/pets"
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Organization Pets</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h4">Organization Pets</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+        OnClick="OpenCreateDialog">Add Pet</MudButton>
+</div>
+
+<MudDataGrid T="PetListItem" ServerData="LoadServerData" @ref="_grid" Hover="true" Dense="true">
+    <Columns>
+        <PropertyColumn Property="x => x.Name" Title="Name" />
+        <PropertyColumn Property="x => x.Type" Title="Type" />
+        <PropertyColumn Property="x => x.Breed" Title="Breed" />
+        <TemplateColumn Title="Age">
+            <CellTemplate>
+                @if (context.Item.AgeMonths.HasValue)
+                {
+                    @FormatAge(context.Item.AgeMonths.Value)
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Tags">
+            <CellTemplate>
+                @if (context.Item.Tags is { Count: > 0 })
+                {
+                    <MudChipSet T="string" ReadOnly="true">
+                        @foreach (var tag in context.Item.Tags.Take(3))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@tag</MudChip>
+                        }
+                        @if (context.Item.Tags.Count > 3)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">+@(context.Item.Tags.Count - 3)</MudChip>
+                        }
+                    </MudChipSet>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Item.Status)">@context.Item.Status</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="Actions" StickyRight="true">
+            <CellTemplate>
+                <div class="d-flex gap-1">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                        OnClick="@(() => OpenEditDialog(context.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                        OnClick="@(() => DeletePet(context.Item))" />
+                </div>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="PetListItem" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [Parameter] public Guid OrgId { get; set; }
+
+    private MudDataGrid<PetListItem> _grid = null!;
+
+    private async Task<GridData<PetListItem>> LoadServerData(GridState<PetListItem> state)
+    {
+        try
+        {
+            var response = await PetApi.GetOrgPetsAsync(OrgId, skip: state.Page * state.PageSize, take: state.PageSize);
+            return new GridData<PetListItem>
+            {
+                Items = response?.Pets ?? [],
+                TotalItems = (int)(response?.Total ?? 0)
+            };
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load pets", Severity.Error);
+            return new GridData<PetListItem> { Items = [], TotalItems = 0 };
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var dialog = await DialogService.ShowAsync<PetFormDialog>("Add Pet");
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: PetFormDialog.PetFormResult data } && data.PetTypeId.HasValue)
+        {
+            try
+            {
+                var response = await PetApi.CreateOrgPetAsync(OrgId,
+                    new CreateOrgPetRequest(data.Name, data.PetTypeId.Value, data.Breed, data.AgeMonths, data.Description, data.Tags));
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Pet created!", Severity.Success);
+                    await _grid.ReloadServerData();
+                }
+                else
+                    Snackbar.Add("Failed to create pet", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private async Task OpenEditDialog(PetListItem pet)
+    {
+        var parameters = new DialogParameters<PetFormDialog>
+        {
+            { x => x.IsEdit, true },
+            { x => x.Name, pet.Name },
+            { x => x.Breed, pet.Breed },
+            { x => x.AgeMonths, pet.AgeMonths },
+            { x => x.Description, pet.Description },
+            { x => x.Tags, pet.Tags?.ToList() }
+        };
+        var dialog = await DialogService.ShowAsync<PetFormDialog>("Edit Pet", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: PetFormDialog.PetFormResult data })
+        {
+            try
+            {
+                var response = await PetApi.UpdateOrgPetAsync(OrgId, pet.Id,
+                    new UpdateOrgPetRequest(data.Name, data.Breed, data.AgeMonths, data.Description, data.Tags));
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Pet updated!", Severity.Success);
+                    await _grid.ReloadServerData();
+                }
+                else
+                    Snackbar.Add("Failed to update pet", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private async Task DeletePet(PetListItem pet)
+    {
+        bool? confirmed = await DialogService.ShowMessageBox(
+            "Confirm Delete", $"Delete {pet.Name}? This cannot be undone.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed == true)
+        {
+            try
+            {
+                var response = await PetApi.DeleteOrgPetAsync(OrgId, pet.Id);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Pet deleted", Severity.Info);
+                    await _grid.ReloadServerData();
+                }
+                else
+                    Snackbar.Add("Failed to delete", Severity.Error);
+            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
+        }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Available" => Color.Success,
+        "Reserved" => Color.Warning,
+        "Adopted" => Color.Info,
+        _ => Color.Default
+    };
+
+    private static string FormatAge(int months) =>
+        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
+}

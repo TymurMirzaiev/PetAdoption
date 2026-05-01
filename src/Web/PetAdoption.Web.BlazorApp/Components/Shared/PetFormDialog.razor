@@ -1,4 +1,5 @@
 @inject PetApiClient PetApi
+@using Microsoft.AspNetCore.Components.Web
 
 <MudDialog>
     <TitleContent>
@@ -19,6 +20,21 @@
             <MudTextField @bind-Value="Breed" Label="Breed" Class="mb-4" />
             <MudNumericField @bind-Value="AgeMonths" Label="Age (months)" Min="0" Class="mb-4" />
             <MudTextField @bind-Value="Description" Label="Description" Lines="3" Class="mb-4" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Tags</MudText>
+            <div class="d-flex gap-2 mb-2">
+                <MudTextField @bind-Value="_newTag" Label="Add tag" Variant="Variant.Outlined"
+                    OnKeyUp="OnTagKeyUp" Immediate="true" />
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
+                    OnClick="AddTag" Disabled="string.IsNullOrWhiteSpace(_newTag)" />
+            </div>
+            <MudChipSet T="string" Class="mb-4">
+                @foreach (var tag in _tagList)
+                {
+                    <MudChip T="string" Value="@tag" Color="Color.Primary" Variant="Variant.Outlined"
+                        OnClose="() => RemoveTag(tag)">@tag</MudChip>
+                }
+            </MudChipSet>
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -38,13 +54,37 @@
     [Parameter] public int? AgeMonths { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public List<PetTypeItem>? PetTypes { get; set; }
+    [Parameter] public List<string>? Tags { get; set; }
 
     private MudForm _form = null!;
     private bool _isValid;
+    private List<string> _tagList = new();
+    private string _newTag = "";
+
+    protected override void OnParametersSet()
+    {
+        if (Tags is not null)
+            _tagList = new List<string>(Tags);
+    }
+
+    private void AddTag()
+    {
+        var tag = _newTag.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(tag) && !_tagList.Contains(tag))
+            _tagList.Add(tag);
+        _newTag = "";
+    }
+
+    private void RemoveTag(string tag) => _tagList.Remove(tag);
+
+    private void OnTagKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") AddTag();
+    }
 
     private void Cancel() => MudDialog.Cancel();
 
-    private void Submit() => MudDialog.Close(DialogResult.Ok(new PetFormResult(Name, SelectedPetTypeId, Breed, AgeMonths, Description)));
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new PetFormResult(Name, SelectedPetTypeId, Breed, AgeMonths, Description, _tagList)));
 
-    public record PetFormResult(string Name, Guid? PetTypeId, string? Breed, int? AgeMonths, string? Description);
+    public record PetFormResult(string Name, Guid? PetTypeId, string? Breed, int? AgeMonths, string? Description, List<string> Tags);
 }

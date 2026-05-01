@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.ValueObjects;
@@ -44,6 +45,17 @@ public class PetServiceDbContext : DbContext
             entity.Property(p => p.Status).HasConversion<int>();
             entity.Property(p => p.Version).IsConcurrencyToken();
             entity.Ignore(p => p.DomainEvents);
+            entity.Property(p => p.Tags)
+                .HasField("_tags")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v.Select(t => t.Value).ToList(), (JsonSerializerOptions?)null),
+                    v => string.IsNullOrEmpty(v)
+                        ? new List<PetTag>()
+                        : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null)!
+                            .Select(s => new PetTag(s)).ToList())
+                .HasColumnName("Tags")
+                .HasColumnType("nvarchar(max)")
+                .IsRequired(false);
         });
 
         modelBuilder.Entity<PetType>(entity =>

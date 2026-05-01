@@ -104,4 +104,22 @@ public class PetApiClient
 
     public Task<HttpResponseMessage> DeleteAnnouncementAsync(Guid id) =>
         _http.DeleteAsync($"api/announcements/{id}");
+
+    // Organization-scoped pet management
+    public async Task<OrgPetsResponse?> GetOrgPetsAsync(Guid orgId, string? status = null, string? tags = null, int skip = 0, int take = 20)
+    {
+        var query = $"api/organizations/{orgId}/pets?skip={skip}&take={take}";
+        if (status is not null) query += $"&status={status}";
+        if (tags is not null) query += $"&tags={Uri.EscapeDataString(tags)}";
+        return await _http.GetFromJsonAsync<OrgPetsResponse>(query);
+    }
+
+    public Task<HttpResponseMessage> CreateOrgPetAsync(Guid orgId, CreateOrgPetRequest request) =>
+        _http.PostAsJsonAsync($"api/organizations/{orgId}/pets", request);
+
+    public Task<HttpResponseMessage> UpdateOrgPetAsync(Guid orgId, Guid petId, UpdateOrgPetRequest request) =>
+        _http.PutAsJsonAsync($"api/organizations/{orgId}/pets/{petId}", request);
+
+    public Task<HttpResponseMessage> DeleteOrgPetAsync(Guid orgId, Guid petId) =>
+        _http.DeleteAsync($"api/organizations/{orgId}/pets/{petId}");
 }

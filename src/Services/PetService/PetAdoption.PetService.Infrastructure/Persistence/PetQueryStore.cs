@@ -27,7 +27,10 @@ public class PetQueryStore : IPetQueryStore
         PetStatus? status,
         Guid? petTypeId,
         int skip,
-        int take)
+        int take,
+        int? minAgeMonths = null,
+        int? maxAgeMonths = null,
+        string? breedSearch = null)
     {
         var query = _db.Pets.AsNoTracking().AsQueryable();
 
@@ -37,8 +40,17 @@ public class PetQueryStore : IPetQueryStore
         if (petTypeId.HasValue)
             query = query.Where(p => p.PetTypeId == petTypeId.Value);
 
+        if (minAgeMonths.HasValue)
+            query = query.Where(p => p.Age != null && p.Age.Months >= minAgeMonths.Value);
+
+        if (maxAgeMonths.HasValue)
+            query = query.Where(p => p.Age != null && p.Age.Months <= maxAgeMonths.Value);
+
+        if (!string.IsNullOrWhiteSpace(breedSearch))
+            query = query.Where(p => p.Breed != null && p.Breed.Value.Contains(breedSearch.Trim()));
+
         var total = await query.LongCountAsync();
-        var pets = await query.Skip(skip).Take(take).ToListAsync();
+        var pets = await query.OrderBy(p => p.Name).Skip(skip).Take(take).ToListAsync();
 
         return (pets, total);
     }

@@ -3,6 +3,8 @@
 @attribute [Authorize]
 @inject PetApiClient PetApi
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JS
 
 <PageTitle>Discover Pets</PageTitle>
 
@@ -16,6 +18,13 @@
             }
         }
     </MudSelect>
+
+    <div class="d-flex justify-end mb-2">
+        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.HelpOutline" OnClick="ShowOnboarding">
+            Show tutorial
+        </MudButton>
+    </div>
 
     @if (_loading)
     {
@@ -44,6 +53,7 @@
     private bool _loading = true;
     private int _skip;
     private bool _hasMore = true;
+    private const string OnboardingSeenKey = "petadoption_onboarding_seen";
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,4 +122,50 @@
     private async Task LoadMore() => await FetchBatch();
 
     private async Task OnFilterChanged() => await LoadPets();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CheckOnboarding();
+        }
+    }
+
+    private async Task CheckOnboarding()
+    {
+        try
+        {
+            var seen = await JS.InvokeAsync<string?>("localStorage.getItem", OnboardingSeenKey);
+            if (string.IsNullOrEmpty(seen))
+            {
+                await ShowOnboarding();
+            }
+        }
+        catch
+        {
+            // localStorage may not be available; skip silently
+        }
+    }
+
+    private async Task ShowOnboarding()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            NoHeader = true,
+            CloseOnEscapeKey = false,
+            BackdropClick = false
+        };
+        var dialog = await DialogService.ShowAsync<OnboardingDialog>("Welcome", options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", OnboardingSeenKey, "true");
+            }
+            catch { }
+        }
+    }
 }

@@ -149,4 +149,11 @@ public static class PetDomainErrorCode
     /// Rejection reason is invalid (empty or whitespace).
     /// </summary>
     public const string InvalidRejectionReason = "invalid_rejection_reason";
+
+    // Authorization errors
+
+    /// <summary>
+    /// Caller is not authorized to act on resources owned by the target organization.
+    /// </summary>
+    public const string NotAuthorizedForOrg = "not_authorized_for_org";
 }

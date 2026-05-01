@@ -1,4 +1,5 @@
 using PetAdoption.PetService.Application.Abstractions;
+using PetAdoption.PetService.Application.Authorization;
 using PetAdoption.PetService.Domain.Exceptions;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -24,6 +25,9 @@ public class RejectAdoptionRequestCommandHandler
                 PetDomainErrorCode.AdoptionRequestNotFound,
                 $"Adoption request {request.RequestId} not found.",
                 new Dictionary<string, object> { { "RequestId", request.RequestId } });
+
+        OrgAuthorization.EnsureMember(
+            adoptionRequest.OrganizationId, request.ReviewerOrgId, request.ReviewerOrgRole);
 
         adoptionRequest.Reject(request.Reason);
         await _adoptionRequestRepository.UpdateAsync(adoptionRequest, cancellationToken);

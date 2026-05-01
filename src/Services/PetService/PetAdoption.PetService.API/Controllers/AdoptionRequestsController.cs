@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PetAdoption.PetService.API.Authorization;
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.Commands;
 using PetAdoption.PetService.Application.Queries;
@@ -23,6 +24,11 @@ public class AdoptionRequestsController : ControllerBase
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirstValue("userId")
             ?? throw new UnauthorizedAccessException("userId claim not found"));
+
+    private Guid? GetUserOrgId() =>
+        Guid.TryParse(User.FindFirstValue("organizationId"), out var id) ? id : null;
+
+    private string? GetUserOrgRole() => User.FindFirstValue("orgRole");
 
     /// <summary>
     /// Create an adoption request for a pet. User must be authenticated.
@@ -47,12 +53,12 @@ public class AdoptionRequestsController : ControllerBase
     }
 
     /// <summary>
-    /// Get adoption requests for an organization. Caller must be org admin/moderator.
-    /// Organization membership is validated by the caller (Blazor frontend checks via UserService).
+    /// Get adoption requests for an organization. Caller must be a member (Admin/Moderator) of that org.
     /// </summary>
-    [HttpGet("organization/{organizationId:guid}")]
+    [HttpGet("organization/{orgId:guid}")]
+    [ServiceFilter(typeof(OrgAuthorizationFilter))]
     public async Task<IActionResult> GetOrgAdoptionRequests(
-        Guid organizationId,
+        Guid orgId,
         [FromQuery] string? status = null,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
@@ -62,27 +68,29 @@ public class AdoptionRequestsController : ControllerBase
             : null;
 
         var result = await _mediator.Send(new GetOrgAdoptionRequestsQuery(
-            organizationId, statusFilter, skip, take));
+            orgId, statusFilter, skip, take));
         return Ok(result);
     }
 
     /// <summary>
-    /// Approve an adoption request. Caller must be org admin/moderator.
+    /// Approve an adoption request. Caller must be Admin/Moderator of the request's organization.
     /// </summary>
     [HttpPost("{id:guid}/approve")]
     public async Task<IActionResult> ApproveAdoptionRequest(Guid id)
     {
-        var result = await _mediator.Send(new ApproveAdoptionRequestCommand(id, GetUserId()));
+        var result = await _mediator.Send(new ApproveAdoptionRequestCommand(
+            id, GetUserId(), GetUserOrgId(), GetUserOrgRole()));
         return Ok(result);
     }
 
     /// <summary>
-    /// Reject an adoption request. Caller must be org admin/moderator.
+    /// Reject an adoption request. Caller must be Admin/Moderator of the request's organization.
     /// </summary>
     [HttpPost("{id:guid}/reject")]
     public async Task<IActionResult> RejectAdoptionRequest(Guid id, [FromBody] RejectAdoptionRequestBody body)
     {
-        var result = await _mediator.Send(new RejectAdoptionRequestCommand(id, GetUserId(), body.Reason));
+        var result = await _mediator.Send(new RejectAdoptionRequestCommand(
+            id, GetUserId(), body.Reason, GetUserOrgId(), GetUserOrgRole()));
         return Ok(result);
     }
 

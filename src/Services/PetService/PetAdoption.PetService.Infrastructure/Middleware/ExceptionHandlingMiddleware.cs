@@ -108,6 +108,9 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.AdoptionRequestNotPending => HttpStatusCode.Conflict,
             PetDomainErrorCode.AdoptionRequestAlreadyExists => HttpStatusCode.Conflict,
 
+            // Authorization
+            PetDomainErrorCode.NotAuthorizedForOrg => HttpStatusCode.Forbidden,
+
             // Unknown/default
             _ => HttpStatusCode.InternalServerError
         };

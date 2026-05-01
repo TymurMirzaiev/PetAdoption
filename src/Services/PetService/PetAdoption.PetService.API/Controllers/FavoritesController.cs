@@ -37,10 +37,23 @@ public class FavoritesController : ControllerBase
         return NoContent();
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetFavorites([FromQuery] int skip = 0, [FromQuery] int take = 10)
+    [HttpGet("check/{petId:guid}")]
+    public async Task<IActionResult> CheckFavorite(Guid petId)
     {
-        var result = await _mediator.Send(new GetFavoritesQuery(GetUserId(), skip, take));
+        var result = await _mediator.Send(new CheckFavoriteQuery(GetUserId(), petId));
+        return Ok(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetFavorites(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 10,
+        [FromQuery] Guid? petTypeId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string sortBy = "newest")
+    {
+        var result = await _mediator.Send(new GetFavoritesQuery(
+            GetUserId(), skip, take, petTypeId, status, sortBy));
         return Ok(result);
     }
 }

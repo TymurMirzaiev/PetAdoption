@@ -15,7 +15,9 @@ public class GetFavoritesQueryHandler : IRequestHandler<GetFavoritesQuery, GetFa
 
     public async Task<GetFavoritesResponse> Handle(GetFavoritesQuery request, CancellationToken cancellationToken = default)
     {
-        var (items, total) = await _queryStore.GetByUserAsync(request.UserId, request.Skip, request.Take);
+        var (items, total) = await _queryStore.GetByUserAsync(
+            request.UserId, request.Skip, request.Take,
+            request.PetTypeId, request.PetStatus, request.SortBy);
         return new GetFavoritesResponse(items, total, request.Skip / request.Take + 1, request.Take);
     }
 }

@@ -4,11 +4,41 @@
 @inject PetApiClient PetApi
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>My Favorites</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" Class="mb-4">My Favorites</MudText>
+
+    @* Filter bar *@
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="4">
+            <MudSelect T="Guid?" Label="Pet Type" @bind-Value="_selectedTypeId" @bind-Value:after="OnFilterChanged" Clearable="true">
+                @if (_petTypes is not null)
+                {
+                    @foreach (var pt in _petTypes)
+                    {
+                        <MudSelectItem Value="@((Guid?)pt.Id)">@pt.Name</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string?" Label="Status" @bind-Value="_selectedStatus" @bind-Value:after="OnFilterChanged" Clearable="true">
+                <MudSelectItem Value="@("Available")">Available</MudSelectItem>
+                <MudSelectItem Value="@("Reserved")">Reserved</MudSelectItem>
+                <MudSelectItem Value="@("Adopted")">Adopted</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string" Label="Sort By" @bind-Value="_sortBy" @bind-Value:after="OnFilterChanged">
+                <MudSelectItem Value="@("newest")">Newest First</MudSelectItem>
+                <MudSelectItem Value="@("oldest")">Oldest First</MudSelectItem>
+                <MudSelectItem Value="@("name")">Name (A-Z)</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
 
     @if (_loading)
     {
@@ -58,32 +88,89 @@
                                 <MudButton Size="Size.Small" Color="Color.Success"
                                     OnClick="@(() => ReservePet(fav.PetId))">Reserve</MudButton>
                             }
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                OnClick="@(() => RemoveFavorite(fav.PetId))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.HeartBroken" Size="Size.Small" Color="Color.Error"
+                                OnClick="@(() => ConfirmRemoveFavorite(fav.PetId, fav.PetName))" />
                         </MudCardActions>
                     </MudCard>
                 </MudItem>
             }
         </MudGrid>
+
+        @* Pagination *@
+        @if (_totalCount > _pageSize)
+        {
+            <div class="d-flex justify-center mt-4">
+                <MudPagination Count="@((int)Math.Ceiling((double)_totalCount / _pageSize))"
+                    Selected="_currentPage"
+                    SelectedChanged="OnPageChanged" />
+            </div>
+        }
     }
 </MudContainer>
 
 @code {
     private List<FavoriteItem> _favorites = [];
+    private List<PetTypeItem>? _petTypes;
     private bool _loading = true;
+    private long _totalCount;
+    private int _pageSize = 12;
+    private int _currentPage = 1;
+    private Guid? _selectedTypeId;
+    private string? _selectedStatus;
+    private string _sortBy = "newest";
 
-    protected override async Task OnInitializedAsync() => await LoadFavorites();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPetTypes();
+        await LoadFavorites();
+    }
+
+    private async Task LoadPetTypes()
+    {
+        try
+        {
+            var response = await PetApi.GetPetTypesAsync();
+            _petTypes = response?.Items?.Where(pt => pt.IsActive).ToList();
+        }
+        catch { }
+    }
 
     private async Task LoadFavorites()
     {
         _loading = true;
         try
         {
-            var response = await PetApi.GetFavoritesAsync(take: 50);
+            var skip = (_currentPage - 1) * _pageSize;
+            var response = await PetApi.GetFavoritesAsync(
+                skip, _pageSize, _selectedTypeId, _selectedStatus, _sortBy);
             _favorites = response?.Items?.ToList() ?? [];
+            _totalCount = response?.TotalCount ?? 0;
         }
         catch { Snackbar.Add("Failed to load favorites", Severity.Error); }
         finally { _loading = false; }
+    }
+
+    private async Task OnFilterChanged()
+    {
+        _currentPage = 1;
+        await LoadFavorites();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadFavorites();
+    }
+
+    private async Task ConfirmRemoveFavorite(Guid petId, string petName)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Remove Favorite",
+            $"Are you sure you want to remove {petName} from your favorites?",
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (result == true)
+            await RemoveFavorite(petId);
     }
 
     private async Task RemoveFavorite(Guid petId)
@@ -94,6 +181,7 @@
             if (response.IsSuccessStatusCode)
             {
                 _favorites.RemoveAll(f => f.PetId == petId);
+                _totalCount--;
                 Snackbar.Add("Removed from favorites", Severity.Info);
             }
         }

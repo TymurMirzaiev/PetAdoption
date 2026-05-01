@@ -31,4 +31,9 @@ public class FavoriteRepository : IFavoriteRepository
             .Where(f => f.UserId == userId && f.PetId == petId)
             .ExecuteDeleteAsync();
     }
+
+    public async Task<bool> ExistsByUserAndPetAsync(Guid userId, Guid petId, CancellationToken ct = default)
+    {
+        return await _db.Favorites.AnyAsync(f => f.UserId == userId && f.PetId == petId, ct);
+    }
 }

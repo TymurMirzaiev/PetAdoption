@@ -4,10 +4,11 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="Title" Label="Title" Required="true" RequiredError="Title is required" Class="mb-4" />
-            <MudTextField @bind-Value="Body" Label="Body" Lines="4" Required="true" RequiredError="Body is required" Class="mb-4" />
-            <MudDatePicker @bind-Date="_startDate" Label="Start Date" Required="true" Class="mb-4" />
-            <MudDatePicker @bind-Date="_endDate" Label="End Date" Required="true" Class="mb-4" />
+            <MudTextField @bind-Value="Title" Label="Title" Required="true" RequiredError="Title is required" MaxLength="200" Counter="200" Class="mb-4" />
+            <MudTextField @bind-Value="Body" Label="Body" Lines="4" Required="true" RequiredError="Body is required" MaxLength="5000" Counter="5000" Class="mb-4" />
+            <MudDatePicker @bind-Date="_startDate" @bind-Date:after="() => _form.Validate()" Label="Start Date" Required="true" Class="mb-4" />
+            <MudDatePicker @bind-Date="_endDate" @bind-Date:after="() => _form.Validate()" Label="End Date" Required="true" Class="mb-4"
+                Validation="@(new Func<DateTime?, string?>(d => d.HasValue && _startDate.HasValue && d <= _startDate ? "End date must be after start date" : null))" />
         </MudForm>
     </DialogContent>
     <DialogActions>

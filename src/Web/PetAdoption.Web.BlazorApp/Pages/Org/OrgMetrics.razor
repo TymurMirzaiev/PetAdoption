@@ -16,8 +16,13 @@
         <MudItem xs="12" sm="4">
             <MudDatePicker Label="To" @bind-Date="_toDate" />
         </MudItem>
-        <MudItem xs="12" sm="4" Class="d-flex align-end">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadMetrics">Apply Filter</MudButton>
+        <MudItem xs="12" sm="4" Class="d-flex align-end flex-column align-start gap-1">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadMetrics"
+                Disabled="@(_fromDate.HasValue && _toDate.HasValue && _toDate < _fromDate)">Apply Filter</MudButton>
+            @if (_fromDate.HasValue && _toDate.HasValue && _toDate < _fromDate)
+            {
+                <MudText Color="Color.Error" Typo="Typo.caption">"To" date must be after "From" date</MudText>
+            }
         </MudItem>
     </MudGrid>
 

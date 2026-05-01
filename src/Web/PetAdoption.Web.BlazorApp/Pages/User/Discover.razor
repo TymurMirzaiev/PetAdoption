@@ -27,19 +27,26 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField T="int?" Label="Min Age (months)" @bind-Value="_minAge" Min="0" />
+                    <MudNumericField T="int?" Label="Min Age (months)" @bind-Value="_minAge" Min="0" Max="360" />
                 </MudItem>
                 <MudItem xs="6" sm="3">
-                    <MudNumericField T="int?" Label="Max Age (months)" @bind-Value="_maxAge" Min="0" />
+                    <MudNumericField T="int?" Label="Max Age (months)" @bind-Value="_maxAge" Min="0" Max="360" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudTextField T="string" Label="Breed contains" @bind-Value="_breedSearch" Clearable="true" />
                 </MudItem>
-                <MudItem xs="12" sm="6" Class="d-flex align-end">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mr-2">
-                        Apply Filters
-                    </MudButton>
-                    <MudButton Variant="Variant.Text" OnClick="ClearFilters">Clear</MudButton>
+                <MudItem xs="12" sm="6" Class="d-flex align-end flex-column align-start gap-1">
+                    <div class="d-flex">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mr-2"
+                            Disabled="@(_minAge.HasValue && _maxAge.HasValue && _minAge > _maxAge)">
+                            Apply Filters
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" OnClick="ClearFilters">Clear</MudButton>
+                    </div>
+                    @if (_minAge.HasValue && _maxAge.HasValue && _minAge > _maxAge)
+                    {
+                        <MudText Color="Color.Error" Typo="Typo.caption">Min age cannot exceed max age</MudText>
+                    }
                 </MudItem>
             </MudGrid>
         </MudExpansionPanel>

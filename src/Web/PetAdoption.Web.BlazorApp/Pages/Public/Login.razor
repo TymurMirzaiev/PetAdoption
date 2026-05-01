@@ -12,8 +12,10 @@
         <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-6">Sign In</MudText>
 
         <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
-                Required="true" RequiredError="Email is required" Class="mb-4" />
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email" MaxLength="255"
+                Required="true" RequiredError="Email is required"
+                Validation="@(new Func<string, string?>(v => System.Text.RegularExpressions.Regex.IsMatch(v ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$") ? null : "Invalid email format"))"
+                Class="mb-4" />
             <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
                 Required="true" RequiredError="Password is required" Class="mb-4" />
 

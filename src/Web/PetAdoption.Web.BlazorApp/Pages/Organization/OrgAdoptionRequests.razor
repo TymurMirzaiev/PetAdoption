@@ -61,7 +61,7 @@
             <MudText Typo="Typo.h6">Reject Request for @_rejectPetName</MudText>
         </TitleContent>
         <DialogContent>
-            <MudTextField @bind-Value="_rejectReason" Label="Rejection reason" Lines="3" Variant="Variant.Outlined" Required="true" />
+            <MudTextField @bind-Value="_rejectReason" Label="Rejection reason" Lines="3" Variant="Variant.Outlined" Required="true" MaxLength="1000" Counter="1000" />
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="@(() => _rejectDialogVisible = false)">Cancel</MudButton>

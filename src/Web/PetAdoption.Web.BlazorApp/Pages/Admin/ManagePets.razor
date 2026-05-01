@@ -103,7 +103,7 @@
         {
             try
             {
-                var response = await PetApi.CreatePetAsync(new CreatePetRequest(data.Name, data.PetTypeId.Value, data.Breed, data.AgeMonths, data.Description));
+                var response = await PetApi.CreatePetAsync(new CreatePetRequest(data.Name, data.PetTypeId.Value, data.Breed, data.AgeMonths, data.Description, data.Tags));
                 if (response.IsSuccessStatusCode)
                 {
                     Snackbar.Add("Pet created!", Severity.Success);
@@ -128,7 +128,8 @@
             { x => x.Breed, pet.Breed },
             { x => x.AgeMonths, pet.AgeMonths },
             { x => x.Description, pet.Description },
-            { x => x.PetTypes, _petTypes }
+            { x => x.PetTypes, _petTypes },
+            { x => x.Tags, pet.Tags?.ToList() }
         };
         var dialog = await DialogService.ShowAsync<PetFormDialog>("Edit Pet", parameters);
         var result = await dialog.Result;
@@ -136,7 +137,7 @@
         {
             try
             {
-                var response = await PetApi.UpdatePetAsync(pet.Id, new UpdatePetRequest(data.Name, data.Breed, data.AgeMonths, data.Description));
+                var response = await PetApi.UpdatePetAsync(pet.Id, new UpdatePetRequest(data.Name, data.Breed, data.AgeMonths, data.Description, data.Tags));
                 if (response.IsSuccessStatusCode)
                 {
                     Snackbar.Add("Pet updated!", Severity.Success);

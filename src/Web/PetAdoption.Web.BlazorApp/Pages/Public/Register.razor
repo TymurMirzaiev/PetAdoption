@@ -12,13 +12,19 @@
         <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-6">Create Account</MudText>
 
         <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="_fullName" Label="Full Name"
-                Required="true" RequiredError="Full name is required" Class="mb-4" />
-            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
-                Required="true" RequiredError="Email is required" Class="mb-4" />
-            <MudTextField @bind-Value="_phoneNumber" Label="Phone Number (optional)" Class="mb-4" />
-            <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+            <MudTextField @bind-Value="_fullName" Label="Full Name" MaxLength="100"
+                Required="true" RequiredError="Full name is required"
+                Validation="@(new Func<string, string?>(v => v?.Trim().Length < 2 ? "Name must be at least 2 characters" : null))"
+                Class="mb-4" />
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email" MaxLength="255"
+                Required="true" RequiredError="Email is required"
+                Validation="@(new Func<string, string?>(ValidateEmail))" Class="mb-4" />
+            <MudTextField @bind-Value="_phoneNumber" Label="Phone Number (optional)"
+                Validation="@(new Func<string, string?>(ValidatePhone))" Class="mb-4" />
+            <MudTextField @bind-Value="_password" @bind-Value:after="OnPasswordChanged"
+                Label="Password" InputType="InputType.Password" MaxLength="100"
                 Required="true" RequiredError="Password is required"
+                Validation="@(new Func<string, string?>(ValidatePassword))"
                 HelperText="Minimum 8 characters" Class="mb-4" />
             <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password" InputType="InputType.Password"
                 Required="true" RequiredError="Please confirm your password"
@@ -48,8 +54,26 @@
     private bool _isValid;
     private bool _loading;
 
+    private static string? ValidateEmail(string v) =>
+        System.Text.RegularExpressions.Regex.IsMatch(v ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+            ? null : "Invalid email format";
+
+    private static string? ValidatePassword(string v) =>
+        (v?.Length ?? 0) < 8 ? "Password must be at least 8 characters" :
+        (v?.Length ?? 0) > 100 ? "Password cannot exceed 100 characters" : null;
+
+    private static string? ValidatePhone(string v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return null;
+        var digits = System.Text.RegularExpressions.Regex.Replace(v, @"[^\d+]", "")
+            .TrimStart('+');
+        return digits.Length is >= 10 and <= 15 ? null : "Phone must be 10–15 digits";
+    }
+
     private string? ValidateConfirmPassword(string confirmPassword) =>
         confirmPassword != _password ? "Passwords do not match" : null;
+
+    private async Task OnPasswordChanged() => await _form.Validate();
 
     private async Task HandleRegister()
     {

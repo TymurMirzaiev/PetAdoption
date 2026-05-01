@@ -67,6 +67,17 @@
     [Parameter] public Guid OrgId { get; set; }
 
     private MudDataGrid<PetListItem> _grid = null!;
+    private List<PetTypeItem>? _petTypes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await PetApi.GetPetTypesAsync(includeInactive: false);
+            _petTypes = response?.Items?.ToList();
+        }
+        catch { }
+    }
 
     private async Task<GridData<PetListItem>> LoadServerData(GridState<PetListItem> state)
     {
@@ -88,7 +99,11 @@
 
     private async Task OpenCreateDialog()
     {
-        var dialog = await DialogService.ShowAsync<PetFormDialog>("Add Pet");
+        var parameters = new DialogParameters<PetFormDialog>
+        {
+            { x => x.PetTypes, _petTypes }
+        };
+        var dialog = await DialogService.ShowAsync<PetFormDialog>("Add Pet", parameters);
         var result = await dialog.Result;
         if (result is { Canceled: false, Data: PetFormDialog.PetFormResult data } && data.PetTypeId.HasValue)
         {
@@ -117,7 +132,8 @@
             { x => x.Breed, pet.Breed },
             { x => x.AgeMonths, pet.AgeMonths },
             { x => x.Description, pet.Description },
-            { x => x.Tags, pet.Tags?.ToList() }
+            { x => x.Tags, pet.Tags?.ToList() },
+            { x => x.PetTypes, _petTypes }
         };
         var dialog = await DialogService.ShowAsync<PetFormDialog>("Edit Pet", parameters);
         var result = await dialog.Result;

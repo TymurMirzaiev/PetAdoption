@@ -117,7 +117,7 @@
             <MudText Typo="Typo.body1" Class="mb-4">
                 Tell the organization why you'd like to adopt this pet (optional):
             </MudText>
-            <MudTextField @bind-Value="_adoptMessage" Label="Your message" Lines="3" Variant="Variant.Outlined" />
+            <MudTextField @bind-Value="_adoptMessage" Label="Your message" Lines="3" Variant="Variant.Outlined" MaxLength="1000" Counter="1000" />
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="@(() => _adoptDialogVisible = false)">Cancel</MudButton>

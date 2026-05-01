@@ -7,8 +7,9 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="Name" Label="Name" Required="true" RequiredError="Name is required" Class="mb-4" />
-            <MudSelect T="Guid?" @bind-Value="SelectedPetTypeId" Label="Pet Type" Required="true" RequiredError="Pet type is required" Class="mb-4">
+            <MudTextField @bind-Value="Name" Label="Name" Required="true" RequiredError="Name is required" MaxLength="100" Class="mb-4" />
+            <MudSelect T="Guid?" @bind-Value="SelectedPetTypeId" Label="Pet Type" Required="true" RequiredError="Pet type is required"
+                Disabled="@(PetTypes is null)" Placeholder="@(PetTypes is null ? "Loading..." : null)" Class="mb-4">
                 @if (PetTypes is not null)
                 {
                     @foreach (var pt in PetTypes)
@@ -17,14 +18,14 @@
                     }
                 }
             </MudSelect>
-            <MudTextField @bind-Value="Breed" Label="Breed" Class="mb-4" />
-            <MudNumericField @bind-Value="AgeMonths" Label="Age (months)" Min="0" Class="mb-4" />
-            <MudTextField @bind-Value="Description" Label="Description" Lines="3" Class="mb-4" />
+            <MudTextField @bind-Value="Breed" Label="Breed" MaxLength="100" Class="mb-4" />
+            <MudNumericField @bind-Value="AgeMonths" Label="Age (months)" Min="0" Max="360" Class="mb-4" />
+            <MudTextField @bind-Value="Description" Label="Description" Lines="3" MaxLength="2000" Counter="2000" Class="mb-4" />
 
             <MudText Typo="Typo.subtitle2" Class="mb-2">Tags</MudText>
             <div class="d-flex gap-2 mb-2">
                 <MudTextField @bind-Value="_newTag" Label="Add tag" Variant="Variant.Outlined"
-                    OnKeyUp="OnTagKeyUp" Immediate="true" />
+                    OnKeyUp="OnTagKeyUp" Immediate="true" MaxLength="50" Counter="50" />
                 <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
                     OnClick="AddTag" Disabled="string.IsNullOrWhiteSpace(_newTag)" />
             </div>

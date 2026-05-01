@@ -20,9 +20,12 @@
         <MudPaper Class="pa-6 mb-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="mb-4">Personal Information</MudText>
             <MudForm @ref="_profileForm" @bind-IsValid="_profileValid">
-                <MudTextField @bind-Value="_fullName" Label="Full Name" Required="true" Class="mb-4" />
+                <MudTextField @bind-Value="_fullName" Label="Full Name" Required="true" MaxLength="100"
+                    Validation="@(new Func<string, string?>(v => (v?.Trim().Length ?? 0) < 2 ? "Name must be at least 2 characters" : v?.Trim().Length > 100 ? "Name cannot exceed 100 characters" : null))"
+                    Class="mb-4" />
                 <MudTextField Value="_profile.Email" Label="Email" ReadOnly="true" Class="mb-4" />
-                <MudTextField @bind-Value="_phoneNumber" Label="Phone Number" Class="mb-4" />
+                <MudTextField @bind-Value="_phoneNumber" Label="Phone Number"
+                    Validation="@(new Func<string, string?>(ValidatePhone))" Class="mb-4" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary"
                     Disabled="@(!_profileValid || _saving)" OnClick="UpdateProfile">
                     @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
@@ -39,7 +42,8 @@
                     <MudTextField @bind-Value="_currentPassword" Label="Current Password"
                         InputType="InputType.Password" Required="true" Class="mb-4" />
                     <MudTextField @bind-Value="_newPassword" Label="New Password"
-                        InputType="InputType.Password" Required="true"
+                        InputType="InputType.Password" Required="true" MaxLength="100"
+                        Validation="@(new Func<string, string?>(v => (v?.Length ?? 0) < 8 ? "Password must be at least 8 characters" : (v?.Length ?? 0) > 100 ? "Password cannot exceed 100 characters" : null))"
                         HelperText="Minimum 8 characters" Class="mb-4" />
                     <MudButton Variant="Variant.Filled" Color="Color.Warning"
                         Disabled="@(!_passwordValid || _changingPassword)" OnClick="ChangePassword">
@@ -76,6 +80,14 @@
     private string _phoneNumber = "";
     private string _currentPassword = "";
     private string _newPassword = "";
+
+    private static string? ValidatePhone(string v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) return null;
+        var digits = System.Text.RegularExpressions.Regex.Replace(v, @"[^\d+]", "")
+            .TrimStart('+');
+        return digits.Length is >= 10 and <= 15 ? null : "Phone must be 10–15 digits";
+    }
 
     protected override async Task OnInitializedAsync()
     {

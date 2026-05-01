@@ -62,8 +62,25 @@ public class PetApiClient
     public Task<HttpResponseMessage> RemoveFavoriteAsync(Guid petId) =>
         _http.DeleteAsync($"api/favorites/{petId}");
 
-    public async Task<FavoritesResponse?> GetFavoritesAsync(int skip = 0, int take = 10) =>
-        await _http.GetFromJsonAsync<FavoritesResponse>($"api/favorites?skip={skip}&take={take}");
+    public async Task<FavoritesResponse?> GetFavoritesAsync(
+        int skip = 0, int take = 10,
+        Guid? petTypeId = null, string? status = null, string sortBy = "newest")
+    {
+        var query = $"api/favorites?skip={skip}&take={take}&sortBy={sortBy}";
+        if (petTypeId.HasValue) query += $"&petTypeId={petTypeId}";
+        if (status is not null) query += $"&status={status}";
+        return await _http.GetFromJsonAsync<FavoritesResponse>(query);
+    }
+
+    public async Task<bool> CheckFavoriteAsync(Guid petId)
+    {
+        try
+        {
+            var result = await _http.GetFromJsonAsync<CheckFavoriteResponse>($"api/favorites/check/{petId}");
+            return result?.IsFavorited ?? false;
+        }
+        catch { return false; }
+    }
 
     public async Task<IEnumerable<ActiveAnnouncement>?> GetActiveAnnouncementsAsync() =>
         await _http.GetFromJsonAsync<IEnumerable<ActiveAnnouncement>>("api/announcements/active");

@@ -20,6 +20,7 @@ public record PetTypesResponse(IEnumerable<PetTypeItem> Items);
 
 public record FavoriteItem(Guid FavoriteId, Guid PetId, string PetName, string PetType, string? Breed, int? AgeMonths, string Status, DateTime CreatedAt);
 public record FavoritesResponse(IEnumerable<FavoriteItem> Items, long TotalCount, int Page, int PageSize);
+public record CheckFavoriteResponse(bool IsFavorited);
 
 public record AnnouncementListItem(Guid Id, string Title, DateTime StartDate, DateTime EndDate, string Status, DateTime CreatedAt);
 public record AnnouncementDetail(Guid Id, string Title, string Body, DateTime StartDate, DateTime EndDate, Guid CreatedBy, DateTime CreatedAt);

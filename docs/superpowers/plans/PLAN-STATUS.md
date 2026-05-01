@@ -14,41 +14,27 @@
 | 8  | Onboarding Intro (Wave 1)                  | `2026-05-01-onboarding-intro.md`                      |
 | 9  | Favorites Management (Wave 1)              | `2026-05-01-favorites-management.md`                  |
 | 10 | User Pet Filters (Wave 1)                  | `2026-05-01-user-pet-filters.md`                      |
+| 11 | Org Pet CRUD + Tags (Wave 2)               | `2026-05-01-org-pet-crud-with-tags.md`                |
+| 12 | Adoption Process Flow (Wave 2)             | `2026-05-01-adoption-process-flow.md`                 |
+| 13 | Pet Metrics per Organization (Wave 2)      | `2026-05-01-pet-metrics-per-organization.md`          |
 
 ## Remaining - Dependency Graph
 
 ```
-    Depends on Plan 6 (Org Mgmt)        Benefits from Plan 10 (User Pet Filters)
-    ────────────────────────────        ─────────────────────────────────────────
-
-┌───────────────────────┐               ┌───────────────────────┐
-│ Org Pet CRUD + Tags   │               │ Discovery Algorithm   │
-│                       │               │ (can work without)    │
-└───────────────────────┘               └───────────────────────┘
+    Benefits from Plan 10 (User Pet Filters)
+    ─────────────────────────────────────────
 
 ┌───────────────────────┐
-│ Adoption Process Flow │
-│                       │
-└───────────────────────┘
-
-┌───────────────────────┐
-│ Pet Metrics per Org   │
-│                       │
+│ Discovery Algorithm   │
+│ (can work without)    │
 └───────────────────────┘
 ```
 
 ## Recommended Execution Order
 
-### Wave 2 (parallel - depends on Plan 6, already completed)
-| Plan                  | File                                       | Scope                         |
-|-----------------------|--------------------------------------------|-------------------------------|
-| Org Pet CRUD + Tags   | `2026-05-01-org-pet-crud-with-tags.md`     | Backend (PetService)          |
-| Adoption Process Flow | `2026-05-01-adoption-process-flow.md`      | Backend (new aggregate)       |
-| Pet Metrics per Org   | `2026-05-01-pet-metrics-per-organization.md`| Backend + frontend           |
-
-### Wave 3 (benefits from User Pet Filters — Plan 10)
+### Wave 3 (benefits from User Pet Filters — Plan 10, and Plan 13's Discover tracking)
 | Plan                | File                                | Scope               |
 |---------------------|-------------------------------------|---------------------|
 | Discovery Algorithm | `2026-05-01-discovery-algorithm.md` | Backend + frontend  |
 
-> **Note:** Wave 1 (Onboarding, Favorites Management, User Pet Filters) shipped on 2026-05-01 — all three plans merged into `main` with full integration test coverage on a real SQL Server (Testcontainers). Wave 2 can begin immediately; Wave 3 is best run after Wave 2 since Discovery benefits from filters being live.
+> **Note:** Wave 1 shipped on 2026-05-01. Wave 2 (Plans 11–13) shipped on 2026-05-01 — implemented in parallel via three git worktrees, merged into `main` after build + unit + integration test verification on each branch and on the integration `dev` branch. Wave 3 is best run after Wave 2 because Discovery touches `Discover.razor` (also modified by Plan 13's impression/rejection tracking) and benefits from the existing filter infrastructure.

@@ -11,6 +11,7 @@ public class PetServiceDbContext : DbContext
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+    public DbSet<PetInteraction> PetInteractions => Set<PetInteraction>();
 
     public PetServiceDbContext(DbContextOptions<PetServiceDbContext> options) : base(options) { }
 
@@ -84,6 +85,16 @@ public class PetServiceDbContext : DbContext
             entity.Property(e => e.EventData).IsRequired();
             entity.Property(e => e.LastError).HasMaxLength(2000);
             entity.HasIndex(e => new { e.IsProcessed, e.OccurredOn });
+        });
+
+        modelBuilder.Entity<PetInteraction>(entity =>
+        {
+            entity.ToTable("PetInteractions");
+            entity.HasKey(pi => pi.Id);
+            entity.Property(pi => pi.Type).HasConversion<int>();
+            entity.HasIndex(pi => new { pi.PetId, pi.Type });
+            entity.HasIndex(pi => pi.CreatedAt);
+            entity.HasIndex(pi => pi.PetId);
         });
     }
 }

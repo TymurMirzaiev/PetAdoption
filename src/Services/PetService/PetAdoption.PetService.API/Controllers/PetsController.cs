@@ -46,7 +46,7 @@ public class PetsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CreatePetResponse>> Create(CreatePetRequest request)
     {
-        var result = await _mediator.Send(new CreatePetCommand(request.Name, request.PetTypeId, request.Breed, request.AgeMonths, request.Description));
+        var result = await _mediator.Send(new CreatePetCommand(request.Name, request.PetTypeId, request.Breed, request.AgeMonths, request.Description, request.Tags));
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -64,7 +64,7 @@ public class PetsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<UpdatePetResponse>> Update(Guid id, UpdatePetRequest request)
     {
-        var result = await _mediator.Send(new UpdatePetCommand(id, request.Name, request.Breed, request.AgeMonths, request.Description));
+        var result = await _mediator.Send(new UpdatePetCommand(id, request.Name, request.Breed, request.AgeMonths, request.Description, request.Tags));
         return Ok(result);
     }
 
@@ -114,5 +114,5 @@ public class PetsController : ControllerBase
     }
 }
 
-public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null);
-public record UpdatePetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null);
+public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record UpdatePetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);

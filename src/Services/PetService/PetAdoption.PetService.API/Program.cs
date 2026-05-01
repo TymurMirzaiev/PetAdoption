@@ -157,11 +157,14 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
+// In Development the Blazor WASM client connects over http://localhost:8080 (Aspire's
+// fixed http endpoint). Forcing an HTTPS redirect there sends the browser to an https
+// port that isn't mapped by Aspire AND, more importantly, strips the Authorization
+// header on the cross-scheme redirect — surfacing as a spurious 401 / "Failed to load pets".
+if (!app.Environment.IsDevelopment())
 {
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
 
 app.MapControllers();
 app.MapDefaultEndpoints();

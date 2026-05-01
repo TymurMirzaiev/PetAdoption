@@ -1,0 +1,102 @@
+@page "/my-adoption-requests"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject ISnackbar Snackbar
+
+<PageTitle>My Adoption Requests</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">My Adoption Requests</MudText>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (!_requests.Any())
+    {
+        <MudText Typo="Typo.h6" Color="Color.Secondary" Align="Align.Center" Class="mt-8">
+            No adoption requests yet. Browse pets and start the adoption process!
+        </MudText>
+        <div class="d-flex justify-center mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/favorites">My Favorites</MudButton>
+        </div>
+    }
+    else
+    {
+        <MudTable Items="_requests" Hover="true" Elevation="3">
+            <HeaderContent>
+                <MudTh>Pet</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Submitted</MudTh>
+                <MudTh>Reviewed</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.PetName</MudTd>
+                <MudTd>@context.PetType</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+                </MudTd>
+                <MudTd>@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
+                <MudTd>@(context.ReviewedAt?.ToLocalTime().ToString("g") ?? "-")</MudTd>
+                <MudTd>
+                    @if (context.Status == "Pending")
+                    {
+                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                            OnClick="@(() => CancelRequest(context.Id))">Cancel</MudButton>
+                    }
+                    @if (context.Status == "Rejected" && context.RejectionReason is not null)
+                    {
+                        <MudTooltip Text="@context.RejectionReason">
+                            <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Warning" />
+                        </MudTooltip>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<AdoptionRequestItem> _requests = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadRequests();
+
+    private async Task LoadRequests()
+    {
+        _loading = true;
+        try
+        {
+            var response = await PetApi.GetMyAdoptionRequestsAsync(take: 50);
+            _requests = response?.Items?.ToList() ?? [];
+        }
+        catch { Snackbar.Add("Failed to load adoption requests", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task CancelRequest(Guid requestId)
+    {
+        try
+        {
+            var response = await PetApi.CancelAdoptionRequestAsync(requestId);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Request cancelled", Severity.Info);
+                await LoadRequests();
+            }
+        }
+        catch { Snackbar.Add("Failed to cancel request", Severity.Error); }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Pending" => Color.Warning,
+        "Approved" => Color.Success,
+        "Rejected" => Color.Error,
+        "Cancelled" => Color.Default,
+        _ => Color.Default
+    };
+}

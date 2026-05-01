@@ -12,11 +12,16 @@ public class PetApiClient
         _http = factory.CreateClient("PetApi");
     }
 
-    public async Task<PetsResponse?> GetPetsAsync(string? status = null, Guid? petTypeId = null, int skip = 0, int take = 20)
+    public async Task<PetsResponse?> GetPetsAsync(
+        string? status = null, Guid? petTypeId = null, int skip = 0, int take = 20,
+        int? minAge = null, int? maxAge = null, string? breed = null)
     {
         var query = $"api/pets?skip={skip}&take={take}";
         if (status is not null) query += $"&status={status}";
         if (petTypeId.HasValue) query += $"&petTypeId={petTypeId}";
+        if (minAge.HasValue) query += $"&minAge={minAge}";
+        if (maxAge.HasValue) query += $"&maxAge={maxAge}";
+        if (!string.IsNullOrWhiteSpace(breed)) query += $"&breed={Uri.EscapeDataString(breed)}";
         return await _http.GetFromJsonAsync<PetsResponse>(query);
     }
 

@@ -2,7 +2,9 @@ namespace PetAdoption.PetService.Application.Queries;
 
 public interface IFavoriteQueryStore
 {
-    Task<(IEnumerable<FavoriteWithPetDto> Items, long Total)> GetByUserAsync(Guid userId, int skip, int take);
+    Task<(IEnumerable<FavoriteWithPetDto> Items, long Total)> GetByUserAsync(
+        Guid userId, int skip, int take,
+        Guid? petTypeId = null, string? petStatus = null, string sortBy = "newest");
 }
 
 public record FavoriteWithPetDto(

@@ -131,6 +131,12 @@
                 _pets.AddRange(newPets);
                 _skip += newPets.Count;
                 _hasMore = newPets.Count == 10;
+
+                // Fire-and-forget: track impressions for loaded pets
+                if (newPets.Any())
+                {
+                    _ = PetApi.TrackBatchImpressionsAsync(newPets.Select(p => p.Id));
+                }
             }
         }
         catch
@@ -152,6 +158,8 @@
 
     private async Task HandleFavorite(PetListItem pet)
     {
+        _ = PetApi.TrackInteractionAsync(pet.Id, "Swipe");
+
         try
         {
             var response = await PetApi.AddFavoriteAsync(pet.Id);
@@ -166,7 +174,11 @@
         }
     }
 
-    private Task HandleSkip(PetListItem _) => Task.CompletedTask;
+    private Task HandleSkip(PetListItem pet)
+    {
+        _ = PetApi.TrackInteractionAsync(pet.Id, "Rejection");
+        return Task.CompletedTask;
+    }
 
     private async Task LoadMore() => await FetchBatch();
 

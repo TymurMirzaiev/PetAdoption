@@ -1,0 +1,108 @@
+@page "/org/{OrgId:guid}/metrics"
+@layout MainLayout
+@attribute [Authorize]
+@inject PetApiClient PetApi
+@inject ISnackbar Snackbar
+
+<PageTitle>Organization Metrics</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Pet Metrics</MudText>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="4">
+            <MudDatePicker Label="From" @bind-Date="_fromDate" />
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudDatePicker Label="To" @bind-Date="_toDate" />
+        </MudItem>
+        <MudItem xs="12" sm="4" Class="d-flex align-end">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadMetrics">Apply Filter</MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_metrics is null || !_metrics.Any())
+    {
+        <MudText Typo="Typo.body1" Color="Color.Secondary">No metrics data available.</MudText>
+    }
+    else
+    {
+        <MudDataGrid Items="@_metrics" SortMode="SortMode.Single" Dense="true" Hover="true" Bordered="true">
+            <Columns>
+                <PropertyColumn Property="x => x.PetName" Title="Pet Name" />
+                <PropertyColumn Property="x => x.PetType" Title="Type" />
+                <PropertyColumn Property="x => x.ImpressionCount" Title="Impressions" />
+                <PropertyColumn Property="x => x.SwipeCount" Title="Swipes" />
+                <PropertyColumn Property="x => x.RejectionCount" Title="Rejections" />
+                <PropertyColumn Property="x => x.FavoriteCount" Title="Favorites" />
+                <TemplateColumn Title="Swipe Rate">
+                    <CellTemplate>
+                        <MudText>@($"{context.Item.SwipeRate:P1}")</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Rejection Rate">
+                    <CellTemplate>
+                        <MudText>@($"{context.Item.RejectionRate:P1}")</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+
+        <MudGrid Class="mt-6">
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 text-center" Elevation="3">
+                    <MudText Typo="Typo.h5">@_metrics.Sum(m => m.ImpressionCount)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Impressions</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 text-center" Elevation="3">
+                    <MudText Typo="Typo.h5">@_metrics.Sum(m => m.SwipeCount)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Swipes</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4 text-center" Elevation="3">
+                    <MudText Typo="Typo.h5">@_metrics.Sum(m => m.FavoriteCount)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Favorites</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid OrgId { get; set; }
+
+    private List<PetMetricsSummaryItem>? _metrics;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMetrics();
+    }
+
+    private async Task LoadMetrics()
+    {
+        _loading = true;
+        try
+        {
+            var response = await PetApi.GetOrgMetricsAsync(OrgId, _fromDate, _toDate);
+            _metrics = response?.Metrics?.ToList();
+        }
+        catch
+        {
+            Snackbar.Add("Failed to load metrics", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

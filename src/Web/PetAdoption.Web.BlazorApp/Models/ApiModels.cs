@@ -48,3 +48,10 @@ public record OrgAdoptionRequestItem(
     string Status, string? Message, DateTime CreatedAt);
 public record OrgAdoptionRequestsResponse(
     IEnumerable<OrgAdoptionRequestItem> Items, long Total, int Skip, int Take);
+
+public record PetMetricsSummaryItem(
+    Guid PetId, string PetName, string PetType,
+    long ImpressionCount, long SwipeCount, long RejectionCount,
+    long FavoriteCount, double SwipeRate, double RejectionRate);
+public record OrgMetricsResponse(IEnumerable<PetMetricsSummaryItem> Metrics);
+public record PetMetricsDetailResponse(PetMetricsSummaryItem Metrics);

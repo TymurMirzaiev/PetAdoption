@@ -52,6 +52,8 @@ builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<IAnnouncementQueryStore, AnnouncementQueryStore>();
 builder.Services.AddScoped<IAdoptionRequestRepository, AdoptionRequestRepository>();
 builder.Services.AddScoped<IAdoptionRequestQueryStore, AdoptionRequestQueryStore>();
+builder.Services.AddScoped<IPetInteractionRepository, PetInteractionRepository>();
+builder.Services.AddScoped<IPetMetricsQueryStore, PetMetricsQueryStore>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();

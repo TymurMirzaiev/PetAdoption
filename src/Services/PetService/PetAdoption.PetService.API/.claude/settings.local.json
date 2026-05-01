@@ -5,7 +5,8 @@
       "Bash(dotnet run:*)",
       "Bash(docker compose:*)",
       "Bash(git add:*)",
-      "Bash(docker volume ls:*)"
+      "Bash(docker volume ls:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

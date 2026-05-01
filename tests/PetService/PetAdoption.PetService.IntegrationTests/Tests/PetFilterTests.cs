@@ -86,6 +86,21 @@ public class PetFilterTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────
+    // Baseline
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetPets_NoFilters_ReturnsAllPets()
+    {
+        // Act
+        var response = await _client.GetFromJsonAsync<PetsResult>("api/pets");
+
+        // Assert
+        response.Should().NotBeNull();
+        response!.Pets.Should().HaveCount(5);
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Age Filters
     // ──────────────────────────────────────────────────────────────
 
@@ -97,7 +112,8 @@ public class PetFilterTests : IAsyncLifetime
 
         // Assert
         response.Should().NotBeNull();
-        response!.Pets.Should().OnlyContain(p => p.AgeMonths >= 24);
+        response!.Pets.Should().HaveCount(3);
+        response.Pets.Should().OnlyContain(p => p.AgeMonths >= 24);
     }
 
     [Fact]
@@ -108,7 +124,8 @@ public class PetFilterTests : IAsyncLifetime
 
         // Assert
         response.Should().NotBeNull();
-        response!.Pets.Should().OnlyContain(p => p.AgeMonths <= 12);
+        response!.Pets.Should().HaveCount(2);
+        response.Pets.Should().OnlyContain(p => p.AgeMonths <= 12);
     }
 
     [Fact]
@@ -119,7 +136,8 @@ public class PetFilterTests : IAsyncLifetime
 
         // Assert
         response.Should().NotBeNull();
-        response!.Pets.Should().OnlyContain(p => p.AgeMonths >= 12 && p.AgeMonths <= 36);
+        response!.Pets.Should().HaveCount(3);
+        response.Pets.Should().OnlyContain(p => p.AgeMonths >= 12 && p.AgeMonths <= 36);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -134,7 +152,8 @@ public class PetFilterTests : IAsyncLifetime
 
         // Assert
         response.Should().NotBeNull();
-        response!.Pets.Should().OnlyContain(p => p.Breed != null && p.Breed.Contains("Golden"));
+        response!.Pets.Should().HaveCount(1);
+        response.Pets.Should().OnlyContain(p => p.Breed != null && p.Breed.Contains("Golden"));
     }
 
     [Fact]
@@ -146,6 +165,18 @@ public class PetFilterTests : IAsyncLifetime
         // Assert
         response.Should().NotBeNull();
         response!.Pets.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetPets_BreedSearchIsCaseInsensitive_FindsMatch()
+    {
+        // Act
+        var response = await _client.GetFromJsonAsync<PetsResult>("api/pets?breed=golden");
+
+        // Assert
+        response.Should().NotBeNull();
+        response!.Pets.Should().HaveCount(1);
+        response.Pets[0].Breed.Should().Be("Golden Retriever");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -161,11 +192,52 @@ public class PetFilterTests : IAsyncLifetime
 
         // Assert
         response.Should().NotBeNull();
-        response!.Pets.Should().AllSatisfy(p =>
+        response!.Pets.Should().HaveCount(2);
+        response.Pets.Should().AllSatisfy(p =>
         {
             p.Type.Should().Be("Dog");
             p.AgeMonths.Should().BeGreaterThanOrEqualTo(30);
         });
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Ordering
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetPets_OrderedByNameAscending()
+    {
+        // Arrange
+        var charlieRequest = new CreatePetRequestBuilder()
+            .WithName("Charlie")
+            .WithPetTypeId(_dogTypeId)
+            .WithBreed("Poodle")
+            .WithAgeMonths(18)
+            .Build();
+        var alphaRequest = new CreatePetRequestBuilder()
+            .WithName("Alpha")
+            .WithPetTypeId(_dogTypeId)
+            .WithBreed("Poodle")
+            .WithAgeMonths(18)
+            .Build();
+        var bravoRequest = new CreatePetRequestBuilder()
+            .WithName("Bravo")
+            .WithPetTypeId(_dogTypeId)
+            .WithBreed("Poodle")
+            .WithAgeMonths(18)
+            .Build();
+
+        await _client.PostAsJsonAsync("/api/pets", charlieRequest);
+        await _client.PostAsJsonAsync("/api/pets", alphaRequest);
+        await _client.PostAsJsonAsync("/api/pets", bravoRequest);
+
+        // Act
+        var response = await _client.GetFromJsonAsync<PetsResult>("api/pets?take=100");
+
+        // Assert
+        response.Should().NotBeNull();
+        var names = response!.Pets.Select(p => p.Name).ToList();
+        names.Should().BeInAscendingOrder();
     }
 
     // ──────────────────────────────────────────────────────────────

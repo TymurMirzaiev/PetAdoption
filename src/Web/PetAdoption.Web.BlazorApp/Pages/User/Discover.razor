@@ -124,7 +124,7 @@
                 take: 10,
                 minAge: _minAge,
                 maxAge: _maxAge,
-                breed: _breedSearch);
+                breed: string.IsNullOrWhiteSpace(_breedSearch) ? null : _breedSearch.Trim());
             if (response?.Pets is not null)
             {
                 var newPets = response.Pets.ToList();

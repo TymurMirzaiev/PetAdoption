@@ -726,6 +726,73 @@ public class PetsControllerTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────
+    // Tags
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreatePet_WithTags_ShouldPersistTags()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+        var request = CreatePetRequestBuilder.Default()
+            .WithName("TaggedPet")
+            .WithPetTypeId(petTypeId)
+            .WithTags("friendly", "vaccinated")
+            .Build();
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/pets", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<CreatePetResponseDto>();
+        created.Should().NotBeNull();
+
+        // Verify tags via GET
+        var getResponse = await _client.GetAsync($"/api/pets/{created!.Id}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pet = await getResponse.Content.ReadFromJsonAsync<PetDetailWithTagsDto>();
+        pet!.Tags.Should().BeEquivalentTo(new[] { "friendly", "vaccinated" });
+    }
+
+    [Fact]
+    public async Task GetPets_WithTagFilter_ShouldReturnFilteredResults()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync();
+
+        await CreatePetWithTagsAsync("Pet1", petTypeId, "friendly", "vaccinated");
+        await CreatePetWithTagsAsync("Pet2", petTypeId, "friendly");
+        await CreatePetWithTagsAsync("Pet3", petTypeId, "neutered");
+
+        // Act - filter by "friendly"
+        var response = await _client.GetAsync("/api/pets?tags=friendly");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PetsWithTagsResponseDto>();
+        result!.Pets.Should().OnlyContain(p => p.Tags.Contains("friendly"));
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Tag Helpers
+    // ──────────────────────────────────────────────────────────────
+
+    private async Task<Guid> CreatePetWithTagsAsync(string name, Guid petTypeId, params string[] tags)
+    {
+        var request = CreatePetRequestBuilder.Default()
+            .WithName(name)
+            .WithPetTypeId(petTypeId)
+            .WithTags(tags)
+            .Build();
+
+        var response = await _client.PostAsJsonAsync("/api/pets", request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<CreatePetResponseDto>();
+        return created!.Id;
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Response DTOs for deserialization
     // ──────────────────────────────────────────────────────────────
 
@@ -746,4 +813,7 @@ public class PetsControllerTests : IAsyncLifetime
     private record DeletePetResponseDto(bool Success, string Message);
 
     private record GetPetsResponseDto(List<PetListItemResponseDto> Pets, long Total, int Skip, int Take);
+
+    private record PetDetailWithTagsDto(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string> Tags);
+    private record PetsWithTagsResponseDto(List<PetDetailWithTagsDto> Pets, long Total, int Skip, int Take);
 }

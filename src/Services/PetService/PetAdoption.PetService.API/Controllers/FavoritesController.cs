@@ -38,9 +38,15 @@ public class FavoritesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetFavorites([FromQuery] int skip = 0, [FromQuery] int take = 10)
+    public async Task<IActionResult> GetFavorites(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 10,
+        [FromQuery] Guid? petTypeId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string sortBy = "newest")
     {
-        var result = await _mediator.Send(new GetFavoritesQuery(GetUserId(), skip, take));
+        var result = await _mediator.Send(new GetFavoritesQuery(
+            GetUserId(), skip, take, petTypeId, status, sortBy));
         return Ok(result);
     }
 }

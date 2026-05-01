@@ -45,10 +45,11 @@
             <MudDivider Class="my-4" />
 
             <div class="d-flex gap-2">
+                <MudIconButton Icon="@(_isFavorited ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                    Color="@(_isFavorited ? Color.Error : Color.Default)"
+                    OnClick="ToggleFavorite" Disabled="_actionLoading" />
                 @if (_pet.Status == "Available")
                 {
-                    <MudButton Variant="Variant.Filled" Color="Color.Error" StartIcon="@Icons.Material.Filled.Favorite"
-                        OnClick="AddToFavorites" Disabled="_actionLoading">Add to Favorites</MudButton>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.BookmarkAdd"
                         OnClick="Reserve" Disabled="_actionLoading">Reserve</MudButton>
                 }
@@ -64,24 +65,42 @@
     private PetDetails? _pet;
     private bool _loading = true;
     private bool _actionLoading;
+    private bool _isFavorited;
 
     protected override async Task OnInitializedAsync()
     {
         try { _pet = await PetApi.GetPetAsync(Id); }
         catch { Snackbar.Add("Failed to load pet details", Severity.Error); }
         finally { _loading = false; }
+
+        _isFavorited = await PetApi.CheckFavoriteAsync(Id);
     }
 
-    private async Task AddToFavorites()
+    private async Task ToggleFavorite()
     {
         _actionLoading = true;
         try
         {
-            var response = await PetApi.AddFavoriteAsync(Id);
-            if (response.IsSuccessStatusCode) Snackbar.Add("Added to favorites!", Severity.Success);
-            else Snackbar.Add("Failed to add favorite", Severity.Error);
+            if (_isFavorited)
+            {
+                var response = await PetApi.RemoveFavoriteAsync(Id);
+                if (response.IsSuccessStatusCode)
+                {
+                    _isFavorited = false;
+                    Snackbar.Add("Removed from favorites", Severity.Info);
+                }
+            }
+            else
+            {
+                var response = await PetApi.AddFavoriteAsync(Id);
+                if (response.IsSuccessStatusCode)
+                {
+                    _isFavorited = true;
+                    Snackbar.Add("Added to favorites!", Severity.Success);
+                }
+            }
         }
-        catch { Snackbar.Add("Connection error", Severity.Error); }
+        catch { Snackbar.Add("Failed to update favorite", Severity.Error); }
         finally { _actionLoading = false; }
     }
 

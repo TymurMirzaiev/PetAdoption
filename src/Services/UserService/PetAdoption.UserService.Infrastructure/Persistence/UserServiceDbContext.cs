@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Entities;
+using PetAdoption.UserService.Domain.Enums;
 using PetAdoption.UserService.Domain.ValueObjects;
 
 namespace PetAdoption.UserService.Infrastructure.Persistence;
@@ -9,6 +10,8 @@ public class UserServiceDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
 
     public UserServiceDbContext(DbContextOptions<UserServiceDbContext> options) : base(options) { }
 
@@ -73,6 +76,26 @@ public class UserServiceDbContext : DbContext
             entity.Property(e => e.RoutingKey).HasMaxLength(200).IsRequired();
             entity.Property(e => e.LastError).HasMaxLength(2000);
             entity.HasIndex(e => new { e.IsProcessed, e.CreatedAt });
+        });
+
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.ToTable("Organizations");
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.Name).HasMaxLength(100).IsRequired();
+            entity.Property(o => o.Slug).HasMaxLength(50).IsRequired();
+            entity.HasIndex(o => o.Slug).IsUnique();
+            entity.Property(o => o.Description).HasMaxLength(500);
+            entity.Property(o => o.Status).HasConversion<int>();
+        });
+
+        modelBuilder.Entity<OrganizationMember>(entity =>
+        {
+            entity.ToTable("OrganizationMembers");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.UserId).HasMaxLength(450).IsRequired();
+            entity.Property(m => m.Role).HasConversion<int>();
+            entity.HasIndex(m => new { m.OrganizationId, m.UserId }).IsUnique();
         });
     }
 }

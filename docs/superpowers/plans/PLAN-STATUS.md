@@ -17,24 +17,10 @@
 | 11 | Org Pet CRUD + Tags (Wave 2)               | `2026-05-01-org-pet-crud-with-tags.md`                |
 | 12 | Adoption Process Flow (Wave 2)             | `2026-05-01-adoption-process-flow.md`                 |
 | 13 | Pet Metrics per Organization (Wave 2)      | `2026-05-01-pet-metrics-per-organization.md`          |
+| 14 | Discovery Algorithm (Wave 3)               | `2026-05-01-discovery-algorithm.md`                   |
 
-## Remaining - Dependency Graph
+## Remaining
 
-```
-    Benefits from Plan 10 (User Pet Filters)
-    ─────────────────────────────────────────
+All planned work is complete. No outstanding implementation plans.
 
-┌───────────────────────┐
-│ Discovery Algorithm   │
-│ (can work without)    │
-└───────────────────────┘
-```
-
-## Recommended Execution Order
-
-### Wave 3 (benefits from User Pet Filters — Plan 10, and Plan 13's Discover tracking)
-| Plan                | File                                | Scope               |
-|---------------------|-------------------------------------|---------------------|
-| Discovery Algorithm | `2026-05-01-discovery-algorithm.md` | Backend + frontend  |
-
-> **Note:** Wave 1 shipped on 2026-05-01. Wave 2 (Plans 11–13) shipped on 2026-05-01 — implemented in parallel via three git worktrees, merged into `main` after build + unit + integration test verification on each branch and on the integration `dev` branch. Wave 3 is best run after Wave 2 because Discovery touches `Discover.razor` (also modified by Plan 13's impression/rejection tracking) and benefits from the existing filter infrastructure.
+> **Note:** Wave 1 shipped on 2026-05-01. Wave 2 (Plans 11–13) shipped on 2026-05-01 — implemented in parallel via three git worktrees and merged into `main` after build + unit + integration test verification on each branch. Wave 3 (Plan 14) shipped on 2026-05-01 — adds personalized discovery feed (`PetSkip` exclusion + `/api/discover` endpoint) on top of Plan 13's impression/rejection analytics, both kept as separate concerns (skips for feed exclusion, interactions for analytics).

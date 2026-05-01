@@ -90,13 +90,25 @@ builder.Services.AddControllers();
 // Add OpenAPI/Swagger support (.NET 10 native approach)
 builder.Services.AddOpenApi();
 
+// Dev data seeder (development only)
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddTransient<DevDataSeeder>();
+}
+
 var app = builder.Build();
 
-// Ensure database is created on startup
+// Ensure database is created and seed dev data on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<UserServiceDbContext>();
     await db.Database.EnsureCreatedAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<DevDataSeeder>();
+        await seeder.SeedAsync();
+    }
 }
 
 // Configure the HTTP request pipeline

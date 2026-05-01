@@ -9,11 +9,15 @@ public record GoogleAuthResponse(string AccessToken, string RefreshToken);
 public record RefreshTokenRequest(string RefreshToken);
 public record RefreshTokenResponse(string AccessToken, string RefreshToken);
 
-public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
-public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
+public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
+public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
 public record PetsResponse(IEnumerable<PetListItem> Pets, long Total);
-public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null);
-public record UpdatePetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null);
+public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record UpdatePetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+
+public record CreateOrgPetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record UpdateOrgPetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record OrgPetsResponse(IEnumerable<PetListItem> Pets, long Total, int Skip, int Take);
 
 public record PetTypeItem(Guid Id, string Code, string Name, bool IsActive);
 public record PetTypesResponse(IEnumerable<PetTypeItem> Items);

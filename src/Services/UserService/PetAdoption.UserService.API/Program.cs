@@ -59,8 +59,9 @@ builder.Services.AddAuthentication(options =>
 // Authorization policies
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin", "PlatformAdmin"));
+    options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin", "PlatformAdmin"));
+    options.AddPolicy("PlatformAdminOnly", policy => policy.RequireRole("PlatformAdmin"));
 });
 
 // CORS

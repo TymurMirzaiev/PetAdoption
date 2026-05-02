@@ -69,7 +69,95 @@ public class OrgPetsController : ControllerBase
         await _mediator.Send(new DeleteOrgPetCommand(orgId, petId));
         return NoContent();
     }
+
+    // POST /api/organizations/{orgId}/pets/{petId}/media
+    [HttpPost("{petId}/media")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<UploadPetMediaResponse>> UploadMedia(
+        Guid orgId, Guid petId, IFormFile file)
+    {
+        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
+        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
+
+        var result = await _mediator.Send(new UploadPetMediaCommand(
+            orgId, petId, file.OpenReadStream(), file.ContentType, file.FileName,
+            reviewerOrgId, reviewerOrgRole));
+
+        return Ok(result);
+    }
+
+    // DELETE /api/organizations/{orgId}/pets/{petId}/media/{mediaId}
+    [HttpDelete("{petId}/media/{mediaId}")]
+    public async Task<IActionResult> DeleteMedia(Guid orgId, Guid petId, Guid mediaId)
+    {
+        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
+        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
+
+        await _mediator.Send(new DeletePetMediaCommand(
+            orgId, petId, mediaId, reviewerOrgId, reviewerOrgRole));
+
+        return NoContent();
+    }
+
+    // PUT /api/organizations/{orgId}/pets/{petId}/media/order
+    [HttpPut("{petId}/media/order")]
+    public async Task<IActionResult> ReorderMedia(
+        Guid orgId, Guid petId, [FromBody] ReorderPetPhotosRequest request)
+    {
+        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
+        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
+
+        await _mediator.Send(new ReorderPetPhotosCommand(
+            orgId, petId, request.OrderedIds, reviewerOrgId, reviewerOrgRole));
+
+        return NoContent();
+    }
+
+    // PUT /api/organizations/{orgId}/pets/{petId}/media/{mediaId}/primary
+    [HttpPut("{petId}/media/{mediaId}/primary")]
+    public async Task<IActionResult> SetPrimaryMedia(Guid orgId, Guid petId, Guid mediaId)
+    {
+        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
+        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
+
+        await _mediator.Send(new SetPrimaryPhotoCommand(
+            orgId, petId, mediaId, reviewerOrgId, reviewerOrgRole));
+
+        return NoContent();
+    }
+
+    // PUT /api/organizations/{orgId}/pets/{petId}/medical-record
+    [HttpPut("{petId}/medical-record")]
+    public async Task<ActionResult<UpdatePetMedicalRecordResponse>> UpdateMedicalRecord(
+        Guid orgId, Guid petId, [FromBody] UpdatePetMedicalRecordRequest request)
+    {
+        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
+        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
+
+        var vaccinationInputs = (request.Vaccinations ?? [])
+            .Select(v => new VaccinationInput(v.VaccineType, v.AdministeredOn, v.NextDueOn, v.Notes));
+
+        var result = await _mediator.Send(new UpdatePetMedicalRecordCommand(
+            orgId, petId,
+            request.IsSpayedNeutered, request.SpayNeuterDate, request.MicrochipId,
+            request.HistoryNotes, request.LastVetVisit,
+            vaccinationInputs,
+            request.Allergies ?? [],
+            reviewerOrgId, reviewerOrgRole));
+
+        return Ok(result);
+    }
 }
 
 public record CreateOrgPetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
 public record UpdateOrgPetRequest(string Name, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
+public record ReorderPetPhotosRequest(IReadOnlyList<Guid> OrderedIds);
+public record UpdatePetMedicalRecordRequest(
+    bool IsSpayedNeutered,
+    DateOnly? SpayNeuterDate,
+    string? MicrochipId,
+    string? HistoryNotes,
+    DateOnly? LastVetVisit,
+    List<VaccinationInputDto>? Vaccinations,
+    List<string>? Allergies);
+public record VaccinationInputDto(string VaccineType, DateOnly AdministeredOn, DateOnly? NextDueOn, string? Notes);

@@ -13,16 +13,13 @@ public class ApproveAdoptionRequestCommandHandler
 {
     private readonly IAdoptionRequestRepository _adoptionRequestRepository;
     private readonly IPetRepository _petRepository;
-    private readonly IUnitOfWork _unitOfWork;
 
     public ApproveAdoptionRequestCommandHandler(
         IAdoptionRequestRepository adoptionRequestRepository,
-        IPetRepository petRepository,
-        IUnitOfWork unitOfWork)
+        IPetRepository petRepository)
     {
         _adoptionRequestRepository = adoptionRequestRepository;
         _petRepository = petRepository;
-        _unitOfWork = unitOfWork;
     }
 
     public async Task<ApproveAdoptionRequestResponse> Handle(
@@ -49,7 +46,9 @@ public class ApproveAdoptionRequestCommandHandler
         adoptionRequest.Approve();
         pet.Reserve();
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        // UpdateAsync adds outbox events for adoptionRequest domain events and calls SaveChangesAsync.
+        // EF Core change tracking ensures pet.Reserve() state is persisted in the same save.
+        await _adoptionRequestRepository.UpdateAsync(adoptionRequest, cancellationToken);
 
         return new ApproveAdoptionRequestResponse(adoptionRequest.Id, adoptionRequest.Status.ToString());
     }

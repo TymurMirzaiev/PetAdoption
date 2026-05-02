@@ -1,4 +1,5 @@
 @inject PetApiClient PetApi
+@inject ISnackbar Snackbar
 @using Microsoft.AspNetCore.Components.Web
 
 <MudDialog>
@@ -6,37 +7,96 @@
         <MudText Typo="Typo.h6">@(IsEdit ? "Edit Pet" : "Add Pet")</MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="Name" Label="Name" Required="true" RequiredError="Name is required" MaxLength="100" Class="mb-4" />
-            <MudSelect T="Guid?" @bind-Value="SelectedPetTypeId" Label="Pet Type" Required="true" RequiredError="Pet type is required"
-                Disabled="@(PetTypes is null)" Placeholder="@(PetTypes is null ? "Loading..." : null)" Class="mb-4">
-                @if (PetTypes is not null)
-                {
-                    @foreach (var pt in PetTypes)
-                    {
-                        <MudSelectItem Value="@((Guid?)pt.Id)">@pt.Name</MudSelectItem>
-                    }
-                }
-            </MudSelect>
-            <MudTextField @bind-Value="Breed" Label="Breed" MaxLength="100" Class="mb-4" />
-            <MudNumericField @bind-Value="AgeMonths" Label="Age (months)" Min="0" Max="360" Class="mb-4" />
-            <MudTextField @bind-Value="Description" Label="Description" Lines="3" MaxLength="2000" Counter="2000" Class="mb-4" />
+        <MudTabs Elevation="0" Rounded="false">
+            <MudTabPanel Text="Details">
+                <MudForm @ref="_form" @bind-IsValid="_isValid" Class="mt-3">
+                    <MudTextField @bind-Value="Name" Label="Name" Required="true" RequiredError="Name is required" MaxLength="100" Class="mb-4" />
+                    <MudSelect T="Guid?" @bind-Value="SelectedPetTypeId" Label="Pet Type" Required="true" RequiredError="Pet type is required"
+                        Disabled="@(PetTypes is null)" Placeholder="@(PetTypes is null ? "Loading..." : null)" Class="mb-4">
+                        @if (PetTypes is not null)
+                        {
+                            @foreach (var pt in PetTypes)
+                            {
+                                <MudSelectItem Value="@((Guid?)pt.Id)">@pt.Name</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                    <MudTextField @bind-Value="Breed" Label="Breed" MaxLength="100" Class="mb-4" />
+                    <MudNumericField @bind-Value="AgeMonths" Label="Age (months)" Min="0" Max="360" Class="mb-4" />
+                    <MudTextField @bind-Value="Description" Label="Description" Lines="3" MaxLength="2000" Counter="2000" Class="mb-4" />
 
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Tags</MudText>
-            <div class="d-flex gap-2 mb-2">
-                <MudTextField @bind-Value="_newTag" Label="Add tag" Variant="Variant.Outlined"
-                    OnKeyUp="OnTagKeyUp" Immediate="true" MaxLength="50" Counter="50" />
-                <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
-                    OnClick="AddTag" Disabled="string.IsNullOrWhiteSpace(_newTag)" />
-            </div>
-            <MudChipSet T="string" Class="mb-4">
-                @foreach (var tag in _tagList)
-                {
-                    <MudChip T="string" Value="@tag" Color="Color.Primary" Variant="Variant.Outlined"
-                        OnClose="() => RemoveTag(tag)">@tag</MudChip>
-                }
-            </MudChipSet>
-        </MudForm>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Tags</MudText>
+                    <div class="d-flex gap-2 mb-2">
+                        <MudTextField @bind-Value="_newTag" Label="Add tag" Variant="Variant.Outlined"
+                            OnKeyUp="OnTagKeyUp" Immediate="true" MaxLength="50" Counter="50" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary"
+                            OnClick="AddTag" Disabled="string.IsNullOrWhiteSpace(_newTag)" />
+                    </div>
+                    <MudChipSet T="string" Class="mb-4">
+                        @foreach (var tag in _tagList)
+                        {
+                            <MudChip T="string" Value="@tag" Color="Color.Primary" Variant="Variant.Outlined"
+                                OnClose="() => RemoveTag(tag)">@tag</MudChip>
+                        }
+                    </MudChipSet>
+                </MudForm>
+            </MudTabPanel>
+
+            @if (IsEdit && PetId.HasValue && OrgId.HasValue)
+            {
+                <MudTabPanel Text="Media">
+                    <div class="mt-3">
+                        <PetMediaGallery PetId="@PetId.Value" OrgId="@OrgId.Value" ReadOnly="false" />
+                    </div>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Medical">
+                    <div class="mt-3">
+                        <MudSwitch @bind-Value="_isSpayedNeutered" Label="Spayed/Neutered" Color="Color.Primary" Class="mb-2" />
+                        @if (_isSpayedNeutered)
+                        {
+                            <MudDatePicker @bind-Date="_spayNeuterDateValue" Label="Spay/Neuter Date" Class="mb-4" DateFormat="yyyy-MM-dd" />
+                        }
+                        <MudTextField @bind-Value="_microchipId" Label="Microchip ID" MaxLength="23" Class="mb-4" />
+                        <MudDatePicker @bind-Date="_lastVetVisitValue" Label="Last Vet Visit" Class="mb-4" DateFormat="yyyy-MM-dd" />
+                        <MudTextField @bind-Value="_historyNotes" Label="Medical History" Lines="4" MaxLength="5000" Counter="5000" Class="mb-4" />
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Allergies</MudText>
+                        <div class="d-flex gap-2 mb-2">
+                            <MudTextField @bind-Value="_newAllergy" Label="Add allergy" Variant="Variant.Outlined" MaxLength="100" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Warning"
+                                OnClick="AddAllergy" Disabled="string.IsNullOrWhiteSpace(_newAllergy)" />
+                        </div>
+                        <MudChipSet T="string" Class="mb-4">
+                            @foreach (var allergy in _allergyList)
+                            {
+                                <MudChip T="string" Value="@allergy" Color="Color.Warning" Variant="Variant.Outlined"
+                                    OnClose="() => RemoveAllergy(allergy)">@allergy</MudChip>
+                            }
+                        </MudChipSet>
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Vaccinations</MudText>
+                        @foreach (var vax in _vaccinationList)
+                        {
+                            <div class="d-flex gap-2 align-center mb-2">
+                                <MudTextField @bind-Value="vax.VaccineType" Label="Type" MaxLength="100" Style="flex:2" />
+                                <MudTextField @bind-Value="vax.AdministeredOnStr" Label="Administered" Placeholder="yyyy-MM-dd" Style="flex:1" />
+                                <MudTextField @bind-Value="vax.NextDueOnStr" Label="Next Due" Placeholder="yyyy-MM-dd" Style="flex:1" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                                    OnClick="@(() => _vaccinationList.Remove(vax))" />
+                            </div>
+                        }
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add"
+                            OnClick="AddVaccination" Class="mb-4">Add Vaccination</MudButton>
+
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveMedicalRecord"
+                            Disabled="_medicalSaving">
+                            @(_medicalSaving ? "Saving..." : "Save Medical Record")
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+            }
+        </MudTabs>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -49,6 +109,8 @@
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public Guid? PetId { get; set; }
+    [Parameter] public Guid? OrgId { get; set; }
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public Guid? SelectedPetTypeId { get; set; }
     [Parameter] public string? Breed { get; set; }
@@ -61,6 +123,17 @@
     private bool _isValid;
     private List<string> _tagList = new();
     private string _newTag = "";
+
+    // Medical record state
+    private bool _isSpayedNeutered;
+    private DateTime? _spayNeuterDateValue;
+    private DateTime? _lastVetVisitValue;
+    private string? _microchipId;
+    private string? _historyNotes;
+    private string _newAllergy = "";
+    private List<string> _allergyList = new();
+    private List<VaccinationEditModel> _vaccinationList = new();
+    private bool _medicalSaving;
 
     protected override void OnParametersSet()
     {
@@ -83,9 +156,63 @@
         if (e.Key == "Enter") AddTag();
     }
 
+    private void AddAllergy()
+    {
+        var a = _newAllergy.Trim();
+        if (!string.IsNullOrWhiteSpace(a) && !_allergyList.Contains(a))
+            _allergyList.Add(a);
+        _newAllergy = "";
+    }
+
+    private void RemoveAllergy(string allergy) => _allergyList.Remove(allergy);
+
+    private void AddVaccination() => _vaccinationList.Add(new VaccinationEditModel());
+
+    private async Task SaveMedicalRecord()
+    {
+        if (!PetId.HasValue || !OrgId.HasValue) return;
+
+        _medicalSaving = true;
+        try
+        {
+            DateOnly? spayDate = _spayNeuterDateValue.HasValue
+                ? DateOnly.FromDateTime(_spayNeuterDateValue.Value) : null;
+            DateOnly? lastVetDate = _lastVetVisitValue.HasValue
+                ? DateOnly.FromDateTime(_lastVetVisitValue.Value) : null;
+
+            var vaccinations = _vaccinationList
+                .Where(v => !string.IsNullOrWhiteSpace(v.VaccineType))
+                .Select(v => new VaccinationModel(
+                    v.VaccineType!,
+                    DateOnly.TryParse(v.AdministeredOnStr, out var d) ? d : DateOnly.FromDateTime(DateTime.Today),
+                    DateOnly.TryParse(v.NextDueOnStr, out var nd) ? nd : null,
+                    null))
+                .ToList();
+
+            var request = new UpdatePetMedicalRecordRequest(
+                _isSpayedNeutered, spayDate, _microchipId, _historyNotes, lastVetDate,
+                vaccinations, _allergyList);
+
+            var response = await PetApi.UpdatePetMedicalRecordAsync(OrgId.Value, PetId.Value, request);
+            if (response.IsSuccessStatusCode)
+                Snackbar.Add("Medical record saved!", Severity.Success);
+            else
+                Snackbar.Add("Failed to save medical record", Severity.Error);
+        }
+        catch { Snackbar.Add("Save error", Severity.Error); }
+        finally { _medicalSaving = false; }
+    }
+
     private void Cancel() => MudDialog.Cancel();
 
     private void Submit() => MudDialog.Close(DialogResult.Ok(new PetFormResult(Name, SelectedPetTypeId, Breed, AgeMonths, Description, _tagList)));
 
     public record PetFormResult(string Name, Guid? PetTypeId, string? Breed, int? AgeMonths, string? Description, List<string> Tags);
+
+    private class VaccinationEditModel
+    {
+        public string? VaccineType { get; set; }
+        public string? AdministeredOnStr { get; set; }
+        public string? NextDueOnStr { get; set; }
+    }
 }

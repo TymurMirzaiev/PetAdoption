@@ -17,7 +17,13 @@ public class PetRepository : IPetRepository
 
     public async Task<Pet?> GetById(Guid id)
     {
-        return await _db.Pets.FindAsync(id);
+        return await _db.Pets
+            .Include("_media")
+            .Include(p => p.MedicalRecord)
+            .ThenInclude(mr => mr!.Vaccinations)
+            .Include(p => p.MedicalRecord)
+            .ThenInclude(mr => mr!.Allergies)
+            .FirstOrDefaultAsync(p => p.Id == id);
     }
 
     public async Task Add(Pet pet)

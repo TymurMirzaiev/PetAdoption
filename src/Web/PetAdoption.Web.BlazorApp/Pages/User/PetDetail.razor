@@ -29,6 +29,8 @@
                 <MudChip T="string" Color="@StatusColor(_pet.Status)">@_pet.Status</MudChip>
             </div>
 
+            <PetMediaGallery PetId="@Id" ReadOnly="true" Class="mb-4" />
+
             @if (_pet.Breed is not null)
             {
                 <MudText Typo="Typo.body1" Class="mb-2"><b>Breed:</b> @_pet.Breed</MudText>
@@ -40,6 +42,85 @@
             @if (_pet.Description is not null)
             {
                 <MudText Typo="Typo.body1" Class="mb-4">@_pet.Description</MudText>
+            }
+
+            @if (_pet.MedicalRecord is not null)
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.h6" Class="mb-3">Medical Information</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudChip T="string" Color="@(_pet.MedicalRecord.IsSpayedNeutered ? Color.Success : Color.Default)" Size="Size.Small">
+                            @(_pet.MedicalRecord.IsSpayedNeutered ? "Spayed/Neutered" : "Not Spayed/Neutered")
+                        </MudChip>
+                        @if (_pet.MedicalRecord.SpayNeuterDate.HasValue)
+                        {
+                            <MudText Typo="Typo.caption" Class="mt-1">Date: @_pet.MedicalRecord.SpayNeuterDate.Value.ToString("yyyy-MM-dd")</MudText>
+                        }
+                    </MudItem>
+                    @if (_pet.MedicalRecord.MicrochipId is not null)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.body2"><b>Microchip:</b> <code>@_pet.MedicalRecord.MicrochipId</code></MudText>
+                        </MudItem>
+                    }
+                    @if (_pet.MedicalRecord.LastVetVisit.HasValue)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.body2"><b>Last Vet Visit:</b> @_pet.MedicalRecord.LastVetVisit.Value.ToString("yyyy-MM-dd")</MudText>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                @if (_pet.MedicalRecord.Allergies.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Allergies</MudText>
+                    <MudChipSet T="string" ReadOnly="true">
+                        @foreach (var allergy in _pet.MedicalRecord.Allergies)
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small">@allergy</MudChip>
+                        }
+                    </MudChipSet>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Secondary">No known allergies</MudText>
+                }
+
+                @if (_pet.MedicalRecord.Vaccinations.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Vaccinations</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" Class="mb-3">
+                        <thead>
+                            <tr>
+                                <th>Vaccine</th>
+                                <th>Administered</th>
+                                <th>Next Due</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var vax in _pet.MedicalRecord.Vaccinations.OrderByDescending(v => v.AdministeredOn))
+                            {
+                                <tr>
+                                    <td>@vax.VaccineType</td>
+                                    <td>@vax.AdministeredOn.ToString("yyyy-MM-dd")</td>
+                                    <td style="@(vax.NextDueOn.HasValue && vax.NextDueOn.Value < DateOnly.FromDateTime(DateTime.Today) ? "color:red;" : "")">
+                                        @(vax.NextDueOn?.ToString("yyyy-MM-dd") ?? "-")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+
+                @if (_pet.MedicalRecord.History is not null)
+                {
+                    <MudExpansionPanels Class="mt-2">
+                        <MudExpansionPanel Text="Show medical history notes">
+                            <MudText Typo="Typo.body2">@_pet.MedicalRecord.History</MudText>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                }
             }
 
             <MudDivider Class="my-4" />

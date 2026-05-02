@@ -31,7 +31,6 @@ public class OrganizationMetricsController : ControllerBase
     }
 
     [HttpGet("api/pets/{petId:guid}/metrics")]
-    [ServiceFilter(typeof(OrgAuthorizationFilter))]
     public async Task<IActionResult> GetPetMetrics(
         Guid petId,
         [FromQuery] DateTime? from = null,

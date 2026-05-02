@@ -163,10 +163,7 @@ public class PetsControllerTests : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/api/pets", request);
 
         // Assert
-        // The current implementation does not validate pet type existence during creation,
-        // so the pet is created successfully. If validation is added later, this should return NotFound.
-        // For now, we verify the actual behavior.
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -364,7 +361,7 @@ public class PetsControllerTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task DeletePet_WhenAvailable_ReturnsOkAndSuccess()
+    public async Task DeletePet_WhenAvailable_ReturnsNoContent()
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
@@ -374,11 +371,7 @@ public class PetsControllerTests : IAsyncLifetime
         var response = await _client.DeleteAsync($"/api/pets/{petId}");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<DeletePetResponseDto>();
-        result.Should().NotBeNull();
-        result!.Success.Should().BeTrue();
-        result.Message.Should().Contain("Buddy");
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -426,7 +419,7 @@ public class PetsControllerTests : IAsyncLifetime
         var petTypeId = await SeedPetTypeAsync();
         var petId = await CreatePetAsync("Buddy", petTypeId);
         var deleteResponse = await _client.DeleteAsync($"/api/pets/{petId}");
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Act
         var response = await _client.GetAsync($"/api/pets/{petId}");
@@ -809,8 +802,6 @@ public class PetsControllerTests : IAsyncLifetime
     private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 
     private record UpdatePetResponseDto(Guid Id, string Name, string Status, string? Breed, int? AgeMonths, string? Description);
-
-    private record DeletePetResponseDto(bool Success, string Message);
 
     private record GetPetsResponseDto(List<PetListItemResponseDto> Pets, long Total, int Skip, int Take);
 

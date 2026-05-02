@@ -8,12 +8,14 @@ using Microsoft.JSInterop;
 public class AuthorizationMessageHandler : DelegatingHandler
 {
     private readonly IJSRuntime _jsRuntime;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly JwtSecurityTokenHandler _tokenHandler = new();
     private static readonly SemaphoreSlim _refreshLock = new(1, 1);
 
-    public AuthorizationMessageHandler(IJSRuntime jsRuntime)
+    public AuthorizationMessageHandler(IJSRuntime jsRuntime, IHttpClientFactory httpClientFactory)
     {
         _jsRuntime = jsRuntime;
+        _httpClientFactory = httpClientFactory;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -49,9 +51,9 @@ public class AuthorizationMessageHandler : DelegatingHandler
             var refreshToken = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", "refreshToken");
             if (string.IsNullOrEmpty(refreshToken)) return null;
 
-            using var httpClient = new HttpClient();
+            var httpClient = _httpClientFactory.CreateClient("UserApiDirect");
             var response = await httpClient.PostAsJsonAsync(
-                "http://localhost:5001/api/users/refresh",
+                "api/users/refresh",
                 new { RefreshToken = refreshToken });
 
             if (!response.IsSuccessStatusCode)

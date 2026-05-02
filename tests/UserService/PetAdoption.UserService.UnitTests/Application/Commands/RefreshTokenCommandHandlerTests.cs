@@ -7,6 +7,8 @@ using PetAdoption.UserService.Application.Commands;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Exceptions;
 using PetAdoption.UserService.Domain.Interfaces;
+using Microsoft.Extensions.Options;
+using PetAdoption.UserService.Application.Options;
 using PetAdoption.UserService.Domain.ValueObjects;
 
 public class RefreshTokenCommandHandlerTests
@@ -24,7 +26,8 @@ public class RefreshTokenCommandHandlerTests
         _handler = new RefreshTokenCommandHandler(
             _mockRefreshTokenRepo.Object,
             _mockUserRepo.Object,
-            _mockJwtGenerator.Object);
+            _mockJwtGenerator.Object,
+            Options.Create(new JwtApplicationOptions()));
     }
 
     // ──────────────────────────────────────────────────────────────

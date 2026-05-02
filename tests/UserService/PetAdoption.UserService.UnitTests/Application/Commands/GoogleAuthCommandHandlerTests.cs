@@ -7,6 +7,8 @@ using PetAdoption.UserService.Application.Commands;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Exceptions;
 using PetAdoption.UserService.Domain.Interfaces;
+using Microsoft.Extensions.Options;
+using PetAdoption.UserService.Application.Options;
 using PetAdoption.UserService.Domain.ValueObjects;
 
 public class GoogleAuthCommandHandlerTests
@@ -27,7 +29,8 @@ public class GoogleAuthCommandHandlerTests
             _mockGoogleValidator.Object,
             _mockUserRepo.Object,
             _mockJwtGenerator.Object,
-            _mockRefreshTokenRepo.Object);
+            _mockRefreshTokenRepo.Object,
+            Options.Create(new JwtApplicationOptions()));
     }
 
     // ──────────────────────────────────────────────────────────────

@@ -39,20 +39,6 @@ public static class ServiceCollectionExtensions
         }
 
 
-        /*var validatorInterface = typeof(IValidator<>);
-        var validators = assembly.GetTypes()
-            .Where(t => !t.IsAbstract && !t.IsInterface)
-            .SelectMany(t => t.GetInterfaces()
-                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == validatorInterface)
-                .Select(i => new { Validator = t, Interface = i }));
-
-        foreach (var v in validators)
-        {
-            services.AddTransient(v.Interface, v.Validator);
-        }
-        
-        // services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-        */
         // order affects the sequence of execution
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 

@@ -8,6 +8,7 @@ using PetAdoption.PetService.Domain;
 namespace PetAdoption.PetService.API.Controllers;
 
 [ApiController]
+[Route("api/pets")]
 [Authorize]
 public class InteractionsController : ControllerBase
 {
@@ -22,7 +23,7 @@ public class InteractionsController : ControllerBase
         Guid.Parse(User.FindFirstValue("userId")
             ?? throw new UnauthorizedAccessException("userId claim not found"));
 
-    [HttpPost("api/pets/{petId:guid}/interactions")]
+    [HttpPost("{petId:guid}/interactions")]
     public async Task<IActionResult> TrackInteraction(Guid petId, [FromBody] TrackInteractionRequest request)
     {
         if (!Enum.TryParse<InteractionType>(request.Type, true, out var type))
@@ -32,11 +33,14 @@ public class InteractionsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("api/pets/interactions/batch")]
+    [HttpPost("interactions/batch")]
     public async Task<IActionResult> TrackBatchImpressions([FromBody] TrackBatchImpressionsRequest request)
     {
         if (request.PetIds is null || !request.PetIds.Any())
             return BadRequest(new { error = "PetIds cannot be empty." });
+
+        if (request.PetIds.Count() > 100)
+            return BadRequest(new { error = "Maximum 100 pet IDs per batch." });
 
         var result = await _mediator.Send(new TrackBatchImpressionsCommand(request.PetIds, GetUserId()));
         return Ok(result);

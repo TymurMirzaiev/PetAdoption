@@ -17,7 +17,7 @@ public class OutboxEvent
     public int RetryCount { get; private set; }
     public string? LastError { get; private set; }
 
-    // Private constructor for MongoDB deserialization
+    // Required by EF Core
     private OutboxEvent() { }
 
     public OutboxEvent(IDomainEvent domainEvent, string serializedEventData)

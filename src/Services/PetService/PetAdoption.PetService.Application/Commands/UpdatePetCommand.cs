@@ -12,7 +12,7 @@ public record UpdatePetCommand(
     string? Description = null,
     IEnumerable<string>? Tags = null) : IRequest<UpdatePetResponse>;
 
-public record UpdatePetResponse(Guid Id, string Name, string Status, string? Breed, int? AgeMonths, string? Description);
+public record UpdatePetResponse(Guid Id, string Name, string Status, string? Breed, int? AgeMonths, string? Description, IReadOnlyList<string> Tags);
 
 public class UpdatePetCommandHandler : IRequestHandler<UpdatePetCommand, UpdatePetResponse>
 {
@@ -47,6 +47,8 @@ public class UpdatePetCommandHandler : IRequestHandler<UpdatePetCommand, UpdateP
 
         await _repository.Update(pet);
 
-        return new UpdatePetResponse(pet.Id, pet.Name, pet.Status.ToString(), pet.Breed?.Value, pet.Age?.Months, pet.Description?.Value);
+        return new UpdatePetResponse(
+            pet.Id, pet.Name, pet.Status.ToString(), pet.Breed?.Value, pet.Age?.Months, pet.Description?.Value,
+            pet.Tags.Select(t => t.Value).ToList());
     }
 }

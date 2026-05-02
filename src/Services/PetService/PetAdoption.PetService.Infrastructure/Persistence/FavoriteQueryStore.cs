@@ -17,9 +17,12 @@ public class FavoriteQueryStore : IFavoriteQueryStore
         Guid userId, int skip, int take,
         Guid? petTypeId = null, string? petStatus = null, string sortBy = "newest")
     {
-        var query = _db.Favorites.AsNoTracking()
-            .Where(f => f.UserId == userId)
-            .Join(_db.Pets.AsNoTracking(), f => f.PetId, p => p.Id, (f, p) => new { f, p });
+        var query =
+            from f in _db.Favorites.AsNoTracking()
+            join p in _db.Pets.AsNoTracking() on f.PetId equals p.Id
+            join pt in _db.PetTypes.AsNoTracking() on p.PetTypeId equals pt.Id
+            where f.UserId == userId
+            select new { f, p, pt };
 
         if (petTypeId.HasValue)
             query = query.Where(x => x.p.PetTypeId == petTypeId.Value);
@@ -43,7 +46,7 @@ public class FavoriteQueryStore : IFavoriteQueryStore
                 x.f.Id,
                 x.f.PetId,
                 x.p.Name.Value,
-                _db.PetTypes.Where(pt => pt.Id == x.p.PetTypeId).Select(pt => pt.Name).First(),
+                x.pt.Name,
                 x.p.Breed != null ? x.p.Breed.Value : null,
                 x.p.Age != null ? (int?)x.p.Age.Months : null,
                 x.p.Status.ToString(),

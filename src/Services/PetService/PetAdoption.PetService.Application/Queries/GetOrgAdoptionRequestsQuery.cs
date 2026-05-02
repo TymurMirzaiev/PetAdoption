@@ -44,19 +44,23 @@ public class GetOrgAdoptionRequestsQueryHandler
         var (items, total) = await _queryStore.GetByOrganizationAsync(
             request.OrganizationId, request.Status, request.Skip, request.Take);
 
-        var dtos = new List<OrgAdoptionRequestDto>();
-        foreach (var item in items)
+        var itemsList = items.ToList();
+        var petIds = itemsList.Select(i => i.PetId).Distinct();
+        var pets = await _petQueryStore.GetByIds(petIds);
+        var petDict = pets.ToDictionary(p => p.Id);
+
+        var dtos = itemsList.Select(item =>
         {
-            var pet = await _petQueryStore.GetById(item.PetId);
-            dtos.Add(new OrgAdoptionRequestDto(
+            petDict.TryGetValue(item.PetId, out var pet);
+            return new OrgAdoptionRequestDto(
                 item.Id,
                 item.UserId,
                 item.PetId,
                 pet?.Name?.Value ?? "Unknown",
                 item.Status.ToString(),
                 item.Message,
-                item.CreatedAt));
-        }
+                item.CreatedAt);
+        }).ToList();
 
         return new GetOrgAdoptionRequestsResponse(dtos, total, request.Skip, request.Take);
     }

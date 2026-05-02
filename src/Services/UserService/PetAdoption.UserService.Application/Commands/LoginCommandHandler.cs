@@ -1,7 +1,9 @@
 namespace PetAdoption.UserService.Application.Commands;
 
+using Microsoft.Extensions.Options;
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.DTOs;
+using PetAdoption.UserService.Application.Options;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
 using PetAdoption.UserService.Domain.Exceptions;
@@ -14,17 +16,20 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
+    private readonly JwtApplicationOptions _jwtOptions;
 
     public LoginCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
-        IRefreshTokenRepository refreshTokenRepo)
+        IRefreshTokenRepository refreshTokenRepo,
+        IOptions<JwtApplicationOptions> jwtOptions)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
         _refreshTokenRepo = refreshTokenRepo;
+        _jwtOptions = jwtOptions.Value;
     }
 
     public async Task<LoginResponse> HandleAsync(
@@ -69,7 +74,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         );
 
         // Create refresh token
-        var refreshToken = RefreshToken.Create(user.Id.Value, TimeSpan.FromDays(30));
+        var refreshToken = RefreshToken.Create(user.Id.Value, TimeSpan.FromDays(_jwtOptions.RefreshTokenLifetimeDays));
         await _refreshTokenRepo.SaveAsync(refreshToken);
 
         // Record login
@@ -84,7 +89,7 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
             Email: user.Email.Value,
             FullName: user.FullName.Value,
             Role: user.Role.ToString(),
-            ExpiresIn: 3600 // 1 hour in seconds
+            ExpiresIn: (int)TimeSpan.FromMinutes(_jwtOptions.ExpirationMinutes).TotalSeconds
         );
     }
 }

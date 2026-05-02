@@ -30,6 +30,8 @@ public class OrgPetsController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
     {
+        take = Math.Min(take, 100);
+
         PetStatus? petStatus = null;
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<PetStatus>(status, true, out var parsed))
             petStatus = parsed;
@@ -62,10 +64,10 @@ public class OrgPetsController : ControllerBase
 
     // DELETE /api/organizations/{orgId}/pets/{petId}
     [HttpDelete("{petId}")]
-    public async Task<ActionResult<DeleteOrgPetResponse>> Delete(Guid orgId, Guid petId)
+    public async Task<IActionResult> Delete(Guid orgId, Guid petId)
     {
-        var result = await _mediator.Send(new DeleteOrgPetCommand(orgId, petId));
-        return Ok(result);
+        await _mediator.Send(new DeleteOrgPetCommand(orgId, petId));
+        return NoContent();
     }
 }
 

@@ -52,6 +52,7 @@ public class FavoritesController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string sortBy = "newest")
     {
+        take = Math.Min(take, 100);
         var result = await _mediator.Send(new GetFavoritesQuery(
             GetUserId(), skip, take, petTypeId, status, sortBy));
         return Ok(result);

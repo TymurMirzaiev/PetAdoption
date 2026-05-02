@@ -22,7 +22,7 @@ public class OutboxRepository : IOutboxRepository
     public async Task<List<OutboxEvent>> GetUnprocessedAsync(int batchSize = 100)
     {
         return await _db.OutboxEvents
-            .Where(e => !e.IsProcessed)
+            .Where(e => !e.IsProcessed && e.RetryCount < 5)
             .OrderBy(e => e.CreatedAt)
             .Take(batchSize)
             .ToListAsync();

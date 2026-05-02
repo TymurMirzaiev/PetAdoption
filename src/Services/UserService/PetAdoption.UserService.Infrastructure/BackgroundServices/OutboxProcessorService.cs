@@ -6,14 +6,20 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PetAdoption.UserService.Domain.Interfaces;
+using PetAdoption.UserService.Infrastructure.Messaging;
 using PetAdoption.UserService.Infrastructure.Messaging.Configuration;
 using RabbitMQ.Client;
 
 public class OutboxProcessorService : BackgroundService
 {
+    private const int BatchSize = 100;
+    private const int MaxRetryCount = 5;
+    private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<OutboxProcessorService> _logger;
     private readonly RabbitMqOptions _rabbitMqOptions;
+    private readonly ConnectionFactory _connectionFactory;
     private IConnection? _connection;
     private IChannel? _channel;
 
@@ -25,6 +31,15 @@ public class OutboxProcessorService : BackgroundService
         _serviceProvider = serviceProvider;
         _logger = logger;
         _rabbitMqOptions = rabbitMqOptions.Value;
+
+        _connectionFactory = new ConnectionFactory
+        {
+            HostName = _rabbitMqOptions.Host,
+            Port = _rabbitMqOptions.Port,
+            UserName = _rabbitMqOptions.User,
+            Password = _rabbitMqOptions.Password,
+            VirtualHost = _rabbitMqOptions.VirtualHost
+        };
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -32,10 +47,10 @@ public class OutboxProcessorService : BackgroundService
         _logger.LogInformation("Outbox Processor Service starting...");
 
         // Wait a bit for RabbitMQ topology to be set up
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        await Task.Delay(PollingInterval, stoppingToken);
 
         // Connect to RabbitMQ
-        await ConnectToRabbitMq(stoppingToken);
+        await EnsureConnection(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -48,25 +63,21 @@ public class OutboxProcessorService : BackgroundService
                 _logger.LogError(ex, "Error processing outbox events");
             }
 
-            // Process every 5 seconds
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            await Task.Delay(PollingInterval, stoppingToken);
         }
     }
 
-    private async Task ConnectToRabbitMq(CancellationToken cancellationToken)
+    private async Task EnsureConnection(CancellationToken cancellationToken = default)
     {
+        if (_connection?.IsOpen == true)
+            return;
+
         try
         {
-            var factory = new ConnectionFactory
-            {
-                HostName = _rabbitMqOptions.Host,
-                Port = _rabbitMqOptions.Port,
-                UserName = _rabbitMqOptions.User,
-                Password = _rabbitMqOptions.Password,
-                VirtualHost = _rabbitMqOptions.VirtualHost
-            };
+            _logger.LogInformation("Establishing RabbitMQ connection to {Host}:{Port}",
+                _connectionFactory.HostName, _connectionFactory.Port);
 
-            _connection = await factory.CreateConnectionAsync(cancellationToken);
+            _connection = await _connectionFactory.CreateConnectionAsync(cancellationToken);
             _channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
 
             _logger.LogInformation("Connected to RabbitMQ for outbox processing");
@@ -80,10 +91,12 @@ public class OutboxProcessorService : BackgroundService
 
     private async Task ProcessOutboxEvents(CancellationToken cancellationToken)
     {
+        await EnsureConnection(cancellationToken);
+
         using var scope = _serviceProvider.CreateScope();
         var outboxRepository = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
 
-        var unprocessedEvents = await outboxRepository.GetUnprocessedAsync(batchSize: 100);
+        var unprocessedEvents = await outboxRepository.GetUnprocessedAsync(batchSize: BatchSize);
 
         if (unprocessedEvents.Count == 0)
         {
@@ -97,7 +110,7 @@ public class OutboxProcessorService : BackgroundService
             try
             {
                 // Skip events that have been retried too many times
-                if (outboxEvent.RetryCount >= 5)
+                if (outboxEvent.RetryCount >= MaxRetryCount)
                 {
                     _logger.LogWarning(
                         "Skipping outbox event {EventId} - max retries exceeded",
@@ -109,7 +122,7 @@ public class OutboxProcessorService : BackgroundService
                 var body = Encoding.UTF8.GetBytes(outboxEvent.EventData);
 
                 await _channel!.BasicPublishAsync(
-                    exchange: "user.events",
+                    exchange: UserRabbitMqTopology.Exchanges.UserEvents,
                     routingKey: outboxEvent.RoutingKey,
                     body: body,
                     cancellationToken: cancellationToken);

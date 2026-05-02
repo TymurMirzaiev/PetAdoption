@@ -34,6 +34,9 @@ builder.Services.PostConfigure<RabbitMqOptions>(options =>
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("JWT Secret is not configured");
 
+if (jwtSecret.Length < 32)
+    throw new InvalidOperationException("JWT secret must be at least 32 characters for HMAC-SHA256.");
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

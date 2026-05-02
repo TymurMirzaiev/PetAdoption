@@ -91,7 +91,8 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     private async Task<Guid> SeedPetWithOrgAsync(string name, Guid petTypeId, Guid organizationId)
     {
         await using var db = _factory.CreateDbContext();
-        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 24, description: null, organizationId: organizationId);
+        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 24, description: null);
+        pet.AssignToOrganization(organizationId);
         db.Pets.Add(pet);
         await db.SaveChangesAsync();
         return pet.Id;

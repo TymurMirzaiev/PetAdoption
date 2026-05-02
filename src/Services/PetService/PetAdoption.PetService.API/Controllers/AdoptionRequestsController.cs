@@ -48,6 +48,7 @@ public class AdoptionRequestsController : ControllerBase
     public async Task<IActionResult> GetMyAdoptionRequests(
         [FromQuery] int skip = 0, [FromQuery] int take = 20)
     {
+        take = Math.Min(take, 100);
         var result = await _mediator.Send(new GetMyAdoptionRequestsQuery(GetUserId(), skip, take));
         return Ok(result);
     }
@@ -63,9 +64,15 @@ public class AdoptionRequestsController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
     {
-        AdoptionRequestStatus? statusFilter = status is not null
-            ? Enum.Parse<AdoptionRequestStatus>(status, ignoreCase: true)
-            : null;
+        take = Math.Min(take, 100);
+
+        AdoptionRequestStatus? statusFilter = null;
+        if (status is not null)
+        {
+            if (!Enum.TryParse<AdoptionRequestStatus>(status, ignoreCase: true, out var parsedStatus))
+                return BadRequest("Invalid status value.");
+            statusFilter = parsedStatus;
+        }
 
         var result = await _mediator.Send(new GetOrgAdoptionRequestsQuery(
             orgId, statusFilter, skip, take));
@@ -89,6 +96,9 @@ public class AdoptionRequestsController : ControllerBase
     [HttpPost("{id:guid}/reject")]
     public async Task<IActionResult> RejectAdoptionRequest(Guid id, [FromBody] RejectAdoptionRequestBody body)
     {
+        if (string.IsNullOrWhiteSpace(body.Reason))
+            return BadRequest("Reason is required.");
+
         var result = await _mediator.Send(new RejectAdoptionRequestCommand(
             id, GetUserId(), body.Reason, GetUserOrgId(), GetUserOrgRole()));
         return Ok(result);

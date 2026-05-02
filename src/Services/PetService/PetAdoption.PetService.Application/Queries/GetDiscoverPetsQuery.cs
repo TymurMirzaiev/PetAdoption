@@ -37,11 +37,12 @@ public class GetDiscoverPetsQueryHandler : IRequestHandler<GetDiscoverPetsQuery,
 
     public async Task<GetDiscoverPetsResponse> Handle(GetDiscoverPetsQuery request, CancellationToken ct)
     {
-        // 1. Get user's skipped pet IDs
-        var skippedPetIds = await _skipRepository.GetPetIdsByUserAsync(request.UserId);
-
-        // 2. Get user's favorited pet IDs
-        var favoritedPetIds = await _favoriteRepository.GetPetIdsByUserAsync(request.UserId);
+        // 1+2. Fetch skipped and favorited pet IDs in parallel
+        var skipTask = _skipRepository.GetPetIdsByUserAsync(request.UserId);
+        var favoriteTask = _favoriteRepository.GetPetIdsByUserAsync(request.UserId);
+        await Task.WhenAll(skipTask, favoriteTask);
+        var skippedPetIds = skipTask.Result;
+        var favoritedPetIds = favoriteTask.Result;
 
         // 3. Combine exclusion set
         var excludedIds = skippedPetIds.Concat(favoritedPetIds).ToHashSet();

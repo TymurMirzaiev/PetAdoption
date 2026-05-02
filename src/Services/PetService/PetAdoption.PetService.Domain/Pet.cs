@@ -67,12 +67,6 @@ public class Pet : IAggregateRoot, IEntity
             tags?.Select(t => new PetTag(t)));
     }
 
-    public static Pet Create(string name, Guid petTypeId, string? breed, int? ageMonths, string? description, Guid organizationId)
-    {
-        var pet = Create(name, petTypeId, breed, ageMonths, description);
-        pet.OrganizationId = organizationId;
-        return pet;
-    }
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     public void Reserve()

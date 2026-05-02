@@ -10,9 +10,12 @@ namespace PetAdoption.PetService.Infrastructure.BackgroundServices;
 
 public class OutboxProcessorService : BackgroundService
 {
+    private const int BatchSize = 100;
+    private const int MaxRetryCount = 5;
+    private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
+
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<OutboxProcessorService> _logger;
-    private readonly TimeSpan _processingInterval = TimeSpan.FromSeconds(5);
     private static readonly Assembly _domainAssembly = typeof(IDomainEvent).Assembly;
 
     public OutboxProcessorService(
@@ -38,7 +41,7 @@ public class OutboxProcessorService : BackgroundService
                 _logger.LogError(ex, "Error processing outbox events");
             }
 
-            await Task.Delay(_processingInterval, stoppingToken);
+            await Task.Delay(PollingInterval, stoppingToken);
         }
 
         _logger.LogInformation("Outbox Processor Service stopped");
@@ -50,7 +53,7 @@ public class OutboxProcessorService : BackgroundService
         var outboxRepository = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
         var eventPublisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-        var pendingEvents = await outboxRepository.GetPendingEvents(batchSize: 100);
+        var pendingEvents = await outboxRepository.GetPendingEvents(batchSize: BatchSize);
         var eventsList = pendingEvents.ToList();
 
         if (!eventsList.Any())

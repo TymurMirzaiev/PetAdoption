@@ -34,6 +34,8 @@ public class DiscoverController : ControllerBase
         [FromQuery] int take = 10,
         [FromQuery] string? breed = null)
     {
+        take = Math.Min(take, 50);
+
         var result = await _mediator.Send(new GetDiscoverPetsQuery(
             GetUserId(),
             petTypeId,

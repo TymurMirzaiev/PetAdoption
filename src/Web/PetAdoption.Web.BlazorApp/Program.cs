@@ -29,6 +29,11 @@ builder.Services.AddHttpClient("UserApi", client =>
     client.BaseAddress = new Uri(builder.Configuration["ApiUrls:UserService"] ?? "http://localhost:5001");
 }).AddHttpMessageHandler<AuthorizationMessageHandler>();
 
+builder.Services.AddHttpClient("UserApiDirect", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiUrls:UserService"] ?? "http://localhost:5001");
+});
+
 builder.Services.AddScoped<PetApiClient>();
 builder.Services.AddScoped<UserApiClient>();
 

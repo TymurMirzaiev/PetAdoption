@@ -1,5 +1,6 @@
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.Authorization;
+using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Exceptions;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -12,13 +13,16 @@ public class ApproveAdoptionRequestCommandHandler
 {
     private readonly IAdoptionRequestRepository _adoptionRequestRepository;
     private readonly IPetRepository _petRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ApproveAdoptionRequestCommandHandler(
         IAdoptionRequestRepository adoptionRequestRepository,
-        IPetRepository petRepository)
+        IPetRepository petRepository,
+        IUnitOfWork unitOfWork)
     {
         _adoptionRequestRepository = adoptionRequestRepository;
         _petRepository = petRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<ApproveAdoptionRequestResponse> Handle(
@@ -33,18 +37,19 @@ public class ApproveAdoptionRequestCommandHandler
         OrgAuthorization.EnsureMember(
             adoptionRequest.OrganizationId, request.ReviewerOrgId, request.ReviewerOrgRole);
 
-        adoptionRequest.Approve();
-
         var pet = await _petRepository.GetById(adoptionRequest.PetId)
             ?? throw new DomainException(
                 PetDomainErrorCode.PetNotFound,
                 $"Pet {adoptionRequest.PetId} not found.",
                 new Dictionary<string, object> { { "PetId", adoptionRequest.PetId } });
 
+        if (pet.Status != PetStatus.Available)
+            throw new DomainException(PetDomainErrorCode.PetNotAvailable, "Pet is no longer available.");
+
+        adoptionRequest.Approve();
         pet.Reserve();
 
-        await _petRepository.Update(pet);
-        await _adoptionRequestRepository.UpdateAsync(adoptionRequest, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ApproveAdoptionRequestResponse(adoptionRequest.Id, adoptionRequest.Status.ToString());
     }

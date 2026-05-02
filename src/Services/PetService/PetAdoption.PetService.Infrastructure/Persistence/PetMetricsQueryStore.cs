@@ -16,16 +16,78 @@ public class PetMetricsQueryStore : IPetMetricsQueryStore
     public async Task<IEnumerable<PetMetricsSummary>> GetMetricsByOrgAsync(
         Guid orgId, DateTime? from, DateTime? to, string? sortBy, bool descending)
     {
-        var petIds = await _db.Pets.AsNoTracking()
-            .Where(p => p.OrganizationId == orgId)
-            .Select(p => p.Id)
-            .ToListAsync();
+        var orgPetsExist = await _db.Pets.AsNoTracking()
+            .AnyAsync(p => p.OrganizationId == orgId);
 
-        if (!petIds.Any())
+        if (!orgPetsExist)
             return Enumerable.Empty<PetMetricsSummary>();
 
-        var metrics = await BuildMetricsQuery(petIds, from, to);
-        return SortMetrics(metrics, sortBy, descending);
+        var interactionsQuery =
+            from interaction in _db.PetInteractions.AsNoTracking()
+            join pet in _db.Pets.AsNoTracking() on interaction.PetId equals pet.Id
+            where pet.OrganizationId == orgId
+            select interaction;
+
+        if (from.HasValue)
+            interactionsQuery = interactionsQuery.Where(pi => pi.CreatedAt >= from.Value);
+        if (to.HasValue)
+            interactionsQuery = interactionsQuery.Where(pi => pi.CreatedAt <= to.Value);
+
+        var interactionCounts = await interactionsQuery
+            .GroupBy(pi => new { pi.PetId, pi.Type })
+            .Select(g => new
+            {
+                g.Key.PetId,
+                g.Key.Type,
+                Count = g.LongCount()
+            })
+            .ToListAsync();
+
+        var favoriteCounts = await (
+            from f in _db.Favorites.AsNoTracking()
+            join pet in _db.Pets.AsNoTracking() on f.PetId equals pet.Id
+            where pet.OrganizationId == orgId
+            group f by f.PetId into g
+            select new { PetId = g.Key, Count = g.LongCount() }
+        ).ToListAsync();
+
+        var favoriteDict = favoriteCounts.ToDictionary(x => x.PetId, x => x.Count);
+
+        var pets = await _db.Pets.AsNoTracking()
+            .Where(p => p.OrganizationId == orgId)
+            .Join(_db.PetTypes.AsNoTracking(), p => p.PetTypeId, pt => pt.Id,
+                (p, pt) => new { p.Id, PetName = p.Name.Value, PetType = pt.Name })
+            .ToListAsync();
+
+        var petDict = pets.ToDictionary(p => p.Id);
+        var petIds = pets.Select(p => p.Id).ToList();
+
+        var result = new List<PetMetricsSummary>();
+        foreach (var petId in petIds)
+        {
+            if (!petDict.TryGetValue(petId, out var petInfo)) continue;
+
+            var impressions = interactionCounts
+                .Where(x => x.PetId == petId && x.Type == InteractionType.Impression)
+                .Sum(x => x.Count);
+            var swipes = interactionCounts
+                .Where(x => x.PetId == petId && x.Type == InteractionType.Swipe)
+                .Sum(x => x.Count);
+            var rejections = interactionCounts
+                .Where(x => x.PetId == petId && x.Type == InteractionType.Rejection)
+                .Sum(x => x.Count);
+            var favorites = favoriteDict.GetValueOrDefault(petId, 0);
+
+            var swipeRate = impressions > 0 ? (double)swipes / impressions : 0;
+            var rejectionRate = impressions > 0 ? (double)rejections / impressions : 0;
+
+            result.Add(new PetMetricsSummary(
+                petId, petInfo.PetName, petInfo.PetType,
+                impressions, swipes, rejections, favorites,
+                Math.Round(swipeRate, 4), Math.Round(rejectionRate, 4)));
+        }
+
+        return SortMetrics(result, sortBy, descending);
     }
 
     public async Task<PetMetricsSummary?> GetMetricsByPetAsync(

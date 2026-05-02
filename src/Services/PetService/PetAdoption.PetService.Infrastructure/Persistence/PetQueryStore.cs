@@ -26,6 +26,14 @@ public class PetQueryStore : IPetQueryStore
         return await _db.Pets.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
     }
 
+    public async Task<IEnumerable<Pet>> GetByIds(IEnumerable<Guid> ids)
+    {
+        var idList = ids.ToList();
+        return await _db.Pets.AsNoTracking()
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync();
+    }
+
     public async Task<(IEnumerable<Pet> Pets, long Total)> GetFiltered(
         PetStatus? status,
         Guid? petTypeId,
@@ -125,7 +133,7 @@ public class PetQueryStore : IPetQueryStore
         if (status.HasValue)
             query = query.Where(p => p.Status == status.Value);
 
-        query = await ApplyTagFilterAsync(query, tags);
+        query = await ApplyTagFilterAsync(query, tags, organizationId);
 
         var total = await query.LongCountAsync();
         var pets = await query.OrderBy(p => p.Name).Skip(skip).Take(take).ToListAsync();
@@ -138,8 +146,11 @@ public class PetQueryStore : IPetQueryStore
     /// pets that contain ALL specified tag values. EF Core can't translate List queries against
     /// the JSON-converted Tags column, so we resolve matching ids in a single OPENJSON query
     /// and chain the result back into the LINQ pipeline.
+    /// When organizationId is provided, the raw SQL is pre-filtered by that org to avoid a
+    /// full-table scan on the Tags JSON column.
     /// </summary>
-    private async Task<IQueryable<Pet>> ApplyTagFilterAsync(IQueryable<Pet> query, IEnumerable<string>? tags)
+    private async Task<IQueryable<Pet>> ApplyTagFilterAsync(
+        IQueryable<Pet> query, IEnumerable<string>? tags, Guid? organizationId = null)
     {
         if (tags is null) return query;
 
@@ -148,6 +159,13 @@ public class PetQueryStore : IPetQueryStore
 
         var sql = new StringBuilder("SELECT Id FROM Pets WHERE Tags IS NOT NULL");
         var parameters = new List<SqlParameter>();
+
+        if (organizationId.HasValue)
+        {
+            sql.Append(" AND OrganizationId = @orgId");
+            parameters.Add(new SqlParameter("@orgId", organizationId.Value));
+        }
+
         for (var i = 0; i < tagList.Count; i++)
         {
             sql.Append($" AND EXISTS (SELECT 1 FROM OPENJSON(Tags) WHERE [value] = @t{i})");

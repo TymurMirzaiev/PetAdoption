@@ -22,7 +22,10 @@ public class AnnouncementsController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Create([FromBody] CreateAnnouncementRequest request)
     {
-        var userId = Guid.Parse(User.FindFirstValue("userId")!);
+        var userIdStr = User.FindFirstValue("userId");
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+
         var result = await _mediator.Send(new CreateAnnouncementCommand(
             request.Title, request.Body, request.StartDate, request.EndDate, userId));
         return StatusCode(201, result);
@@ -49,6 +52,7 @@ public class AnnouncementsController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetAll([FromQuery] int skip = 0, [FromQuery] int take = 10)
     {
+        take = Math.Min(take, 100);
         var result = await _mediator.Send(new GetAnnouncementsQuery(skip, take));
         return Ok(result);
     }

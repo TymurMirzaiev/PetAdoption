@@ -1,6 +1,8 @@
 namespace PetAdoption.UserService.Application.Commands;
 
+using Microsoft.Extensions.Options;
 using PetAdoption.UserService.Application.Abstractions;
+using PetAdoption.UserService.Application.Options;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Enums;
 using PetAdoption.UserService.Domain.Exceptions;
@@ -13,17 +15,20 @@ public class GoogleAuthCommandHandler : ICommandHandler<GoogleAuthCommand, Googl
     private readonly IUserRepository _userRepo;
     private readonly IJwtTokenGenerator _jwtGenerator;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
+    private readonly JwtApplicationOptions _jwtOptions;
 
     public GoogleAuthCommandHandler(
         IGoogleTokenValidator googleValidator,
         IUserRepository userRepo,
         IJwtTokenGenerator jwtGenerator,
-        IRefreshTokenRepository refreshTokenRepo)
+        IRefreshTokenRepository refreshTokenRepo,
+        IOptions<JwtApplicationOptions> jwtOptions)
     {
         _googleValidator = googleValidator;
         _userRepo = userRepo;
         _jwtGenerator = jwtGenerator;
         _refreshTokenRepo = refreshTokenRepo;
+        _jwtOptions = jwtOptions.Value;
     }
 
     public async Task<GoogleAuthResponse> HandleAsync(
@@ -52,7 +57,7 @@ public class GoogleAuthCommandHandler : ICommandHandler<GoogleAuthCommand, Googl
         var accessToken = _jwtGenerator.GenerateToken(
             user.Id.Value, user.Email.Value, user.Role.ToString());
 
-        var refreshToken = RefreshToken.Create(user.Id.Value, TimeSpan.FromDays(30));
+        var refreshToken = RefreshToken.Create(user.Id.Value, TimeSpan.FromDays(_jwtOptions.RefreshTokenLifetimeDays));
         await _refreshTokenRepo.SaveAsync(refreshToken);
 
         return new GoogleAuthResponse(accessToken, refreshToken.Token);

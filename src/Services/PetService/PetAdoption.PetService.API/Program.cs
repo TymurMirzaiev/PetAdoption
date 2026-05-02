@@ -41,6 +41,9 @@ var connectionString = builder.Configuration.GetConnectionString("SqlServer")
 builder.Services.AddDbContext<PetServiceDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+// Unit of work (resolves the same scoped PetServiceDbContext)
+builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PetServiceDbContext>());
+
 // Repositories (scoped — EF Core DbContext is scoped)
 builder.Services.AddScoped<IPetRepository, PetRepository>();
 builder.Services.AddScoped<IPetQueryStore, PetQueryStore>();
@@ -94,6 +97,9 @@ builder.Services.AddCors(options =>
 // JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("JWT Secret is not configured");
+
+if (jwtSecret.Length < 32)
+    throw new InvalidOperationException("JWT secret must be at least 32 characters for HMAC-SHA256.");
 
 builder.Services.AddAuthentication(options =>
 {

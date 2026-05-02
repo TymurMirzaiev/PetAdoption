@@ -147,7 +147,7 @@ public class DevDataSeeder
         var modMember = OrganizationMember.Create(orgId, orgModerator.Id.Value, OrgRole.Moderator);
         await _memberRepository.AddAsync(modMember);
 
-        // Create regular member (with Moderator org role)
+        // Create a moderator-level member (can approve adoption requests)
         var memberHash = _passwordHasher.HashPassword("Member123!");
         var regularMember = User.Register(
             $"member@{slug}.local",

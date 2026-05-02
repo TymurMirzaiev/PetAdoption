@@ -36,6 +36,7 @@ public class OutboxRepository : IOutboxRepository
 
     public async Task Update(OutboxEvent outboxEvent)
     {
+        _db.Entry(outboxEvent).State = EntityState.Modified;
         await _db.SaveChangesAsync();
     }
 }

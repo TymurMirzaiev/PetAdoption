@@ -15,6 +15,9 @@ public class GetFavoritesQueryHandler : IRequestHandler<GetFavoritesQuery, GetFa
 
     public async Task<GetFavoritesResponse> Handle(GetFavoritesQuery request, CancellationToken cancellationToken = default)
     {
+        if (request.Take <= 0)
+            throw new ArgumentException("Take must be greater than zero.", nameof(request));
+
         var (items, total) = await _queryStore.GetByUserAsync(
             request.UserId, request.Skip, request.Take,
             request.PetTypeId, request.PetStatus, request.SortBy);

@@ -22,31 +22,26 @@ public class PetTypeSeeder
     {
         _logger.LogInformation("Checking if pet types need to be seeded...");
 
-        var existingTypes = await _repository.GetAllAsync();
-        if (existingTypes.Any())
+        var seedTypes = new[]
         {
-            _logger.LogInformation("Pet types already exist. Skipping seed.");
-            return;
-        }
-
-        _logger.LogInformation("Seeding initial pet types...");
-
-        var initialTypes = new[]
-        {
-            PetType.Create("dog", "Dog"),
-            PetType.Create("cat", "Cat"),
-            PetType.Create("rabbit", "Rabbit"),
-            PetType.Create("bird", "Bird"),
-            PetType.Create("fish", "Fish"),
-            PetType.Create("hamster", "Hamster")
+            ("dog", "Dog"),
+            ("cat", "Cat"),
+            ("rabbit", "Rabbit"),
+            ("bird", "Bird"),
+            ("fish", "Fish"),
+            ("hamster", "Hamster")
         };
 
-        foreach (var petType in initialTypes)
+        foreach (var (code, name) in seedTypes)
         {
+            if (await _repository.ExistsByCodeAsync(code))
+                continue;
+
+            var petType = PetType.Create(code, name);
             await _repository.AddAsync(petType);
             _logger.LogInformation("Seeded pet type: {Code} - {Name}", petType.Code, petType.Name);
         }
 
-        _logger.LogInformation("Pet types seeded successfully.");
+        _logger.LogInformation("Pet types seed check completed.");
     }
 }

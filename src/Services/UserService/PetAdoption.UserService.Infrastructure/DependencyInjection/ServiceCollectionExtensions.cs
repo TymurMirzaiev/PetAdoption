@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.Commands;
+using PetAdoption.UserService.Application.Options;
 using PetAdoption.UserService.Application.Commands.Organizations;
 using PetAdoption.UserService.Application.DTOs;
 using PetAdoption.UserService.Application.Queries;
@@ -44,6 +45,11 @@ public static class ServiceCollectionExtensions
 
         // JWT Configuration
         services.Configure<JwtOptions>(
+            configuration.GetSection("Jwt")
+        );
+
+        // JWT options for Application layer handlers (subset of JwtOptions)
+        services.Configure<JwtApplicationOptions>(
             configuration.GetSection("Jwt")
         );
 

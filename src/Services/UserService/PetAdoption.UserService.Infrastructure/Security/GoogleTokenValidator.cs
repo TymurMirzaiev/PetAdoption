@@ -31,8 +31,13 @@ public class GoogleTokenValidator : IGoogleTokenValidator
 
             return new GoogleUserInfo(response.Email, response.Name ?? response.Email);
         }
+        catch (HttpRequestException)
+        {
+            throw; // infrastructure failure — let it propagate so the caller returns 503
+        }
         catch
         {
+            // Token validation failure (expired, malformed, wrong audience, etc.)
             return null;
         }
     }

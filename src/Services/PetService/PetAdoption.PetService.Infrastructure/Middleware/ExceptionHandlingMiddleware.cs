@@ -101,7 +101,7 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.PetNotReserved => HttpStatusCode.Conflict,
             PetDomainErrorCode.PetCannotBeDeleted => HttpStatusCode.Conflict,
             PetDomainErrorCode.ConcurrencyConflict => HttpStatusCode.Conflict,
-            PetDomainErrorCode.InvalidOperation => HttpStatusCode.Conflict,
+            PetDomainErrorCode.InvalidOperation => HttpStatusCode.UnprocessableEntity,
             PetDomainErrorCode.PetTypeAlreadyExists => HttpStatusCode.Conflict,
             PetDomainErrorCode.FavoriteAlreadyExists => HttpStatusCode.Conflict,
             PetDomainErrorCode.SkipAlreadyExists => HttpStatusCode.Conflict,

@@ -8,6 +8,8 @@ using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Enums;
 using PetAdoption.UserService.Domain.Exceptions;
 using PetAdoption.UserService.Domain.Interfaces;
+using Microsoft.Extensions.Options;
+using PetAdoption.UserService.Application.Options;
 using PetAdoption.UserService.Domain.ValueObjects;
 
 public class LoginCommandHandlerTests
@@ -28,7 +30,8 @@ public class LoginCommandHandlerTests
             _mockUserRepository.Object,
             _mockPasswordHasher.Object,
             _mockJwtTokenGenerator.Object,
-            _mockRefreshTokenRepo.Object
+            _mockRefreshTokenRepo.Object,
+            Options.Create(new JwtApplicationOptions())
         );
     }
 

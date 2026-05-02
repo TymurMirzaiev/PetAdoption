@@ -147,9 +147,15 @@ public class UsersController : ControllerBase
         [FromBody] LogoutRequest request,
         [FromServices] IRefreshTokenRepository refreshTokenRepo)
     {
+        var currentUserId = User.FindFirstValue("userId")
+            ?? throw new UnauthorizedAccessException("User ID not found in token");
+
         var token = await refreshTokenRepo.GetByTokenAsync(request.RefreshToken);
         if (token is not null)
         {
+            if (token.UserId != currentUserId)
+                return Forbid();
+
             token.Revoke();
             await refreshTokenRepo.SaveAsync(token);
         }

@@ -32,6 +32,8 @@ public class PetsController : ControllerBase
         [FromQuery] string? breed = null,
         [FromQuery] string? tags = null)
     {
+        take = Math.Min(take, 100);
+
         PetStatus? petStatus = null;
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<PetStatus>(status, true, out var parsed))
         {
@@ -78,10 +80,10 @@ public class PetsController : ControllerBase
     // DELETE /api/pets/{id}
     [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id}")]
-    public async Task<ActionResult<DeletePetResponse>> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id)
     {
-        var result = await _mediator.Send(new DeletePetCommand(id));
-        return Ok(result);
+        await _mediator.Send(new DeletePetCommand(id));
+        return NoContent();
     }
 
     // POST /api/pets/{id}/reserve

@@ -55,7 +55,8 @@ public class OrganizationMetricsControllerTests : IAsyncLifetime
     {
         await using var db = _factory.CreateDbContext();
         var petTypeId = db.PetTypes.First().Id;
-        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 24, description: null, organizationId: organizationId);
+        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 24, description: null);
+        pet.AssignToOrganization(organizationId);
         db.Pets.Add(pet);
         await db.SaveChangesAsync();
         return pet.Id;

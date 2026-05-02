@@ -1,12 +1,15 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
+using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Domain.ValueObjects;
 
 namespace PetAdoption.PetService.Infrastructure.Persistence;
 
-public class PetServiceDbContext : DbContext
+public class PetServiceDbContext : DbContext, IUnitOfWork
 {
+    async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken) =>
+        await SaveChangesAsync(cancellationToken);
     public DbSet<Pet> Pets => Set<Pet>();
     public DbSet<PetType> PetTypes => Set<PetType>();
     public DbSet<Favorite> Favorites => Set<Favorite>();

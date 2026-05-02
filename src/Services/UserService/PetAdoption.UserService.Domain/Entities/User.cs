@@ -23,7 +23,7 @@ public class User
     private readonly List<DomainEventBase> _domainEvents = new();
     public IReadOnlyCollection<DomainEventBase> DomainEvents => _domainEvents.AsReadOnly();
 
-    // Private constructor for MongoDB/EF Core
+    // Required by EF Core
     private User() { }
 
     /// <summary>
@@ -91,7 +91,8 @@ public class User
     }
 
     /// <summary>
-    /// Update user profile information
+    /// Update user profile information.
+    /// Pass null for phoneNumber to clear it; omit or pass null for fullName/preferences to leave them unchanged.
     /// </summary>
     public void UpdateProfile(
         string? fullName = null,
@@ -109,11 +110,9 @@ public class User
             hasChanges = true;
         }
 
-        if (phoneNumber != null)
-        {
-            PhoneNumber = PhoneNumber.FromOptional(phoneNumber);
-            hasChanges = true;
-        }
+        // Always update phone so callers can clear it by passing null
+        PhoneNumber = PhoneNumber.FromOptional(phoneNumber);
+        hasChanges = true;
 
         if (preferences != null)
         {

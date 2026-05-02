@@ -132,7 +132,7 @@
                 @if (_pet.Status == "Available")
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.BookmarkAdd"
-                        OnClick="Reserve" Disabled="_actionLoading">Reserve</MudButton>
+                        OnClick="Reserve" Disabled="_actionLoading">Request Adoption</MudButton>
                 }
                 <MudButton Variant="Variant.Outlined" OnClick="@(() => Navigation.NavigateTo("/discover"))">Back</MudButton>
             </div>
@@ -198,16 +198,37 @@
         _actionLoading = true;
         try
         {
-            var response = await PetApi.ReservePetAsync(Id);
-            if (response.IsSuccessStatusCode)
+            if (_pet!.OrganizationId.HasValue)
             {
-                Snackbar.Add("Pet reserved!", Severity.Success);
-                _pet = await PetApi.GetPetAsync(Id);
+                var response = await PetApi.CreateAdoptionRequestAsync(_pet.Id);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Adoption request submitted!", Severity.Success);
+                    _pet = await PetApi.GetPetAsync(Id);
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    Snackbar.Add("You already have a pending request for this pet.", Severity.Info);
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to submit request", Severity.Error);
+                }
             }
             else
             {
-                var error = await response.Content.ReadFromJsonAsync<ApiError>();
-                Snackbar.Add(error?.Message ?? "Failed to reserve", Severity.Error);
+                var response = await PetApi.ReservePetAsync(Id);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Pet reserved!", Severity.Success);
+                    _pet = await PetApi.GetPetAsync(Id);
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to reserve", Severity.Error);
+                }
             }
         }
         catch { Snackbar.Add("Connection error", Severity.Error); }

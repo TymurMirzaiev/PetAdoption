@@ -43,27 +43,25 @@
                         }
                     </MudSelect>
                 </MudItem>
-                <MudItem xs="6" sm="3">
-                    <MudNumericField T="int?" Label="Min Age (months)" @bind-Value="_minAge" Min="0" Max="360" />
-                </MudItem>
-                <MudItem xs="6" sm="3">
-                    <MudNumericField T="int?" Label="Max Age (months)" @bind-Value="_maxAge" Min="0" Max="360" />
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string?" Label="Age Range" @bind-Value="_ageRange" Clearable="true">
+                        <MudSelectItem Value="@((string?)"0-6")">Under 6 months</MudSelectItem>
+                        <MudSelectItem Value="@((string?)"6-12")">6–12 months</MudSelectItem>
+                        <MudSelectItem Value="@((string?)"12-24")">1–2 years</MudSelectItem>
+                        <MudSelectItem Value="@((string?)"24-60")">2–5 years</MudSelectItem>
+                        <MudSelectItem Value="@((string?)"60-")">5+ years</MudSelectItem>
+                    </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudTextField T="string" Label="Breed contains" @bind-Value="_breedSearch" Clearable="true" />
                 </MudItem>
-                <MudItem xs="12" sm="6" Class="d-flex align-end flex-column align-start gap-1">
-                    <div class="d-flex">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mr-2"
-                            Disabled="@(_minAge.HasValue && _maxAge.HasValue && _minAge > _maxAge)">
+                <MudItem xs="12" sm="6" Class="d-flex align-end">
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">
                             Apply Filters
                         </MudButton>
                         <MudButton Variant="Variant.Text" OnClick="ClearFilters">Clear</MudButton>
                     </div>
-                    @if (_minAge.HasValue && _maxAge.HasValue && _minAge > _maxAge)
-                    {
-                        <MudText Color="Color.Error" Typo="Typo.caption">Min age cannot exceed max age</MudText>
-                    }
                 </MudItem>
             </MudGrid>
         </MudExpansionPanel>
@@ -117,9 +115,18 @@
 
     // Filter state
     private Guid? _selectedTypeId;
-    private int? _minAge;
-    private int? _maxAge;
+    private string? _ageRange;
     private string? _breedSearch;
+
+    private static (int? min, int? max) ParseAgeRange(string? range) => range switch
+    {
+        "0-6"   => (0,   6),
+        "6-12"  => (6,   12),
+        "12-24" => (12,  24),
+        "24-60" => (24,  60),
+        "60-"   => (60,  null),
+        _       => (null, null)
+    };
 
     // Location state
     private decimal? _locationLat;
@@ -215,8 +222,8 @@
     {
         try
         {
-            var response = await PetApi.GetPetTypesAsync();
-            _petTypes = response?.Items?.Where(pt => pt.IsActive).ToList();
+            var response = await PetApi.GetPublicPetTypesAsync();
+            _petTypes = response?.Items?.ToList();
         }
         catch { }
     }
@@ -235,10 +242,11 @@
         if (!_hasMore) return;
         try
         {
+            var (minAge, maxAge) = ParseAgeRange(_ageRange);
             var response = await PetApi.GetDiscoverPetsAsync(
                 petTypeId: _selectedTypeId,
-                minAge: _minAge,
-                maxAge: _maxAge,
+                minAge: minAge,
+                maxAge: maxAge,
                 take: 10,
                 breed: _breedSearch,
                 lat: _locationActive ? _locationLat : null,
@@ -268,8 +276,7 @@
     private async Task ClearFilters()
     {
         _selectedTypeId = null;
-        _minAge = null;
-        _maxAge = null;
+        _ageRange = null;
         _breedSearch = null;
         await LoadPets();
     }
@@ -281,7 +288,7 @@
         try
         {
             var response = await PetApi.AddFavoriteAsync(pet.Id);
-            if (!response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.Conflict)
             {
                 Snackbar.Add("Failed to add favorite", Severity.Error);
             }

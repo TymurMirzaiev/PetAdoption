@@ -14,8 +14,8 @@ html, body {
 
 .swipe-card-area {
     position: relative;
-    width: 300px;
-    height: 420px;
+    width: 340px;
+    height: 480px;
     overflow: hidden;
 }
 
@@ -30,7 +30,7 @@ html, body {
     transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
 }
 .swipe-top-card.swipe-card-exiting {
-    transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.8, 0.6), opacity 0.4s ease-out;
     pointer-events: none;
 }
 

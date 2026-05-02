@@ -56,6 +56,9 @@ public class PetApiClient
     public async Task<PetTypesResponse?> GetPetTypesAsync(bool includeInactive = false) =>
         await _http.GetFromJsonAsync<PetTypesResponse>($"api/admin/pet-types?includeInactive={includeInactive}");
 
+    public async Task<PetTypesResponse?> GetPublicPetTypesAsync() =>
+        await _http.GetFromJsonAsync<PetTypesResponse>("api/pet-types");
+
     public Task<HttpResponseMessage> CreatePetTypeAsync(CreatePetTypeRequest request) =>
         _http.PostAsJsonAsync("api/admin/pet-types", request);
 

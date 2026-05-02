@@ -8,7 +8,7 @@
 
 <PageTitle>My Profile</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4">
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-4 mb-8">
     <MudText Typo="Typo.h4" Class="mb-4">Profile</MudText>
 
     @if (_loading)
@@ -23,7 +23,7 @@
                 <MudTextField @bind-Value="_fullName" Label="Full Name" Required="true" MaxLength="100"
                     Validation="@(new Func<string, string?>(v => (v?.Trim().Length ?? 0) < 2 ? "Name must be at least 2 characters" : v?.Trim().Length > 100 ? "Name cannot exceed 100 characters" : null))"
                     Class="mb-4" />
-                <MudTextField Value="_profile.Email" Label="Email" ReadOnly="true" Class="mb-4" />
+                <MudTextField Value="_profile.Email" Label="Email" Disabled="true" Class="mb-4" />
                 <MudTextField @bind-Value="_phoneNumber" Label="Phone Number"
                     Validation="@(new Func<string, string?>(ValidatePhone))" Class="mb-4" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary"

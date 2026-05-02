@@ -21,10 +21,10 @@ public class PetTypesAdminController : ControllerBase
 
     // GET /api/admin/pet-types
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PetTypeDto>>> GetAll([FromQuery] bool includeInactive = false)
+    public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false)
     {
         var petTypes = await _mediator.Send(new GetAllPetTypesQuery(includeInactive));
-        return Ok(petTypes);
+        return Ok(new { items = petTypes });
     }
 
     // GET /api/admin/pet-types/{id}

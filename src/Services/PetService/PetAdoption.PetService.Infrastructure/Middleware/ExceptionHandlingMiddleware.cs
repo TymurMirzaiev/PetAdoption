@@ -33,6 +33,12 @@ public class ExceptionHandlingMiddleware
         {
             await HandleDomainExceptionAsync(context, ex);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access: {Message}", ex.Message);
+            var errorResponse = new ErrorResponse("unauthorized", ex.Message, null);
+            await WriteErrorResponseAsync(context, HttpStatusCode.Unauthorized, errorResponse);
+        }
         catch (Exception ex)
         {
             await HandleUnexpectedExceptionAsync(context, ex);

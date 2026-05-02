@@ -60,9 +60,9 @@ public class GetDiscoverPetsQueryHandler : IRequestHandler<GetDiscoverPetsQuery,
                 "lat, lng, and radiusKm must all be provided together.");
         }
 
-        // Clamp radiusKm to [1, 500]
+        // Clamp radiusKm to [1, 20000] (20000 km ≈ half Earth's circumference)
         int? radiusKm = request.RadiusKm.HasValue
-            ? Math.Max(1, Math.Min(500, request.RadiusKm.Value))
+            ? Math.Max(1, Math.Min(20000, request.RadiusKm.Value))
             : null;
 
         // 1+2. Fetch skipped and favorited pet IDs (sequential — same scoped DbContext)

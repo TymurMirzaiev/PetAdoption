@@ -140,11 +140,12 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
     // Location filter
     // ──────────────────────────────────────────────────────────────
 
+
     [Fact]
     public async Task Discover_WithLocationFilter_ReturnsOnlyNearbyOrgPets()
     {
         // Arrange — search from Berlin with 600 km radius (includes Munich, excludes NYC)
-        var url = $"/api/discover?lat={BerlinLat}&lng={BerlinLng}&radiusKm=600&take=50";
+        var url = $"/api/discover?lat={BerlinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lng={BerlinLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}&radiusKm=600&take=50";
 
         // Act
         var response = await _userClient.GetAsync(url);
@@ -164,7 +165,7 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
     public async Task Discover_WithTightLocationFilter_ExcludesEvenNearbyOrg()
     {
         // Arrange — search from Berlin with 50 km radius (excludes Munich ~504 km away)
-        var url = $"/api/discover?lat={BerlinLat}&lng={BerlinLng}&radiusKm=50&take=50";
+        var url = $"/api/discover?lat={BerlinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lng={BerlinLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}&radiusKm=50&take=50";
 
         // Act
         var response = await _userClient.GetAsync(url);
@@ -183,7 +184,7 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
     public async Task Discover_WithMissingRadiusKm_Returns400()
     {
         // Arrange — only lat and lng provided, no radiusKm
-        var url = $"/api/discover?lat={BerlinLat}&lng={BerlinLng}";
+        var url = $"/api/discover?lat={BerlinLat.ToString(System.Globalization.CultureInfo.InvariantCulture)}&lng={BerlinLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 
         // Act
         var response = await _userClient.GetAsync(url);
@@ -196,7 +197,7 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
     public async Task Discover_WithMissingLat_Returns400()
     {
         // Arrange — only lng and radiusKm, no lat
-        var url = $"/api/discover?lng={BerlinLng}&radiusKm=100";
+        var url = $"/api/discover?lng={BerlinLng.ToString(System.Globalization.CultureInfo.InvariantCulture)}&radiusKm=100";
 
         // Act
         var response = await _userClient.GetAsync(url);

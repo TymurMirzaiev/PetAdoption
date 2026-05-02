@@ -180,7 +180,8 @@ public class OrgDashboardControllerTests : IAsyncLifetime
             $"/api/organizations/{TestOrgId}/dashboard/trends?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}");
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // invalid_operation → 422 UnprocessableEntity
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     // ──────────────────────────────────────────────────────────────

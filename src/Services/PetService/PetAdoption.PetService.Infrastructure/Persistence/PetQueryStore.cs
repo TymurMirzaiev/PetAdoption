@@ -25,7 +25,7 @@ public class PetQueryStore : IPetQueryStore
     {
         return await _db.Pets
             .AsNoTracking()
-            .Include("_media")
+            .Include(p => p.Media)
             .Include(p => p.MedicalRecord)
             .ThenInclude(mr => mr!.Vaccinations)
             .Include(p => p.MedicalRecord)
@@ -130,11 +130,12 @@ public class PetQueryStore : IPetQueryStore
             var latRange = radiusKm.Value / 111.0m;
             var lngRange = radiusKm.Value / (111.0m * (decimal)Math.Cos((double)(lat.Value * (decimal)Math.PI / 180)));
 
+            // o.Address != null is not translatable for owned entities in EF Core 9 — drop it;
+            // the numeric comparisons below already exclude NULL-address rows via SQL NULL semantics.
             var orgIds = await _db.Organizations
-                .Where(o => o.Address != null
-                    && o.Address.Lat >= lat.Value - latRange && o.Address.Lat <= lat.Value + latRange
+                .Where(o => o.Address.Lat >= lat.Value - latRange && o.Address.Lat <= lat.Value + latRange
                     && o.Address.Lng >= lng.Value - lngRange && o.Address.Lng <= lng.Value + lngRange)
-                .Select(o => new { o.Id, o.Address!.Lat, o.Address.Lng })
+                .Select(o => new { o.Id, o.Address.Lat, o.Address.Lng })
                 .ToListAsync();
 
             var radiusKmDbl = (double)radiusKm.Value;

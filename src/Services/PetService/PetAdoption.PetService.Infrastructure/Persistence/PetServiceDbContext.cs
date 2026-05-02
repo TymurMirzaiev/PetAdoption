@@ -68,7 +68,6 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
                 .HasColumnType("nvarchar(max)")
                 .IsRequired(false);
 
-            entity.Metadata.FindNavigation(nameof(Pet.Media))!.SetField("_media");
             entity.OwnsMany(p => p.Media, media =>
             {
                 media.ToTable("PetMedia");
@@ -76,9 +75,6 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
                 media.Property(m => m.Url).HasMaxLength(2000).IsRequired();
                 media.Property(m => m.ContentType).HasMaxLength(100).IsRequired();
                 media.Property(m => m.MediaType).HasConversion<string>().HasMaxLength(10);
-                media.HasIndex(m => new { m.PetId, m.IsPrimary })
-                     .HasFilter("[IsPrimary] = 1")
-                     .IsUnique();
             });
 
             entity.OwnsOne(p => p.MedicalRecord, mr =>
@@ -208,8 +204,8 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
                 addr.Property(a => a.Region).HasMaxLength(100);
                 addr.Property(a => a.Country).HasMaxLength(100);
                 addr.Property(a => a.PostalCode).HasMaxLength(20);
+                addr.HasIndex(nameof(Address.Lat), nameof(Address.Lng));
             });
-            entity.HasIndex("Address_Lat", "Address_Lng");
         });
 
         modelBuilder.Entity<ChatMessage>(entity =>

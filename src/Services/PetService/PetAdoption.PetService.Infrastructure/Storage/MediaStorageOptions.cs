@@ -1,3 +1,7 @@
 namespace PetAdoption.PetService.Infrastructure.Storage;
 
-public record MediaStorageOptions(string Provider = "LocalDisk", string? LocalDiskBasePath = null);
+public class MediaStorageOptions
+{
+    public string Provider { get; set; } = "LocalDisk";
+    public string? LocalDiskBasePath { get; set; }
+}

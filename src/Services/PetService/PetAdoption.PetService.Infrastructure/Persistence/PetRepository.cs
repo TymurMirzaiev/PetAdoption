@@ -18,7 +18,7 @@ public class PetRepository : IPetRepository
     public async Task<Pet?> GetById(Guid id)
     {
         return await _db.Pets
-            .Include("_media")
+            .Include(p => p.Media)
             .Include(p => p.MedicalRecord)
             .ThenInclude(mr => mr!.Vaccinations)
             .Include(p => p.MedicalRecord)
@@ -39,6 +39,24 @@ public class PetRepository : IPetRepository
         pet.IncrementVersion();
         AddOutboxEvents(pet);
 
+        // EF Core 9: newly added owned entities with user-provided non-default keys are
+        // discovered via navigation fix-up during DetectChanges and incorrectly assigned
+        // Modified state (instead of Added). Pre-register any untracked media as Added
+        // before SaveChangesAsync triggers DetectChanges, so EF Core generates INSERT.
+        _db.ChangeTracker.AutoDetectChangesEnabled = false;
+        try
+        {
+            foreach (var media in pet.Media)
+            {
+                if (_db.Entry(media).State == EntityState.Detached)
+                    _db.Entry(media).State = EntityState.Added;
+            }
+        }
+        finally
+        {
+            _db.ChangeTracker.AutoDetectChangesEnabled = true;
+        }
+
         try
         {
             await _db.SaveChangesAsync();
@@ -47,11 +65,8 @@ public class PetRepository : IPetRepository
         {
             throw new DomainException(
                 PetDomainErrorCode.ConcurrencyConflict,
-                $"Pet {pet.Id} was modified by another operation. Please reload and try again.",
-                new Dictionary<string, object>
-                {
-                    { "PetId", pet.Id }
-                });
+                $"Pet {pet.Id} was modified by another request.",
+                new Dictionary<string, object> { { "PetId", pet.Id } });
         }
 
         pet.ClearDomainEvents();

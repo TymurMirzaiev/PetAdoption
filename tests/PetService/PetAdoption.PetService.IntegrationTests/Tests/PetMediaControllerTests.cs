@@ -78,8 +78,8 @@ public class PetMediaControllerTests : IAsyncLifetime
             $"/api/organizations/{TestOrgId}/pets/{petId}/media", content);
 
         // Assert
-        // invalid content type → DomainException(InvalidOperation) → 409
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // invalid content type → DomainException(InvalidOperation) → 422
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]
@@ -235,7 +235,8 @@ public class PetMediaControllerTests : IAsyncLifetime
             $"/api/organizations/{TestOrgId}/pets/{petId}/media/order", reorderRequest);
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // mismatched IDs → DomainException(InvalidMediaOrder) → 400
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     // ──────────────────────────────────────────────────────────────

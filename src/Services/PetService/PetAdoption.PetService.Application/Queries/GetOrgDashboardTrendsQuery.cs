@@ -49,7 +49,7 @@ public class GetOrgDashboardTrendsQueryHandler
         for (var n = 0; n <= totalWeeks; n++)
         {
             var weekStart = from.AddDays(n * 7);
-            var label = weekStart.ToString("MMM d");
+            var label = weekStart.ToString("MMM d", System.Globalization.CultureInfo.InvariantCulture);
 
             adoptions.Add(new TrendPoint(weekStart, label, adoptionDict.GetValueOrDefault(n, 0)));
             requests.Add(new TrendPoint(weekStart, label, requestDict.GetValueOrDefault(n, 0)));

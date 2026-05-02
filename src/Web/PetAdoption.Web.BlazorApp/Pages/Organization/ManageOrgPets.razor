@@ -14,6 +14,21 @@
 
 <MudDataGrid T="PetListItem" ServerData="LoadServerData" @ref="_grid" Hover="true" Dense="true">
     <Columns>
+        <TemplateColumn Title="" Style="width:52px">
+            <CellTemplate>
+                @if (!string.IsNullOrEmpty(context.Item.PrimaryPhotoUrl))
+                {
+                    <img src="@context.Item.PrimaryPhotoUrl" alt=""
+                         style="width:40px;height:40px;object-fit:cover;border-radius:6px;display:block;" />
+                }
+                else
+                {
+                    <div style="width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;">
+                        <MudIcon Icon="@Icons.Material.Filled.Pets" Style="font-size:20px;opacity:0.3;" />
+                    </div>
+                }
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="x => x.Name" Title="Name" />
         <PropertyColumn Property="x => x.Type" Title="Type" />
         <PropertyColumn Property="x => x.Breed" Title="Breed" />
@@ -50,6 +65,11 @@
         <TemplateColumn Title="Actions" StickyRight="true">
             <CellTemplate>
                 <div class="d-flex gap-1">
+                    <MudTooltip Text="Manage photos &amp; videos">
+                        <MudIconButton Icon="@Icons.Material.Filled.PhotoLibrary" Size="Size.Small"
+                            Color="@(context.Item.MediaCount > 0 ? Color.Primary : Color.Default)"
+                            OnClick="@(() => OpenMediaDialog(context.Item))" />
+                    </MudTooltip>
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                         OnClick="@(() => OpenEditDialog(context.Item))" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
@@ -73,7 +93,7 @@
     {
         try
         {
-            var response = await PetApi.GetPetTypesAsync(includeInactive: false);
+            var response = await PetApi.GetPublicPetTypesAsync();
             _petTypes = response?.Items?.ToList();
         }
         catch { }
@@ -95,6 +115,20 @@
             Snackbar.Add("Failed to load pets", Severity.Error);
             return new GridData<PetListItem> { Items = [], TotalItems = 0 };
         }
+    }
+
+    private async Task OpenMediaDialog(PetListItem pet)
+    {
+        var parameters = new DialogParameters<PetMediaDialog>
+        {
+            { x => x.PetId, pet.Id },
+            { x => x.OrgId, OrgId },
+            { x => x.PetName, pet.Name }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<PetMediaDialog>("", parameters, options);
+        await dialog.Result;
+        await _grid.ReloadServerData();
     }
 
     private async Task OpenCreateDialog()
@@ -175,5 +209,4 @@
             catch { Snackbar.Add("Connection error", Severity.Error); }
         }
     }
-
 }

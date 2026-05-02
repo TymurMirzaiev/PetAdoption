@@ -1,0 +1,23 @@
+@using MudBlazor
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" />
+            <MudText Typo="Typo.h6">@PetName – Photos &amp; Videos</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <PetMediaGallery PetId="@PetId" OrgId="@OrgId" ReadOnly="false" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close())">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Guid PetId { get; set; }
+    [Parameter, EditorRequired] public Guid OrgId { get; set; }
+    [Parameter] public string PetName { get; set; } = "Pet";
+}

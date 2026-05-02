@@ -9,6 +9,260 @@ html, body {
 }
 
 /* ──────────────────────────────────────────────
+   Pet Card (swipe deck)
+   ────────────────────────────────────────────── */
+
+.pet-card {
+    width: 340px;
+    height: 480px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+}
+
+.pet-card__photo {
+    position: relative;
+    flex: 0 0 280px;
+    background: #1a1a2e;
+    overflow: hidden;
+}
+
+.pet-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pet-card__no-photo {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.pet-card__media-badge {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    backdrop-filter: blur(4px);
+}
+
+.pet-card__status-chip {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+}
+
+.pet-card__info {
+    flex: 1;
+    padding: 12px 14px 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pet-card__name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--mud-palette-text-primary);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pet-card__type {
+    font-size: 13px;
+    color: var(--mud-palette-text-secondary);
+}
+
+.pet-card__meta {
+    font-size: 12px;
+    color: var(--mud-palette-text-secondary);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+.pet-card__meta-sep { opacity: 0.5; }
+
+.pet-card__desc {
+    font-size: 12px;
+    color: var(--mud-palette-text-secondary);
+    margin-top: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    opacity: 0.8;
+}
+
+/* ──────────────────────────────────────────────
+   Pet Media Collage (detail page)
+   ────────────────────────────────────────────── */
+
+.pet-collage {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    gap: 3px;
+    max-height: 360px;
+    cursor: pointer;
+}
+
+.pet-collage--empty {
+    height: 200px;
+    background: var(--mud-palette-surface);
+    justify-content: center;
+    align-items: center;
+    border-radius: 12px;
+}
+
+.pet-collage-skeleton {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* single image: hero takes full width */
+.pet-collage--one .pet-collage__hero {
+    flex: 1;
+    max-height: 360px;
+}
+
+/* 2 images: hero 2/3 wide, side 1/3 */
+.pet-collage--two .pet-collage__hero { flex: 2; }
+.pet-collage--two .pet-collage__side { flex: 1; }
+
+/* 3-4 images: same ratio */
+.pet-collage--three .pet-collage__hero,
+.pet-collage--four .pet-collage__hero { flex: 2; }
+.pet-collage--three .pet-collage__side,
+.pet-collage--four .pet-collage__side { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+
+.pet-collage__hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+}
+
+.pet-collage__cell {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 80px;
+}
+
+.pet-collage__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.25s ease;
+}
+
+.pet-collage__hero:hover .pet-collage__img,
+.pet-collage__cell:hover .pet-collage__img { transform: scale(1.04); }
+
+.pet-collage__more-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.pet-collage__video-thumb {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.pet-collage__play-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────
+   Pet Media Lightbox
+   ────────────────────────────────────────────── */
+
+.pet-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: lightbox-in 0.2s ease;
+}
+
+@keyframes lightbox-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.pet-lightbox__content {
+    position: relative;
+    max-width: 92vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.pet-lightbox__media {
+    max-width: 90vw;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.pet-lightbox__counter {
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+}
+
+.pet-lightbox__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    color: #fff;
+}
+
+.pet-lightbox__nav--prev { left: 12px; }
+.pet-lightbox__nav--next { right: 12px; }
+
+/* ──────────────────────────────────────────────
    Swipe Card Stack
    ────────────────────────────────────────────── */
 

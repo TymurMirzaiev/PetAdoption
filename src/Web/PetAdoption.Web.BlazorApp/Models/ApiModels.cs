@@ -9,7 +9,7 @@ public record GoogleAuthResponse(string AccessToken, string RefreshToken);
 public record RefreshTokenRequest(string RefreshToken);
 public record RefreshTokenResponse(string AccessToken, string RefreshToken);
 
-public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
+public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null, string? PrimaryPhotoUrl = null, int MediaCount = 0);
 public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null, MedicalRecordModel? MedicalRecord = null, Guid? OrganizationId = null);
 public record PetsResponse(IEnumerable<PetListItem> Pets, long Total);
 public record DiscoverPetsResponse(IEnumerable<PetListItem> Pets, bool HasMore);

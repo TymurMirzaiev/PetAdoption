@@ -8,5 +8,7 @@ public record PetListItemDto(
     string? Breed,
     int? AgeMonths,
     string? Description,
-    List<string> Tags
+    List<string> Tags,
+    string? PrimaryPhotoUrl = null,
+    int MediaCount = 0
 );

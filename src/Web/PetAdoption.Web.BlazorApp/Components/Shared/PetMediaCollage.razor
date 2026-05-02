@@ -1,0 +1,159 @@
+@using PetAdoption.Web.BlazorApp.Models
+@inject PetApiClient PetApi
+
+@if (_loading)
+{
+    <div class="pet-collage-skeleton">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="260px" />
+    </div>
+}
+else if (_items.Count == 0)
+{
+    <div class="pet-collage pet-collage--empty">
+        <MudIcon Icon="@Icons.Material.Filled.Pets" Style="font-size:64px;opacity:0.3;" />
+    </div>
+}
+else
+{
+    <div class="pet-collage pet-collage--@LayoutClass">
+
+        @* Primary / hero slot *@
+        <div class="pet-collage__hero" @onclick="@(() => OpenLightbox(0))">
+            @RenderMediaThumb(_items[0], true)
+        </div>
+
+        @if (_items.Count == 2)
+        {
+            <div class="pet-collage__side">
+                <div class="pet-collage__cell" @onclick="@(() => OpenLightbox(1))">
+                    @RenderMediaThumb(_items[1])
+                </div>
+            </div>
+        }
+
+        @if (_items.Count == 3)
+        {
+            <div class="pet-collage__side">
+                <div class="pet-collage__cell" @onclick="@(() => OpenLightbox(1))">
+                    @RenderMediaThumb(_items[1])
+                </div>
+                <div class="pet-collage__cell" @onclick="@(() => OpenLightbox(2))">
+                    @RenderMediaThumb(_items[2])
+                </div>
+            </div>
+        }
+
+        @if (_items.Count >= 4)
+        {
+            <div class="pet-collage__side">
+                <div class="pet-collage__cell" @onclick="@(() => OpenLightbox(1))">
+                    @RenderMediaThumb(_items[1])
+                </div>
+                <div class="pet-collage__cell pet-collage__cell--more" @onclick="@(() => OpenLightbox(2))">
+                    @RenderMediaThumb(_items[2])
+                    @if (_items.Count > 4)
+                    {
+                        <div class="pet-collage__more-overlay">+@(_items.Count - 3)</div>
+                    }
+                </div>
+            </div>
+        }
+
+    </div>
+}
+
+@* Lightbox overlay *@
+@if (_lightboxOpen)
+{
+    <div class="pet-lightbox" @onclick="CloseLightbox">
+        <div class="pet-lightbox__nav pet-lightbox__nav--prev" @onclick:stopPropagation @onclick="PrevSlide">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Inherit" Size="Size.Large" />
+        </div>
+
+        <div class="pet-lightbox__content" @onclick:stopPropagation>
+            @{
+                var current = _items[_lightboxIndex];
+            }
+            @if (current.MediaType == "Video")
+            {
+                <video src="@current.Url" controls autoplay class="pet-lightbox__media" />
+            }
+            else
+            {
+                <img src="@current.Url" alt="Pet photo" class="pet-lightbox__media" />
+            }
+
+            <div class="pet-lightbox__counter">
+                @(_lightboxIndex + 1) / @_items.Count
+            </div>
+        </div>
+
+        <div class="pet-lightbox__nav pet-lightbox__nav--next" @onclick:stopPropagation @onclick="NextSlide">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Inherit" Size="Size.Large" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid PetId { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private List<PetMediaItem> _items = [];
+    private bool _loading = true;
+    private bool _lightboxOpen;
+    private int _lightboxIndex;
+
+    private string LayoutClass => _items.Count switch
+    {
+        1 => "one",
+        2 => "two",
+        3 => "three",
+        _ => "four"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PetId != Guid.Empty)
+        {
+            _loading = true;
+            try { _items = (await PetApi.GetPetMediaAsync(PetId)).ToList(); }
+            catch { }
+            finally { _loading = false; }
+        }
+    }
+
+    private RenderFragment RenderMediaThumb(PetMediaItem item, bool hero = false) => __builder =>
+    {
+        if (item.MediaType == "Video")
+        {
+            <div class="pet-collage__video-thumb">
+                <video src="@item.Url" class="pet-collage__img" preload="metadata" />
+                <div class="pet-collage__play-icon">
+                    <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Style="font-size:48px;color:white;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))" />
+                </div>
+            </div>;
+        }
+        else
+        {
+            <img src="@item.Url" alt="Pet photo" class="pet-collage__img" />;
+        }
+    };
+
+    private void OpenLightbox(int index)
+    {
+        _lightboxIndex = Math.Clamp(index, 0, _items.Count - 1);
+        _lightboxOpen = true;
+    }
+
+    private void CloseLightbox() => _lightboxOpen = false;
+
+    private void PrevSlide()
+    {
+        _lightboxIndex = (_lightboxIndex - 1 + _items.Count) % _items.Count;
+    }
+
+    private void NextSlide()
+    {
+        _lightboxIndex = (_lightboxIndex + 1) % _items.Count;
+    }
+}

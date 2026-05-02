@@ -29,7 +29,7 @@
                 <MudChip T="string" Color="@PetDisplayHelpers.PetStatusColor(_pet.Status)">@_pet.Status</MudChip>
             </div>
 
-            <PetMediaGallery PetId="@Id" ReadOnly="true" Class="mb-4" />
+            <PetMediaCollage PetId="@Id" Class="mb-4" />
 
             @if (_pet.Breed is not null)
             {

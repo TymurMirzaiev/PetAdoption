@@ -6,11 +6,21 @@
     <MudAppBar Elevation="1">
         <MudText Typo="Typo.h6">PetAdoption</MudText>
         <MudSpacer />
-        <AuthorizeView>
+        <AuthorizeView Context="authContext">
             <Authorized>
                 <AuthorizeView Roles="Admin" Context="adminContext">
                     <MudButton Color="Color.Inherit" Href="/admin">Admin</MudButton>
                 </AuthorizeView>
+                @{
+                    var orgId = authContext.User.FindFirst("organizationId")?.Value;
+                }
+                @if (!string.IsNullOrEmpty(orgId))
+                {
+                    <MudButton Color="Color.Inherit" Href="@($"/org/{orgId}/dashboard")">Dashboard</MudButton>
+                    <MudButton Color="Color.Inherit" Href="@($"/org/{orgId}/pets")">Org Pets</MudButton>
+                    <MudButton Color="Color.Inherit" Href="@($"/organization/{orgId}/adoption-requests")">Adoption Requests</MudButton>
+                    <MudButton Color="Color.Inherit" Href="@($"/org/{orgId}/metrics")">Metrics</MudButton>
+                }
                 <MudButton Color="Color.Inherit" Href="/discover">Discover</MudButton>
                 <MudButton Color="Color.Inherit" Href="/favorites">Favorites</MudButton>
                 <MudButton Color="Color.Inherit" Href="/reservations">Reservations</MudButton>

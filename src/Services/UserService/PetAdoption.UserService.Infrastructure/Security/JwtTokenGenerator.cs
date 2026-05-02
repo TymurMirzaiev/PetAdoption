@@ -16,7 +16,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         _jwtOptions = jwtOptions.Value;
     }
 
-    public string GenerateToken(string userId, string email, string role)
+    public string GenerateToken(string userId, string email, string role, string? organizationId = null, string? orgRole = null, string? bio = null)
     {
         var securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_jwtOptions.Secret)
@@ -27,14 +27,18 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             SecurityAlgorithms.HmacSha256
         );
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId),
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(ClaimTypes.Role, role),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new Claim("userId", userId)  // Custom claim for easy access
+            new(JwtRegisteredClaimNames.Sub, userId),
+            new(JwtRegisteredClaimNames.Email, email),
+            new(ClaimTypes.Role, role),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("userId", userId)  // Custom claim for easy access
         };
+
+        if (!string.IsNullOrEmpty(organizationId)) claims.Add(new Claim("organizationId", organizationId));
+        if (!string.IsNullOrEmpty(orgRole)) claims.Add(new Claim("orgRole", orgRole));
+        if (!string.IsNullOrEmpty(bio)) claims.Add(new Claim("bio", bio));
 
         var token = new JwtSecurityToken(
             issuer: _jwtOptions.Issuer,

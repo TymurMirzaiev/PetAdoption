@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Domain.ValueObjects;
+// Explicitly reference Allergy from Domain.ValueObjects to avoid ambiguity
+using Allergy = PetAdoption.PetService.Domain.ValueObjects.Allergy;
 
 namespace PetAdoption.PetService.Infrastructure.Persistence;
 
@@ -18,6 +20,8 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
     public DbSet<AdoptionRequest> AdoptionRequests => Set<AdoptionRequest>();
     public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
     public DbSet<PetInteraction> PetInteractions => Set<PetInteraction>();
+    public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     public PetServiceDbContext(DbContextOptions<PetServiceDbContext> options) : base(options) { }
 
@@ -48,6 +52,7 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
                 .HasMaxLength(2000);
             entity.Property(p => p.OrganizationId);
             entity.HasIndex(p => p.OrganizationId);
+            entity.Property(p => p.AdoptedAt);
             entity.Property(p => p.Status).HasConversion<int>();
             entity.Property(p => p.Version).IsConcurrencyToken();
             entity.Ignore(p => p.DomainEvents);
@@ -62,6 +67,52 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
                 .HasColumnName("Tags")
                 .HasColumnType("nvarchar(max)")
                 .IsRequired(false);
+
+            entity.Metadata.FindNavigation(nameof(Pet.Media))!.SetField("_media");
+            entity.OwnsMany(p => p.Media, media =>
+            {
+                media.ToTable("PetMedia");
+                media.HasKey(m => m.Id);
+                media.Property(m => m.Url).HasMaxLength(2000).IsRequired();
+                media.Property(m => m.ContentType).HasMaxLength(100).IsRequired();
+                media.Property(m => m.MediaType).HasConversion<string>().HasMaxLength(10);
+                media.HasIndex(m => new { m.PetId, m.IsPrimary })
+                     .HasFilter("[IsPrimary] = 1")
+                     .IsUnique();
+            });
+
+            entity.OwnsOne(p => p.MedicalRecord, mr =>
+            {
+                mr.Property(m => m.IsSpayedNeutered).HasColumnName("MedicalRecord_IsSpayedNeutered");
+                mr.Property(m => m.SpayNeuterDate).HasColumnName("MedicalRecord_SpayNeuterDate");
+                mr.Property(m => m.LastVetVisit).HasColumnName("MedicalRecord_LastVetVisit");
+                mr.Property(m => m.UpdatedAt).HasColumnName("MedicalRecord_UpdatedAt");
+                mr.Property(m => m.MicrochipId)
+                    .HasConversion(
+                        v => v == null ? null : v.Value,
+                        v => v == null ? null : new MicrochipId(v))
+                    .HasColumnName("MedicalRecord_MicrochipId")
+                    .HasMaxLength(23);
+                mr.Property(m => m.History)
+                    .HasConversion(
+                        v => v == null ? null : v.Value,
+                        v => v == null ? null : new MedicalNotes(v))
+                    .HasColumnName("MedicalRecord_History")
+                    .HasMaxLength(5000);
+
+                mr.OwnsMany(x => x.Vaccinations, v =>
+                {
+                    v.ToTable("PetVaccinations");
+                    v.Property(vv => vv.VaccineType).HasMaxLength(100).IsRequired();
+                    v.Property(vv => vv.Notes).HasMaxLength(500);
+                });
+
+                mr.OwnsMany(x => x.Allergies, a =>
+                {
+                    a.ToTable("PetAllergies");
+                    a.Property(aa => aa.Value).HasMaxLength(100).IsRequired();
+                });
+            });
         });
 
         modelBuilder.Entity<PetType>(entity =>
@@ -142,6 +193,37 @@ public class PetServiceDbContext : DbContext, IUnitOfWork
             entity.HasIndex(pi => new { pi.PetId, pi.Type });
             entity.HasIndex(pi => pi.CreatedAt);
             entity.HasIndex(pi => pi.PetId);
+        });
+
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.ToTable("Organizations");
+            entity.HasKey(o => o.Id);
+            entity.OwnsOne(o => o.Address, addr =>
+            {
+                addr.Property(a => a.Lat).HasColumnType("decimal(9,6)");
+                addr.Property(a => a.Lng).HasColumnType("decimal(9,6)");
+                addr.Property(a => a.Line1).HasMaxLength(200);
+                addr.Property(a => a.City).HasMaxLength(100);
+                addr.Property(a => a.Region).HasMaxLength(100);
+                addr.Property(a => a.Country).HasMaxLength(100);
+                addr.Property(a => a.PostalCode).HasMaxLength(20);
+            });
+            entity.HasIndex("Address_Lat", "Address_Lng");
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("ChatMessages");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.AdoptionRequestId).IsRequired();
+            entity.Property(m => m.SenderUserId).IsRequired();
+            entity.Property(m => m.SenderRole).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(m => m.Body).HasMaxLength(2000).IsRequired();
+            entity.Property(m => m.SentAt).IsRequired();
+            entity.Ignore(m => m.DomainEvents);
+            entity.HasIndex(m => m.AdoptionRequestId);
+            entity.HasIndex(m => m.SentAt);
         });
     }
 }

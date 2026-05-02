@@ -47,7 +47,8 @@ public class GetUserByIdQueryHandler : IQueryHandler<GetUserByIdQuery, UserDto>
             user.HasPassword,
             user.RegisteredAt,
             user.UpdatedAt,
-            user.LastLoginAt
+            user.LastLoginAt,
+            user.Bio?.Value
         );
     }
 }

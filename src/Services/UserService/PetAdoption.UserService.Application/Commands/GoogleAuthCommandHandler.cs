@@ -55,7 +55,8 @@ public class GoogleAuthCommandHandler : ICommandHandler<GoogleAuthCommand, Googl
         }
 
         var accessToken = _jwtGenerator.GenerateToken(
-            user.Id.Value, user.Email.Value, user.Role.ToString());
+            user.Id.Value, user.Email.Value, user.Role.ToString(),
+            bio: user.Bio?.Value);
 
         var refreshToken = RefreshToken.Create(user.Id.Value, TimeSpan.FromDays(_jwtOptions.RefreshTokenLifetimeDays));
         await _refreshTokenRepo.SaveAsync(refreshToken);

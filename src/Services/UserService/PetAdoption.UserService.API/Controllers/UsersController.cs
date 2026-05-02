@@ -112,7 +112,8 @@ public class UsersController : ControllerBase
             userId,
             request.FullName,
             request.PhoneNumber,
-            request.Preferences
+            request.Preferences,
+            request.Bio
         );
 
         var response = await handler.HandleAsync(command);
@@ -254,7 +255,8 @@ public record LoginRequest(string Email, string Password);
 public record UpdateProfileRequest(
     string? FullName,
     string? PhoneNumber,
-    UserPreferences? Preferences
+    UserPreferences? Preferences,
+    string? Bio = null
 );
 
 public record ChangePasswordRequest(

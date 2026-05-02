@@ -29,7 +29,8 @@ public class UpdateUserProfileCommandHandler : ICommandHandler<UpdateUserProfile
         user.UpdateProfile(
             command.FullName,
             command.PhoneNumber,
-            command.Preferences
+            command.Preferences,
+            command.Bio
         );
 
         await _userRepository.SaveAsync(user);

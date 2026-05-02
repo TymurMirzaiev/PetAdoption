@@ -32,12 +32,17 @@ public class AdoptionRequestsController : ControllerBase
 
     /// <summary>
     /// Create an adoption request for a pet. User must be authenticated.
+    /// If Message is omitted or empty, falls back to the 'bio' JWT claim.
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> CreateAdoptionRequest([FromBody] CreateAdoptionRequestBody body)
     {
+        var effectiveMessage = !string.IsNullOrEmpty(body.Message)
+            ? body.Message
+            : User.FindFirst("bio")?.Value;
+
         var result = await _mediator.Send(new CreateAdoptionRequestCommand(
-            GetUserId(), body.PetId, body.Message));
+            GetUserId(), body.PetId, effectiveMessage));
         return StatusCode(201, result);
     }
 

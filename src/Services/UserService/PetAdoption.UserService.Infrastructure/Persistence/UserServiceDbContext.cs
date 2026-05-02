@@ -43,6 +43,12 @@ public class UserServiceDbContext : DbContext
                     v => v == null ? null : v.Value,
                     v => v == null ? null : PhoneNumber.FromOptional(v))
                 .HasMaxLength(15);
+            entity.Property(u => u.Bio)
+                .HasConversion(
+                    v => v == null ? null : v.Value,
+                    v => v == null ? null : Bio.FromOptional(v))
+                .HasMaxLength(1000)
+                .HasColumnName("Bio");
             entity.Property(u => u.Role).HasConversion<int>();
             entity.Property(u => u.Status).HasConversion<int>();
             entity.Property(u => u.ExternalProvider).HasMaxLength(50);

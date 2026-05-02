@@ -15,10 +15,15 @@ public class Pet : IAggregateRoot, IEntity
     public PetAge? Age { get; private set; }
     public PetDescription? Description { get; private set; }
     public Guid? OrganizationId { get; private set; }
+    public DateTime? AdoptedAt { get; private set; }
+    public PetMedicalRecord? MedicalRecord { get; private set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
     private readonly List<PetTag> _tags = new();
+    private readonly List<PetMedia> _media = new();
+
     public IReadOnlyList<PetTag> Tags => _tags.AsReadOnly();
+    public IReadOnlyList<PetMedia> Media => _media.AsReadOnly();
 
     // Private parameterless constructor for ORM/MongoDB deserialization
     private Pet() { }
@@ -104,6 +109,7 @@ public class Pet : IAggregateRoot, IEntity
         }
 
         Status = PetStatus.Adopted;
+        AdoptedAt = DateTime.UtcNow;
         AddDomainEvent(new PetAdoptedEvent(Id, Name));
     }
 
@@ -198,4 +204,131 @@ public class Pet : IAggregateRoot, IEntity
     public void ClearDomainEvents() => _domainEvents.Clear();
 
     internal void IncrementVersion() => Version++;
+
+    // ──────────────────────────────────────────────────────────────
+    // Media management
+    // ──────────────────────────────────────────────────────────────
+
+    public void AddPhoto(Guid mediaId, string url, string contentType)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            throw new ArgumentException("Photo URL cannot be empty.", nameof(url));
+        if (string.IsNullOrWhiteSpace(contentType))
+            throw new ArgumentException("Content type cannot be empty.", nameof(contentType));
+
+        var sortOrder = _media.Count(m => m.MediaType == PetMediaType.Photo);
+        var photo = PetMedia.CreatePhoto(Id, mediaId, url, contentType, sortOrder);
+
+        if (sortOrder == 0)
+            photo.SetPrimary(true);
+
+        _media.Add(photo);
+    }
+
+    public void AddVideo(Guid mediaId, string url, string contentType)
+    {
+        if (_media.Any(m => m.MediaType == PetMediaType.Video))
+            throw new DomainException(
+                PetDomainErrorCode.VideoAlreadyExists,
+                "A video already exists for this pet. Only one video is allowed.",
+                new Dictionary<string, object> { { "PetId", Id } });
+
+        if (string.IsNullOrWhiteSpace(url))
+            throw new ArgumentException("Video URL cannot be empty.", nameof(url));
+        if (string.IsNullOrWhiteSpace(contentType))
+            throw new ArgumentException("Content type cannot be empty.", nameof(contentType));
+
+        var video = PetMedia.CreateVideo(Id, mediaId, url, contentType);
+        _media.Add(video);
+    }
+
+    public void RemoveMedia(Guid mediaId)
+    {
+        var item = _media.FirstOrDefault(m => m.Id == mediaId);
+        if (item is null)
+            throw new DomainException(
+                PetDomainErrorCode.MediaNotFound,
+                $"Media item {mediaId} was not found.",
+                new Dictionary<string, object> { { "MediaId", mediaId } });
+
+        var wasPrimary = item.IsPrimary;
+        _media.Remove(item);
+
+        if (wasPrimary)
+        {
+            var nextPhoto = _media
+                .Where(m => m.MediaType == PetMediaType.Photo)
+                .OrderBy(m => m.SortOrder)
+                .FirstOrDefault();
+            nextPhoto?.SetPrimary(true);
+        }
+    }
+
+    public void ReorderPhotos(IReadOnlyList<Guid> orderedIds)
+    {
+        var existingPhotoIds = _media
+            .Where(m => m.MediaType == PetMediaType.Photo)
+            .Select(m => m.Id)
+            .ToHashSet();
+
+        var providedIds = orderedIds.ToHashSet();
+
+        if (!existingPhotoIds.SetEquals(providedIds))
+            throw new DomainException(
+                PetDomainErrorCode.InvalidMediaOrder,
+                "The provided photo IDs do not match the existing photo IDs.",
+                new Dictionary<string, object> { { "PetId", Id } });
+
+        for (var i = 0; i < orderedIds.Count; i++)
+        {
+            var photo = _media.First(m => m.Id == orderedIds[i]);
+            photo.SetSortOrder(i);
+        }
+    }
+
+    public void SetPrimaryPhoto(Guid mediaId)
+    {
+        var item = _media.FirstOrDefault(m => m.Id == mediaId);
+        if (item is null)
+            throw new DomainException(
+                PetDomainErrorCode.MediaNotFound,
+                $"Media item {mediaId} was not found.",
+                new Dictionary<string, object> { { "MediaId", mediaId } });
+
+        if (item.MediaType != PetMediaType.Photo)
+            throw new DomainException(
+                PetDomainErrorCode.MediaNotPhoto,
+                "Only photos can be set as primary.",
+                new Dictionary<string, object> { { "MediaId", mediaId } });
+
+        foreach (var m in _media)
+            m.SetPrimary(false);
+
+        item.SetPrimary(true);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Medical record
+    // ──────────────────────────────────────────────────────────────
+
+    public void UpdateMedicalRecord(
+        bool isSpayedNeutered,
+        DateOnly? spayNeuterDate,
+        string? microchipId,
+        string? historyNotes,
+        DateOnly? lastVetVisit,
+        IEnumerable<VaccinationInput> vaccinations,
+        IEnumerable<string> allergies)
+    {
+        if (MedicalRecord is null)
+            MedicalRecord = PetMedicalRecord.Create(
+                isSpayedNeutered, spayNeuterDate, microchipId, historyNotes,
+                lastVetVisit, vaccinations, allergies);
+        else
+            MedicalRecord.Update(
+                isSpayedNeutered, spayNeuterDate, microchipId, historyNotes,
+                lastVetVisit, vaccinations, allergies);
+
+        AddDomainEvent(new PetMedicalRecordUpdatedEvent(Id, DateTime.UtcNow));
+    }
 }

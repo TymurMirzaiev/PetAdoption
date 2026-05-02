@@ -12,7 +12,8 @@ public record UserDto(
     bool HasPassword,
     DateTime RegisteredAt,
     DateTime UpdatedAt,
-    DateTime? LastLoginAt
+    DateTime? LastLoginAt,
+    string? Bio = null
 );
 
 public record UserPreferencesDto(

@@ -34,6 +34,18 @@
             </MudForm>
         </MudPaper>
 
+        <MudPaper Class="pa-6 mb-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="mb-4">About Me</MudText>
+            <MudTextField @bind-Value="_bio" Label="Bio" Lines="4" MaxLength="1000" Counter="1000"
+                HelperText="Shown to shelters when you request adoption. You can still write a custom message per pet."
+                Variant="Variant.Outlined" Class="mb-4" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                Disabled="@(!_profileValid || _saving)" OnClick="UpdateProfile">
+                @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" /> }
+                else { <span>Save Changes</span> }
+            </MudButton>
+        </MudPaper>
+
         @if (_profile.HasPassword)
         {
             <MudPaper Class="pa-6 mb-4" Elevation="3">
@@ -78,6 +90,7 @@
     private bool _passwordValid;
     private string _fullName = "";
     private string _phoneNumber = "";
+    private string _bio = "";
     private string _currentPassword = "";
     private string _newPassword = "";
 
@@ -98,6 +111,7 @@
             {
                 _fullName = _profile.FullName;
                 _phoneNumber = _profile.PhoneNumber ?? "";
+                _bio = _profile.Bio ?? "";
             }
         }
         catch { Snackbar.Add("Failed to load profile", Severity.Error); }
@@ -110,7 +124,8 @@
         try
         {
             var phone = string.IsNullOrWhiteSpace(_phoneNumber) ? null : _phoneNumber;
-            var response = await UserApi.UpdateProfileAsync(new { FullName = _fullName, PhoneNumber = phone });
+            var bio = string.IsNullOrWhiteSpace(_bio) ? null : _bio;
+            var response = await UserApi.UpdateProfileAsync(new { FullName = _fullName, PhoneNumber = phone, Bio = bio });
             if (response.IsSuccessStatusCode) Snackbar.Add("Profile updated!", Severity.Success);
             else
             {

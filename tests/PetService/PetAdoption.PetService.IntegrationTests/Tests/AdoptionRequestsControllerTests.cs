@@ -167,8 +167,8 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         var response = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = pet!.Id, Message = "Hi" });
 
-        // Assert — handler raises invalid_operation -> 409
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // Assert — handler raises invalid_operation -> 422
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -329,8 +329,114 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         // Act
         var response = await otherClient.PostAsync($"/api/adoption-requests/{created!.Id}/cancel", null);
 
-        // Assert — invalid_operation -> 409
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        // Assert — invalid_operation -> 422
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Bio claim fallback
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAdoptionRequest_NoMessage_WithBioClaim_StoresBio()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync("ar_bio_dog", "Bio Dog");
+        var petId = await SeedPetWithOrgAsync("BioFallbackPet", petTypeId, TestOrganizationId);
+
+        var bioValue = "I have a yard and love dogs.";
+        using var bioClient = _factory.CreateClient();
+        bioClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", PetServiceWebAppFactory.GenerateTestToken(
+                userId: TestUserId,
+                role: "Admin",
+                additionalClaims: new Dictionary<string, string>
+                {
+                    { "organizationId", TestOrganizationId.ToString() },
+                    { "orgRole", "Admin" },
+                    { "bio", bioValue }
+                }));
+
+        // Act — send request with no Message field
+        var response = await bioClient.PostAsJsonAsync(
+            "/api/adoption-requests",
+            new { PetId = petId });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
+        body.Should().NotBeNull();
+
+        // Verify message stored as bio
+        var myRequests = await bioClient.GetFromJsonAsync<AdoptionRequestListDto>("/api/adoption-requests/mine");
+        var created = myRequests!.Items.FirstOrDefault(i => i.PetId == petId);
+        created.Should().NotBeNull();
+        created!.Message.Should().Be(bioValue);
+    }
+
+    [Fact]
+    public async Task CreateAdoptionRequest_WithMessage_MessageWinsOverBio()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync("ar_bio_override", "Bio Override Dog");
+        var petId = await SeedPetWithOrgAsync("MessageOverridePet", petTypeId, TestOrganizationId);
+
+        var bioValue = "bio claim value";
+        var messageValue = "explicit per-pet message";
+        using var bioClient = _factory.CreateClient();
+        bioClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", PetServiceWebAppFactory.GenerateTestToken(
+                userId: TestUserId,
+                role: "Admin",
+                additionalClaims: new Dictionary<string, string>
+                {
+                    { "organizationId", TestOrganizationId.ToString() },
+                    { "orgRole", "Admin" },
+                    { "bio", bioValue }
+                }));
+
+        // Act — send request with explicit Message
+        var response = await bioClient.PostAsJsonAsync(
+            "/api/adoption-requests",
+            new { PetId = petId, Message = messageValue });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var myRequests = await bioClient.GetFromJsonAsync<AdoptionRequestListDto>("/api/adoption-requests/mine");
+        var created = myRequests!.Items.FirstOrDefault(i => i.PetId == petId);
+        created.Should().NotBeNull();
+        created!.Message.Should().Be(messageValue);
+    }
+
+    [Fact]
+    public async Task CreateAdoptionRequest_NoBioClaimNoMessage_NullMessage_StillCreates()
+    {
+        // Arrange
+        var petTypeId = await SeedPetTypeAsync("ar_no_bio", "No Bio Dog");
+        var petId = await SeedPetWithOrgAsync("NoBioNullMsgPet", petTypeId, TestOrganizationId);
+
+        using var noBioClient = _factory.CreateClient();
+        noBioClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", PetServiceWebAppFactory.GenerateTestToken(
+                userId: TestUserId,
+                role: "Admin",
+                additionalClaims: new Dictionary<string, string>
+                {
+                    { "organizationId", TestOrganizationId.ToString() },
+                    { "orgRole", "Admin" }
+                }));
+
+        // Act — no Message, no bio claim
+        var response = await noBioClient.PostAsJsonAsync(
+            "/api/adoption-requests",
+            new { PetId = petId });
+
+        // Assert — request created with null message
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var myRequests = await noBioClient.GetFromJsonAsync<AdoptionRequestListDto>("/api/adoption-requests/mine");
+        var created = myRequests!.Items.FirstOrDefault(i => i.PetId == petId);
+        created.Should().NotBeNull();
+        created!.Message.Should().BeNull();
     }
 
     // ──────────────────────────────────────────────────────────────

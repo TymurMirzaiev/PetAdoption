@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>My Favorites</PageTitle>
 
@@ -88,7 +89,7 @@
                                 <MudButton Size="Size.Small" Color="Color.Success"
                                     OnClick="@(() => ReservePet(fav.PetId))">Reserve</MudButton>
                                 <MudButton Size="Size.Small" Color="Color.Tertiary"
-                                    OnClick="@(() => OpenAdoptionDialog(fav.PetId, fav.PetName))">Adopt</MudButton>
+                                    OnClick="@(async () => await OpenAdoptionDialog(fav.PetId, fav.PetName))">Adopt</MudButton>
                             }
                             <MudIconButton Icon="@Icons.Material.Filled.HeartBroken" Size="Size.Small" Color="Color.Error"
                                 OnClick="@(() => ConfirmRemoveFavorite(fav.PetId, fav.PetName))" />
@@ -114,10 +115,23 @@
             <MudText Typo="Typo.h6">Adopt @_adoptPetName</MudText>
         </TitleContent>
         <DialogContent>
-            <MudText Typo="Typo.body1" Class="mb-4">
-                Tell the organization why you'd like to adopt this pet (optional):
-            </MudText>
-            <MudTextField @bind-Value="_adoptMessage" Label="Your message" Lines="3" Variant="Variant.Outlined" MaxLength="1000" Counter="1000" />
+            @if (!string.IsNullOrWhiteSpace(_userBio) && !_editingAdoptMessage)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">Your bio will be sent to the shelter:</MudText>
+                <MudPaper Outlined="true" Class="pa-3 mb-3">
+                    <MudText Typo="Typo.body2">@_userBio</MudText>
+                </MudPaper>
+                <MudLink Typo="Typo.body2" OnClick="@(() => { _editingAdoptMessage = true; _adoptMessage = _userBio; })">Edit message for this pet</MudLink>
+            }
+            else
+            {
+                <MudTextField @bind-Value="_adoptMessage" Label="Your message" Lines="3" Variant="Variant.Outlined" MaxLength="1000" Counter="1000"
+                    HelperText="@(string.IsNullOrWhiteSpace(_userBio) ? "Tip: add a bio in your profile to skip this next time." : null)" />
+                @if (string.IsNullOrWhiteSpace(_userBio))
+                {
+                    <MudLink Href="/profile" Typo="Typo.caption">Add a bio to your profile</MudLink>
+                }
+            }
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="@(() => _adoptDialogVisible = false)">Cancel</MudButton>
@@ -229,12 +243,20 @@
     private string _adoptMessage = "";
     private Guid _adoptPetId;
     private string _adoptPetName = "";
+    private string? _userBio;
+    private bool _editingAdoptMessage;
 
-    private void OpenAdoptionDialog(Guid petId, string petName)
+    private async Task OpenAdoptionDialog(Guid petId, string petName)
     {
         _adoptPetId = petId;
         _adoptPetName = petName;
         _adoptMessage = "";
+        _editingAdoptMessage = false;
+
+        // Read bio from JWT claims
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        _userBio = authState.User.FindFirst("bio")?.Value;
+
         _adoptDialogVisible = true;
     }
 
@@ -242,7 +264,11 @@
     {
         try
         {
-            var response = await PetApi.CreateAdoptionRequestAsync(_adoptPetId, _adoptMessage);
+            // Use bio as message when not editing; server also has claim fallback for non-Blazor clients
+            var message = _editingAdoptMessage
+                ? (string.IsNullOrWhiteSpace(_adoptMessage) ? null : _adoptMessage)
+                : (string.IsNullOrWhiteSpace(_userBio) ? null : _userBio);
+            var response = await PetApi.CreateAdoptionRequestAsync(_adoptPetId, message);
             if (response.IsSuccessStatusCode)
             {
                 Snackbar.Add($"Adoption request sent for {_adoptPetName}!", Severity.Success);

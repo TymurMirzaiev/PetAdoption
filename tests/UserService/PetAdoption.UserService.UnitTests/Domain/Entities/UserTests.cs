@@ -90,6 +90,58 @@ public class UserTests
     }
 
     // ──────────────────────────────────────────────────────────────
+    // UpdateProfile — Bio
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void UpdateProfile_WithBio_SetsBio()
+    {
+        // Arrange
+        var user = User.Register("test@example.com", "John Doe", "hashed_password");
+        var bioText = "I love animals and have a big yard.";
+
+        // Act
+        user.UpdateProfile(bio: bioText);
+
+        // Assert
+        user.Bio.Should().NotBeNull();
+        user.Bio!.Value.Should().Be(bioText);
+    }
+
+    [Fact]
+    public void UpdateProfile_WithNullBio_ClearsBio()
+    {
+        // Arrange
+        var user = User.Register("test@example.com", "John Doe", "hashed_password");
+        user.UpdateProfile(bio: "initial bio");
+        user.Bio.Should().NotBeNull();
+
+        // Act
+        user.UpdateProfile(bio: null);
+
+        // Assert
+        user.Bio.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateProfile_WithBio_DomainEventIncludesBio()
+    {
+        // Arrange
+        var user = User.Register("test@example.com", "John Doe", "hashed_password");
+        user.ClearDomainEvents();
+        var bioText = "My bio";
+
+        // Act
+        user.UpdateProfile(bio: bioText);
+
+        // Assert
+        var domainEvent = user.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<UserProfileUpdatedEvent>().Subject;
+
+        domainEvent.NewBio.Should().Be(bioText);
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // ChangePassword
     // ──────────────────────────────────────────────────────────────
 

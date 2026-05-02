@@ -12,6 +12,7 @@ public class User
     public Password? Password { get; private set; }
     public UserRole Role { get; private set; }
     public PhoneNumber? PhoneNumber { get; private set; }
+    public Bio? Bio { get; private set; }
     public UserPreferences Preferences { get; private set; } = null!;
     public UserStatus Status { get; private set; }
     public string? ExternalProvider { get; private set; }
@@ -92,12 +93,13 @@ public class User
 
     /// <summary>
     /// Update user profile information.
-    /// Pass null for phoneNumber to clear it; omit or pass null for fullName/preferences to leave them unchanged.
+    /// Pass null for phoneNumber/bio to clear them; omit or pass null for fullName/preferences to leave them unchanged.
     /// </summary>
     public void UpdateProfile(
         string? fullName = null,
         string? phoneNumber = null,
-        UserPreferences? preferences = null)
+        UserPreferences? preferences = null,
+        string? bio = null)
     {
         if (Status == UserStatus.Suspended)
             throw new InvalidOperationException("Cannot update profile of suspended user");
@@ -114,6 +116,9 @@ public class User
         PhoneNumber = PhoneNumber.FromOptional(phoneNumber);
         hasChanges = true;
 
+        // Always update bio so callers can clear it by passing null
+        Bio = Bio.FromOptional(bio);
+
         if (preferences != null)
         {
             Preferences = preferences;
@@ -128,6 +133,7 @@ public class User
                 Id.Value,
                 fullName,
                 phoneNumber,
+                Bio?.Value,
                 UpdatedAt
             ));
         }

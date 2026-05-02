@@ -183,6 +183,129 @@ public class UserProfileTests : IAsyncLifetime
     }
 
     // ──────────────────────────────────────────────────────────────
+    // PUT /api/users/me — Bio
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateProfile_WithBio_PersistsAndRoundTrips()
+    {
+        // Arrange
+        var email = $"profile-bio-{Guid.NewGuid():N}@test.com";
+        var client = await AuthHelper.RegisterAndLoginAsync(_client, email);
+
+        var updateRequest = UpdateProfileRequestBuilder.Default()
+            .WithBio("I have a big yard and love dogs.")
+            .Build();
+
+        // Act
+        var response = await client.PutAsJsonAsync("/api/users/me", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var getResponse = await client.GetAsync("/api/users/me");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profile = await getResponse.Content.ReadFromJsonAsync<UserProfileDto>();
+        profile.Should().NotBeNull();
+        profile!.Bio.Should().Be("I have a big yard and love dogs.");
+    }
+
+    [Fact]
+    public async Task UpdateProfile_WithNullBio_ClearsBio()
+    {
+        // Arrange
+        var email = $"profile-bio-clear-{Guid.NewGuid():N}@test.com";
+        var client = await AuthHelper.RegisterAndLoginAsync(_client, email);
+
+        await client.PutAsJsonAsync("/api/users/me",
+            UpdateProfileRequestBuilder.Default().WithBio("initial bio").Build());
+
+        // Act — clear bio
+        var response = await client.PutAsJsonAsync("/api/users/me",
+            UpdateProfileRequestBuilder.Default().WithBio(null).Build());
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var getResponse = await client.GetAsync("/api/users/me");
+        var profile = await getResponse.Content.ReadFromJsonAsync<UserProfileDto>();
+        profile.Should().NotBeNull();
+        profile!.Bio.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateProfile_BioBeyond1000Chars_ReturnsBadRequest()
+    {
+        // Arrange
+        var email = $"profile-bio-long-{Guid.NewGuid():N}@test.com";
+        var client = await AuthHelper.RegisterAndLoginAsync(_client, email);
+
+        var updateRequest = new { FullName = "Some Name", Bio = new string('x', 1001) };
+
+        // Act
+        var response = await client.PutAsJsonAsync("/api/users/me", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Login JWT — bio claim
+    // ──────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Login_WhenUserHasBio_JwtContainsBioClaim()
+    {
+        // Arrange
+        var email = $"bio-jwt-{Guid.NewGuid():N}@test.com";
+        var password = "StrongPass123!";
+        var client = await AuthHelper.RegisterAndLoginAsync(_client, email, password);
+
+        await client.PutAsJsonAsync("/api/users/me",
+            UpdateProfileRequestBuilder.Default().WithBio("Love animals").Build());
+
+        // Act — login again to get fresh token with bio claim
+        var loginResponse = await _client.PostAsJsonAsync("/api/users/login",
+            new { Email = email, Password = password });
+
+        // Assert
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        result.Should().NotBeNull();
+        result!.Token.Should().NotBeNullOrEmpty();
+
+        // Decode JWT and verify bio claim
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result.Token);
+        var bioClaim = jwt.Claims.FirstOrDefault(c => c.Type == "bio");
+        bioClaim.Should().NotBeNull("bio claim should be present when user has a bio");
+        bioClaim!.Value.Should().Be("Love animals");
+    }
+
+    [Fact]
+    public async Task Login_WhenUserHasNoBio_JwtOmitsBioClaim()
+    {
+        // Arrange — freshly registered user has no bio
+        var email = $"no-bio-jwt-{Guid.NewGuid():N}@test.com";
+        var password = "StrongPass123!";
+        await _client.PostAsJsonAsync("/api/users/register",
+            new { Email = email, FullName = "No Bio User", Password = password });
+
+        // Act
+        var loginResponse = await _client.PostAsJsonAsync("/api/users/login",
+            new { Email = email, Password = password });
+
+        // Assert
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        result.Should().NotBeNull();
+
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(result!.Token);
+        var bioClaim = jwt.Claims.FirstOrDefault(c => c.Type == "bio");
+        bioClaim.Should().BeNull("bio claim should be omitted when user has no bio");
+    }
+
+    // ──────────────────────────────────────────────────────────────
     // Response DTOs for deserialization
     // ──────────────────────────────────────────────────────────────
 
@@ -196,7 +319,8 @@ public class UserProfileTests : IAsyncLifetime
         UserPreferencesDto? Preferences,
         DateTime RegisteredAt,
         DateTime UpdatedAt,
-        DateTime? LastLoginAt);
+        DateTime? LastLoginAt,
+        string? Bio = null);
 
     private record UserPreferencesDto(
         string? PreferredPetType,
@@ -206,4 +330,13 @@ public class UserProfileTests : IAsyncLifetime
         bool ReceiveSmsNotifications);
 
     private record UpdateProfileResponseDto(bool Success, string Message);
+
+    private record LoginResponseDto(
+        bool Success,
+        string Token,
+        string UserId,
+        string Email,
+        string FullName,
+        string Role,
+        int ExpiresIn);
 }

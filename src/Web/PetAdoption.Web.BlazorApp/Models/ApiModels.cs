@@ -10,7 +10,7 @@ public record RefreshTokenRequest(string RefreshToken);
 public record RefreshTokenResponse(string AccessToken, string RefreshToken);
 
 public record PetListItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
-public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null);
+public record PetDetails(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags = null, MedicalRecordModel? MedicalRecord = null);
 public record PetsResponse(IEnumerable<PetListItem> Pets, long Total);
 public record DiscoverPetsResponse(IEnumerable<PetListItem> Pets, bool HasMore);
 public record CreatePetRequest(string Name, Guid PetTypeId, string? Breed = null, int? AgeMonths = null, string? Description = null, List<string>? Tags = null);
@@ -32,7 +32,7 @@ public record AnnouncementDetail(Guid Id, string Title, string Body, DateTime St
 public record ActiveAnnouncement(Guid Id, string Title, string Body);
 public record AnnouncementsResponse(IEnumerable<AnnouncementListItem> Items, long TotalCount);
 
-public record UserProfile(string Id, string Email, string FullName, string? PhoneNumber, string Status, string Role, string? ExternalProvider, bool HasPassword, DateTime RegisteredAt);
+public record UserProfile(string Id, string Email, string FullName, string? PhoneNumber, string Status, string Role, string? ExternalProvider, bool HasPassword, DateTime RegisteredAt, string? Bio = null);
 public record UserListItem(string Id, string Email, string FullName, string Status, string Role, DateTime RegisteredAt);
 public record UsersResponse(IEnumerable<UserListItem> Users, long TotalCount);
 
@@ -56,3 +56,36 @@ public record PetMetricsSummaryItem(
     long FavoriteCount, double SwipeRate, double RejectionRate);
 public record OrgMetricsResponse(IEnumerable<PetMetricsSummaryItem> Metrics);
 public record PetMetricsDetailResponse(PetMetricsSummaryItem Metrics);
+
+public record OrgDashboardResponse(int TotalPets, int AvailablePets, int ReservedPets, int AdoptedPets, int TotalAdoptionRequests, int PendingRequests, double AdoptionRate, long TotalImpressions, double AvgSwipeRate);
+public record OrgDashboardTrendsResponse(IReadOnlyList<TrendPoint> AdoptionsByWeek, IReadOnlyList<TrendPoint> RequestsByWeek);
+public record TrendPoint(DateTime WeekStart, string Label, int Count);
+
+public record LocationDialogResult(decimal? Lat, decimal? Lng, int RadiusKm);
+
+// Pet media models
+public record PetMediaItem(Guid Id, string MediaType, string Url, string ContentType, int SortOrder, bool IsPrimary, DateTime CreatedAt);
+
+// Pet medical record models
+public record MedicalRecordModel(
+    bool IsSpayedNeutered,
+    DateOnly? SpayNeuterDate,
+    string? MicrochipId,
+    string? History,
+    DateOnly? LastVetVisit,
+    IReadOnlyList<VaccinationModel> Vaccinations,
+    IReadOnlyList<string> Allergies,
+    DateTime UpdatedAt);
+public record VaccinationModel(string VaccineType, DateOnly AdministeredOn, DateOnly? NextDueOn, string? Notes);
+public record UpdatePetMedicalRecordRequest(
+    bool IsSpayedNeutered,
+    DateOnly? SpayNeuterDate,
+    string? MicrochipId,
+    string? HistoryNotes,
+    DateOnly? LastVetVisit,
+    IReadOnlyList<VaccinationModel> Vaccinations,
+    IReadOnlyList<string> Allergies);
+
+public record ChatMessageDto(
+    Guid Id, Guid AdoptionRequestId, Guid SenderUserId, string SenderRole,
+    string Body, DateTime SentAt, DateTime? ReadByRecipientAt);

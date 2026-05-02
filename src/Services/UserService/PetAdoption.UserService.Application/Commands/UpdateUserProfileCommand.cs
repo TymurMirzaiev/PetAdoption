@@ -8,7 +8,8 @@ public record UpdateUserProfileCommand(
     string UserId,
     string? FullName = null,
     string? PhoneNumber = null,
-    UserPreferences? Preferences = null
+    UserPreferences? Preferences = null,
+    string? Bio = null
 ) : ICommand<UpdateUserProfileResponse>;
 
 public record UpdateUserProfileResponse(bool Success, string Message);

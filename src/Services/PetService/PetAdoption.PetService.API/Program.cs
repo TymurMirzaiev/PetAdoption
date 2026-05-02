@@ -3,7 +3,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PetAdoption.PetService.API.Authorization;
+using PetAdoption.PetService.API.Hubs;
+using PetAdoption.PetService.API.Services;
+using PetAdoption.PetService.Application.Options;
 using PetAdoption.PetService.Application.Queries;
+using PetAdoption.PetService.Application.Services;
 using PetAdoption.PetService.Domain.Interfaces;
 using PetAdoption.PetService.Infrastructure.DependencyInjection;
 using PetAdoption.PetService.Infrastructure.Persistence;
@@ -11,6 +15,8 @@ using PetAdoption.PetService.Infrastructure.Messaging;
 using PetAdoption.PetService.Infrastructure.Messaging.Configuration;
 using PetAdoption.PetService.Infrastructure.BackgroundServices;
 using PetAdoption.PetService.Infrastructure.Middleware;
+using PetAdoption.PetService.Infrastructure.Services;
+using PetAdoption.PetService.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +64,14 @@ builder.Services.AddScoped<IAdoptionRequestRepository, AdoptionRequestRepository
 builder.Services.AddScoped<IAdoptionRequestQueryStore, AdoptionRequestQueryStore>();
 builder.Services.AddScoped<IPetInteractionRepository, PetInteractionRepository>();
 builder.Services.AddScoped<IPetMetricsQueryStore, PetMetricsQueryStore>();
+builder.Services.AddScoped<IOrgDashboardQueryStore, OrgDashboardQueryStore>();
+
+// Organization repository
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+
+// Discover options and ranking service
+builder.Services.Configure<DiscoverOptions>(builder.Configuration.GetSection("Discover"));
+builder.Services.AddScoped<IPetRankingService, PetRankingService>();
 
 // Services
 builder.Services.AddSingleton<IEventPublisher, RabbitMqPublisher>();
@@ -71,6 +85,13 @@ builder.Services.AddMediator(typeof(GetAllPetsQueryHandler).Assembly);
 
 builder.Services.AddControllers();
 
+// SignalR
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
+builder.Services.AddScoped<IChatQueryStore, ChatQueryStore>();
+builder.Services.AddScoped<IChatAuthorizationService, ChatAuthorizationService>();
+builder.Services.AddScoped<IChatNotificationService, SignalRChatNotificationService>();
+
 builder.Services.AddSwaggerGen(); // Registers Swagger
 
 // CORS
@@ -82,14 +103,16 @@ builder.Services.AddCors(options =>
         {
             policy.SetIsOriginAllowed(_ => true)
                 .AllowAnyHeader()
-                .AllowAnyMethod();
+                .AllowAnyMethod()
+                .AllowCredentials();
         }
         else
         {
             var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
             policy.WithOrigins(allowedOrigins)
                 .AllowAnyHeader()
-                .AllowAnyMethod();
+                .AllowAnyMethod()
+                .AllowCredentials();
         }
     });
 });
@@ -120,12 +143,28 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(jwtSecret)),
         ClockSkew = TimeSpan.Zero
     };
+    // Allow SignalR WebSocket clients to pass the token via query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                context.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin", "PlatformAdmin"));
 });
+
+// Media storage
+builder.Services.Configure<MediaStorageOptions>(builder.Configuration.GetSection("MediaStorage"));
+builder.Services.AddSingleton<IMediaStorage, LocalDiskMediaStorage>();
 
 // Register seeder
 builder.Services.AddTransient<PetTypeSeeder>();
@@ -159,6 +198,7 @@ using (var scope = app.Services.CreateScope())
 // Exception handling must be first to catch all exceptions
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -173,6 +213,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 app.MapDefaultEndpoints();
 
 app.UseSwagger();

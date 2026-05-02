@@ -47,7 +47,8 @@ public class GetUserByEmailQueryHandler : IQueryHandler<GetUserByEmailQuery, Use
             user.HasPassword,
             user.RegisteredAt,
             user.UpdatedAt,
-            user.LastLoginAt
+            user.LastLoginAt,
+            user.Bio?.Value
         );
     }
 }

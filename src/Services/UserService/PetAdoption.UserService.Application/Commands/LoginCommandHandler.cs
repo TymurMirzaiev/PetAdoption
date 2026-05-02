@@ -70,7 +70,8 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
         var token = _jwtTokenGenerator.GenerateToken(
             user.Id.Value,
             user.Email.Value,
-            user.Role.ToString()
+            user.Role.ToString(),
+            bio: user.Bio?.Value
         );
 
         // Create refresh token

@@ -1,3 +1,5 @@
+using PetAdoption.PetService.Domain.Exceptions;
+
 namespace PetAdoption.PetService.Domain.Interfaces;
 
 /// <summary>
@@ -10,4 +12,13 @@ public interface IPetRepository
     Task Update(Pet pet);
     Task Add(Pet pet);
     Task Delete(Guid id);
+
+    async Task<Pet> GetByIdOrThrowAsync(Guid id)
+    {
+        return await GetById(id)
+            ?? throw new DomainException(
+                PetDomainErrorCode.PetNotFound,
+                $"Pet {id} not found.",
+                new Dictionary<string, object> { { "PetId", id } });
+    }
 }

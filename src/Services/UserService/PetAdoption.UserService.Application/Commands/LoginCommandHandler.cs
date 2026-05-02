@@ -16,14 +16,14 @@ public class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponse>
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
-    private readonly JwtApplicationOptions _jwtOptions;
+    private readonly JwtOptions _jwtOptions;
 
     public LoginCommandHandler(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
         IRefreshTokenRepository refreshTokenRepo,
-        IOptions<JwtApplicationOptions> jwtOptions)
+        IOptions<JwtOptions> jwtOptions)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;

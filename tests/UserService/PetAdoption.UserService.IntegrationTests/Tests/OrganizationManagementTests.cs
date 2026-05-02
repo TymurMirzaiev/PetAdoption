@@ -2,9 +2,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Enums;
 using PetAdoption.UserService.IntegrationTests.Builders;
+using PetAdoption.UserService.IntegrationTests.Helpers;
 using PetAdoption.UserService.IntegrationTests.Infrastructure;
 using Xunit;
 
@@ -39,62 +39,16 @@ public class OrganizationManagementTests : IAsyncLifetime
         _factory = new UserServiceWebAppFactory(_sqlFixture.ConnectionString);
         _unauthenticatedClient = _factory.CreateClient();
 
-        // 1. Register platform admin user
-        var paRegClient = _factory.CreateClient();
-        var paRegResponse = await paRegClient.PostAsJsonAsync("/api/users/register", new
-        {
-            Email = PlatformAdminEmail,
-            FullName = "Platform Admin",
-            Password = PlatformAdminPassword
-        });
-        paRegResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var paRegResult = await paRegResponse.Content.ReadFromJsonAsync<RegisterResponse>();
-        _platformAdminUserId = paRegResult!.UserId;
+        // Set up platform admin (register → promote → login)
+        (_platformAdminClient, _platformAdminUserId) = await AuthSetupHelper.CreatePromotedUserAsync(
+            _factory, UserRole.PlatformAdmin, PlatformAdminEmail, "Platform Admin", PlatformAdminPassword);
 
-        // 2. Promote to PlatformAdmin via direct SQL
-        await using var db = _factory.CreateDbContext();
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE Users SET Role = {(int)UserRole.PlatformAdmin} WHERE Id = {_platformAdminUserId}");
+        // Set up admin (register → promote → login)
+        (_adminClient, _) = await AuthSetupHelper.CreatePromotedUserAsync(
+            _factory, UserRole.Admin, AdminEmail, "Admin User", AdminPassword);
 
-        // 3. Login as platform admin
-        _platformAdminClient = _factory.CreateClient();
-        var paLoginResponse = await _platformAdminClient.PostAsJsonAsync("/api/users/login", new
-        {
-            Email = PlatformAdminEmail,
-            Password = PlatformAdminPassword
-        });
-        paLoginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var paLoginResult = await paLoginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
-        _platformAdminClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", paLoginResult!.Token);
-
-        // 4. Register and login as regular admin
-        var adminRegClient = _factory.CreateClient();
-        var adminRegResponse = await adminRegClient.PostAsJsonAsync("/api/users/register", new
-        {
-            Email = AdminEmail,
-            FullName = "Admin User",
-            Password = AdminPassword
-        });
-        adminRegResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var adminRegResult = await adminRegResponse.Content.ReadFromJsonAsync<RegisterResponse>();
-
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE Users SET Role = {(int)UserRole.Admin} WHERE Id = {adminRegResult!.UserId}");
-
-        _adminClient = _factory.CreateClient();
-        var adminLoginResponse = await _adminClient.PostAsJsonAsync("/api/users/login", new
-        {
-            Email = AdminEmail,
-            Password = AdminPassword
-        });
-        adminLoginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var adminLoginResult = await adminLoginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
-        _adminClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", adminLoginResult!.Token);
-
-        // 5. Register and login as regular user
-        var regClient = _factory.CreateClient();
+        // Register and login regular user (no promotion needed)
+        using var regClient = _factory.CreateClient();
         var regResponse = await regClient.PostAsJsonAsync("/api/users/register", new
         {
             Email = RegularEmail,
@@ -534,22 +488,6 @@ public class OrganizationManagementTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────
     // Response DTOs for deserialization
     // ──────────────────────────────────────────────────────────────
-
-    private record RegisterResponse(
-        bool Success,
-        string UserId,
-        string Email,
-        string FullName,
-        string Role);
-
-    private record LoginResponseDto(
-        bool Success,
-        string Token,
-        string UserId,
-        string Email,
-        string FullName,
-        string Role,
-        int ExpiresIn);
 
     private record CreateOrganizationResponseDto(bool Success, Guid OrganizationId, string Message);
     private record CommandResponseDto(bool Success, string Message);

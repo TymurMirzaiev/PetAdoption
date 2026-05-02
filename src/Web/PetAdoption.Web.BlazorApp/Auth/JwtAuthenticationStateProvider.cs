@@ -3,21 +3,21 @@ namespace PetAdoption.Web.BlazorApp.Auth;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.JSInterop;
+using PetAdoption.Web.BlazorApp.Services;
 
 public class JwtAuthenticationStateProvider : AuthenticationStateProvider
 {
-    private readonly IJSRuntime _jsRuntime;
+    private readonly ILocalStorageService _localStorage;
     private readonly JwtSecurityTokenHandler _tokenHandler = new();
 
-    public JwtAuthenticationStateProvider(IJSRuntime jsRuntime)
+    public JwtAuthenticationStateProvider(ILocalStorageService localStorage)
     {
-        _jsRuntime = jsRuntime;
+        _localStorage = localStorage;
     }
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", "accessToken");
+        var token = await _localStorage.GetAsync("accessToken");
 
         if (string.IsNullOrEmpty(token))
             return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
@@ -48,8 +48,8 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider
 
     public async Task Login(string accessToken, string refreshToken)
     {
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "accessToken", accessToken);
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "refreshToken", refreshToken);
+        await _localStorage.SetAsync("accessToken", accessToken);
+        await _localStorage.SetAsync("refreshToken", refreshToken);
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
@@ -59,22 +59,20 @@ public class JwtAuthenticationStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
-    public async Task<string?> GetAccessToken() =>
-        await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", "accessToken");
+    public Task<string?> GetAccessToken() => _localStorage.GetAsync("accessToken");
 
-    public async Task<string?> GetRefreshToken() =>
-        await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", "refreshToken");
+    public Task<string?> GetRefreshToken() => _localStorage.GetAsync("refreshToken");
 
     public async Task UpdateTokens(string accessToken, string refreshToken)
     {
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "accessToken", accessToken);
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "refreshToken", refreshToken);
+        await _localStorage.SetAsync("accessToken", accessToken);
+        await _localStorage.SetAsync("refreshToken", refreshToken);
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
     private async Task ClearTokens()
     {
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "accessToken");
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "refreshToken");
+        await _localStorage.RemoveAsync("accessToken");
+        await _localStorage.RemoveAsync("refreshToken");
     }
 }

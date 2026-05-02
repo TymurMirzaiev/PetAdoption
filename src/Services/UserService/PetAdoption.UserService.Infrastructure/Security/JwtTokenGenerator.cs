@@ -6,6 +6,8 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PetAdoption.UserService.Application.Abstractions;
+using PetAdoption.UserService.Application.Constants;
+using PetAdoption.UserService.Application.Options;
 
 public class JwtTokenGenerator : IJwtTokenGenerator
 {
@@ -16,7 +18,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         _jwtOptions = jwtOptions.Value;
     }
 
-    public string GenerateToken(string userId, string email, string role, string? organizationId = null, string? orgRole = null, string? bio = null)
+    public string GenerateToken(string userId, string email, string role, string? bio = null)
     {
         var securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_jwtOptions.Secret)
@@ -33,11 +35,9 @@ public class JwtTokenGenerator : IJwtTokenGenerator
             new(JwtRegisteredClaimNames.Email, email),
             new(ClaimTypes.Role, role),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new("userId", userId)  // Custom claim for easy access
+            new(ClaimNames.UserId, userId)  // Custom claim for easy access
         };
 
-        if (!string.IsNullOrEmpty(organizationId)) claims.Add(new Claim("organizationId", organizationId));
-        if (!string.IsNullOrEmpty(orgRole)) claims.Add(new Claim("orgRole", orgRole));
         if (!string.IsNullOrEmpty(bio)) claims.Add(new Claim("bio", bio));
 
         var token = new JwtSecurityToken(

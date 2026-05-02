@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
@@ -9,24 +9,18 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class AdoptionRequestsControllerTests : IAsyncLifetime
+internal class AdoptionRequestsControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
     private HttpClient _userClient = null!;
 
     private static readonly string TestUserId = Guid.NewGuid().ToString();
     private static readonly Guid TestOrganizationId = Guid.NewGuid();
 
-    public AdoptionRequestsControllerTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public AdoptionRequestsControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
+        base.InitializeAsync();
         _userClient = _factory.CreateClient();
         _userClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer", PetServiceWebAppFactory.GenerateTestToken(
@@ -37,7 +31,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
                     { "organizationId", TestOrganizationId.ToString() },
                     { "orgRole", "Admin" }
                 }));
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     private HttpClient CreateClientWithOrg(Guid? orgId = null, string? orgRole = "Admin", string? userId = null)
@@ -54,48 +48,10 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         return client;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
-        _userClient.Dispose();
-        await _factory.DisposeAsync();
-    }
-
-    // ──────────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────────
-
-    private async Task<Guid> SeedPetTypeAsync(string code = "ar_dog", string name = "Adoption Request Dog")
-    {
-        var request = new CreatePetTypeRequestBuilder()
-            .WithCode(code)
-            .WithName(name)
-            .Build();
-
-        var response = await _userClient.PostAsJsonAsync("/api/admin/pet-types", request);
-
-        if (response.StatusCode == HttpStatusCode.Created)
-        {
-            var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
-            return result!.Id;
-        }
-
-        var allTypesResponse = await _userClient.GetAsync("/api/admin/pet-types?includeInactive=true");
-        allTypesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var allTypes = await allTypesResponse.Content.ReadFromJsonAsync<List<PetTypeResponseDto>>();
-        return allTypes!.First(t => t.Code == code).Id;
-    }
-
-    /// <summary>
-    /// Seeds a pet directly in the database with an OrganizationId (the API does not expose this field).
-    /// </summary>
-    private async Task<Guid> SeedPetWithOrgAsync(string name, Guid petTypeId, Guid organizationId)
-    {
-        await using var db = _factory.CreateDbContext();
-        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 24, description: null);
-        pet.AssignToOrganization(organizationId);
-        db.Pets.Add(pet);
-        await db.SaveChangesAsync();
-        return pet.Id;
+        _userClient?.Dispose();
+        await base.DisposeAsync();
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -107,7 +63,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("Buddy", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "Buddy", petTypeId)).Id;
 
         // Act
         var response = await _userClient.PostAsJsonAsync(
@@ -127,7 +83,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("Buddy2", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "Buddy2", petTypeId)).Id;
         await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "First request" });
 
@@ -153,7 +109,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     [Fact]
     public async Task CreateAdoptionRequest_PetWithoutOrganization_ReturnsConflict()
     {
-        // Arrange — pet created via API has no OrganizationId
+        // Arrange â€” pet created via API has no OrganizationId
         var petTypeId = await SeedPetTypeAsync();
         var createPetRequest = new CreatePetRequestBuilder()
             .WithName("OrgLess")
@@ -167,7 +123,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         var response = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = pet!.Id, Message = "Hi" });
 
-        // Assert — handler raises invalid_operation -> 422
+        // Assert â€” handler raises invalid_operation -> 422
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
@@ -180,7 +136,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("MineTestPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "MineTestPet", petTypeId)).Id;
         await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Please!" });
 
@@ -202,7 +158,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("OrgPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "OrgPet", petTypeId)).Id;
         await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Hi" });
 
@@ -225,7 +181,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("ApprovePet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "ApprovePet", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Approve me" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -254,7 +210,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("RejectPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "RejectPet", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Reject me" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -275,7 +231,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("RejectPet2", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "RejectPet2", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Reject me" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -298,7 +254,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("CancelPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "CancelPet", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Changed my mind" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -317,7 +273,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("CancelOtherPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "CancelOtherPet", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Mine" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -329,7 +285,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
         // Act
         var response = await otherClient.PostAsync($"/api/adoption-requests/{created!.Id}/cancel", null);
 
-        // Assert — invalid_operation -> 422
+        // Assert â€” invalid_operation -> 422
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
@@ -342,7 +298,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync("ar_bio_dog", "Bio Dog");
-        var petId = await SeedPetWithOrgAsync("BioFallbackPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "BioFallbackPet", petTypeId)).Id;
 
         var bioValue = "I have a yard and love dogs.";
         using var bioClient = _factory.CreateClient();
@@ -357,7 +313,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
                     { "bio", bioValue }
                 }));
 
-        // Act — send request with no Message field
+        // Act â€” send request with no Message field
         var response = await bioClient.PostAsJsonAsync(
             "/api/adoption-requests",
             new { PetId = petId });
@@ -379,7 +335,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync("ar_bio_override", "Bio Override Dog");
-        var petId = await SeedPetWithOrgAsync("MessageOverridePet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "MessageOverridePet", petTypeId)).Id;
 
         var bioValue = "bio claim value";
         var messageValue = "explicit per-pet message";
@@ -395,7 +351,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
                     { "bio", bioValue }
                 }));
 
-        // Act — send request with explicit Message
+        // Act â€” send request with explicit Message
         var response = await bioClient.PostAsJsonAsync(
             "/api/adoption-requests",
             new { PetId = petId, Message = messageValue });
@@ -413,7 +369,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync("ar_no_bio", "No Bio Dog");
-        var petId = await SeedPetWithOrgAsync("NoBioNullMsgPet", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "NoBioNullMsgPet", petTypeId)).Id;
 
         using var noBioClient = _factory.CreateClient();
         noBioClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
@@ -426,12 +382,12 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
                     { "orgRole", "Admin" }
                 }));
 
-        // Act — no Message, no bio claim
+        // Act â€” no Message, no bio claim
         var response = await noBioClient.PostAsJsonAsync(
             "/api/adoption-requests",
             new { PetId = petId });
 
-        // Assert — request created with null message
+        // Assert â€” request created with null message
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var myRequests = await noBioClient.GetFromJsonAsync<AdoptionRequestListDto>("/api/adoption-requests/mine");
         var created = myRequests!.Items.FirstOrDefault(i => i.PetId == petId);
@@ -462,7 +418,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("DiffOrgApprove", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "DiffOrgApprove", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Will be denied at approval" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -481,7 +437,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("NoOrgClaims", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "NoOrgClaims", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "No claims approve" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -500,7 +456,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("DiffOrgReject", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "DiffOrgReject", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Will be denied at reject" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -539,7 +495,7 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     {
         // Arrange
         var petTypeId = await SeedPetTypeAsync();
-        var petId = await SeedPetWithOrgAsync("OutboxApprove", petTypeId, TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "OutboxApprove", petTypeId)).Id;
         var createResponse = await _userClient.PostAsJsonAsync("/api/adoption-requests",
             new { PetId = petId, Message = "Outbox test" });
         var created = await createResponse.Content.ReadFromJsonAsync<AdoptionRequestResultDto>();
@@ -596,6 +552,4 @@ public class AdoptionRequestsControllerTests : IAsyncLifetime
     private record PetStatusDto(string Status);
 
     private record CreatePetResponseDto(Guid Id);
-    private record CreatePetTypeResponseDto(Guid Id, string Code, string Name);
-    private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 }

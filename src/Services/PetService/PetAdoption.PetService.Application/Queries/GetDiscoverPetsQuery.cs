@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.DTOs;
+using PetAdoption.PetService.Application.Mappings;
 using PetAdoption.PetService.Application.Options;
 using PetAdoption.PetService.Application.Services;
 using PetAdoption.PetService.Domain.Exceptions;
@@ -108,16 +109,9 @@ public class GetDiscoverPetsQueryHandler : IRequestHandler<GetDiscoverPetsQuery,
         var petTypes = await _petTypeRepository.GetAllAsync(ct);
         var petTypeDict = petTypes.ToDictionary(pt => pt.Id, pt => pt.Name);
 
-        var items = petList.Select(p => new PetListItemDto(
-            p.Id,
-            p.Name,
-            petTypeDict.GetValueOrDefault(p.PetTypeId, "Unknown"),
-            p.Status.ToString(),
-            p.Breed?.Value,
-            p.Age?.Months,
-            p.Description?.Value,
-            p.Tags.Select(t => t.Value).ToList()
-        )).ToList();
+        var items = petList
+            .Select(p => PetMapper.ToPetListItemDto(p, petTypeDict.GetValueOrDefault(p.PetTypeId, "Unknown")))
+            .ToList();
 
         return new GetDiscoverPetsResponse(items, hasMore);
     }

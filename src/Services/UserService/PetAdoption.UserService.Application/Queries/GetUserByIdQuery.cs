@@ -2,6 +2,7 @@ namespace PetAdoption.UserService.Application.Queries;
 
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.DTOs;
+using PetAdoption.UserService.Application.Mappings;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
 using PetAdoption.UserService.Domain.Exceptions;
@@ -29,26 +30,6 @@ public class GetUserByIdQueryHandler : IQueryHandler<GetUserByIdQuery, UserDto>
             throw new UserNotFoundException(query.UserId);
         }
 
-        return new UserDto(
-            user.Id.Value,
-            user.Email.Value,
-            user.FullName.Value,
-            user.PhoneNumber?.Value,
-            user.Status.ToString(),
-            user.Role.ToString(),
-            new UserPreferencesDto(
-                user.Preferences.PreferredPetType,
-                user.Preferences.PreferredSizes,
-                user.Preferences.PreferredAgeRange,
-                user.Preferences.ReceiveEmailNotifications,
-                user.Preferences.ReceiveSmsNotifications
-            ),
-            user.ExternalProvider,
-            user.HasPassword,
-            user.RegisteredAt,
-            user.UpdatedAt,
-            user.LastLoginAt,
-            user.Bio?.Value
-        );
+        return UserMapper.ToDto(user);
     }
 }

@@ -1,4 +1,4 @@
-namespace PetAdoption.UserService.Tests.Application.Commands;
+namespace PetAdoption.UserService.UnitTests.Application.Commands;
 
 using FluentAssertions;
 using Moq;
@@ -31,7 +31,7 @@ public class LoginCommandHandlerTests
             _mockPasswordHasher.Object,
             _mockJwtTokenGenerator.Object,
             _mockRefreshTokenRepo.Object,
-            Options.Create(new JwtApplicationOptions())
+            Options.Create(new JwtOptions())
         );
     }
 

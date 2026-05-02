@@ -8,5 +8,5 @@ public interface IJwtTokenGenerator
     /// <summary>
     /// Generate a JWT token for the user
     /// </summary>
-    string GenerateToken(string userId, string email, string role, string? organizationId = null, string? orgRole = null, string? bio = null);
+    string GenerateToken(string userId, string email, string role, string? bio = null);
 }

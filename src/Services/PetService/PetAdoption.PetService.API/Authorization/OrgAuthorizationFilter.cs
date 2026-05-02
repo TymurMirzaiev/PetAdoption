@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using PetAdoption.PetService.API.Constants;
 
 namespace PetAdoption.PetService.API.Authorization;
 
@@ -28,8 +29,8 @@ public class OrgAuthorizationFilter : IAsyncActionFilter
         }
 
         // Check user's org membership from JWT claims
-        var userOrgIdClaim = user.FindFirst("organizationId")?.Value;
-        var userOrgRoleClaim = user.FindFirst("orgRole")?.Value;
+        var userOrgIdClaim = user.FindFirst(ClaimNames.OrganizationId)?.Value;
+        var userOrgRoleClaim = user.FindFirst(ClaimNames.OrgRole)?.Value;
 
         if (string.IsNullOrEmpty(userOrgIdClaim) ||
             !Guid.TryParse(userOrgIdClaim, out var userOrgId) ||

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using PetAdoption.UserService.IntegrationTests.Helpers;
 using PetAdoption.UserService.IntegrationTests.Infrastructure;
 using Xunit;
 
@@ -141,13 +142,4 @@ public class PasswordManagementTests : IAsyncLifetime
     private record ChangePasswordRequestDto(string CurrentPassword, string NewPassword);
 
     private record ChangePasswordResponseDto(bool Success, string Message);
-
-    private record LoginResponseDto(
-        bool Success,
-        string Token,
-        string UserId,
-        string Email,
-        string FullName,
-        string Role,
-        int ExpiresIn);
 }

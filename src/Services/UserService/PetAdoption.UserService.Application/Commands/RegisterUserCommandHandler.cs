@@ -29,9 +29,7 @@ public class RegisterUserCommandHandler : ICommandHandler<RegisterUserCommand, R
 
         // Check if email already exists
         var email = Email.From(command.Email);
-        var existingUser = await _userRepository.GetByEmailAsync(email);
-
-        if (existingUser != null)
+        if (await _userRepository.ExistsWithEmailAsync(email))
         {
             throw new DuplicateEmailException(command.Email);
         }

@@ -1,5 +1,6 @@
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.DTOs;
+using PetAdoption.PetService.Application.Mappings;
 using PetAdoption.PetService.Domain;
 using PetAdoption.PetService.Domain.Interfaces;
 
@@ -47,16 +48,9 @@ public class GetPetsQueryHandler : IRequestHandler<GetPetsQuery, GetPetsResponse
         var petTypes = await _petTypeRepository.GetAllAsync(cancellationToken);
         var petTypeDict = petTypes.ToDictionary(pt => pt.Id, pt => pt.Name);
 
-        var items = pets.Select(p => new PetListItemDto(
-            p.Id,
-            p.Name,
-            petTypeDict.GetValueOrDefault(p.PetTypeId, "Unknown"),
-            p.Status.ToString(),
-            p.Breed?.Value,
-            p.Age?.Months,
-            p.Description?.Value,
-            p.Tags.Select(t => t.Value).ToList()
-        )).ToList();
+        var items = pets
+            .Select(p => PetMapper.ToPetListItemDto(p, petTypeDict.GetValueOrDefault(p.PetTypeId, "Unknown")))
+            .ToList();
 
         return new GetPetsResponse(items, total, request.Skip, request.Take);
     }

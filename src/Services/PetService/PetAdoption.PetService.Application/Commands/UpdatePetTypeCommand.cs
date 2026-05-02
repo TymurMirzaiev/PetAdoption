@@ -4,11 +4,9 @@ using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Application.Commands;
 
-public record UpdatePetTypeCommand(Guid Id, string Name) : IRequest<UpdatePetTypeResponse>;
+public record UpdatePetTypeCommand(Guid Id, string Name) : IRequest<Unit>;
 
-public record UpdatePetTypeResponse(bool Success);
-
-public class UpdatePetTypeCommandHandler : IRequestHandler<UpdatePetTypeCommand, UpdatePetTypeResponse>
+public class UpdatePetTypeCommandHandler : IRequestHandler<UpdatePetTypeCommand, Unit>
 {
     private readonly IPetTypeRepository _petTypeRepository;
 
@@ -17,7 +15,7 @@ public class UpdatePetTypeCommandHandler : IRequestHandler<UpdatePetTypeCommand,
         _petTypeRepository = petTypeRepository;
     }
 
-    public async Task<UpdatePetTypeResponse> Handle(UpdatePetTypeCommand request, CancellationToken ct)
+    public async Task<Unit> Handle(UpdatePetTypeCommand request, CancellationToken ct)
     {
         var petType = await _petTypeRepository.GetByIdAsync(request.Id, ct);
         if (petType == null)
@@ -31,6 +29,6 @@ public class UpdatePetTypeCommandHandler : IRequestHandler<UpdatePetTypeCommand,
 
         await _petTypeRepository.UpdateAsync(petType, ct);
 
-        return new UpdatePetTypeResponse(true);
+        return Unit.Value;
     }
 }

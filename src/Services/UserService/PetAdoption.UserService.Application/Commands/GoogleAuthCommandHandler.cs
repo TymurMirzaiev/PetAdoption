@@ -15,14 +15,14 @@ public class GoogleAuthCommandHandler : ICommandHandler<GoogleAuthCommand, Googl
     private readonly IUserRepository _userRepo;
     private readonly IJwtTokenGenerator _jwtGenerator;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
-    private readonly JwtApplicationOptions _jwtOptions;
+    private readonly JwtOptions _jwtOptions;
 
     public GoogleAuthCommandHandler(
         IGoogleTokenValidator googleValidator,
         IUserRepository userRepo,
         IJwtTokenGenerator jwtGenerator,
         IRefreshTokenRepository refreshTokenRepo,
-        IOptions<JwtApplicationOptions> jwtOptions)
+        IOptions<JwtOptions> jwtOptions)
     {
         _googleValidator = googleValidator;
         _userRepo = userRepo;

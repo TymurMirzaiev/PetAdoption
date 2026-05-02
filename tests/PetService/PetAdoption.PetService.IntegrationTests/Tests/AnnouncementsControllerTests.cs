@@ -7,33 +7,18 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class AnnouncementsControllerTests : IAsyncLifetime
+internal class AnnouncementsControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-    private HttpClient _client = null!;
-
     private static readonly string TestUserId = Guid.NewGuid().ToString();
 
-    public AnnouncementsControllerTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public AnnouncementsControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        _client = _factory.CreateClient();
+        base.InitializeAsync();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken(userId: TestUserId));
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        return Task.CompletedTask;
     }
 
     // ──────────────────────────────────────────────────────────────

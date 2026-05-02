@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
@@ -10,7 +9,7 @@ namespace PetAdoption.PetService.API.Controllers;
 [ApiController]
 [Route("api/favorites")]
 [Authorize]
-public class FavoritesController : ControllerBase
+public class FavoritesController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -18,10 +17,6 @@ public class FavoritesController : ControllerBase
     {
         _mediator = mediator;
     }
-
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue("userId")
-            ?? throw new UnauthorizedAccessException("userId claim not found"));
 
     [HttpPost]
     public async Task<IActionResult> AddFavorite([FromBody] AddFavoriteRequest request)

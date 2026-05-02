@@ -13,13 +13,13 @@ public class RefreshTokenCommandHandler : ICommandHandler<RefreshTokenCommand, R
     private readonly IRefreshTokenRepository _refreshTokenRepo;
     private readonly IUserRepository _userRepo;
     private readonly IJwtTokenGenerator _jwtGenerator;
-    private readonly JwtApplicationOptions _jwtOptions;
+    private readonly JwtOptions _jwtOptions;
 
     public RefreshTokenCommandHandler(
         IRefreshTokenRepository refreshTokenRepo,
         IUserRepository userRepo,
         IJwtTokenGenerator jwtGenerator,
-        IOptions<JwtApplicationOptions> jwtOptions)
+        IOptions<JwtOptions> jwtOptions)
     {
         _refreshTokenRepo = refreshTokenRepo;
         _userRepo = userRepo;

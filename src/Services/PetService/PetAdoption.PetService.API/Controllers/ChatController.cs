@@ -10,7 +10,7 @@ namespace PetAdoption.PetService.API.Controllers;
 
 [ApiController]
 [Authorize]
-public class ChatController : ControllerBase
+public class ChatController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -19,13 +19,8 @@ public class ChatController : ControllerBase
         _mediator = mediator;
     }
 
-    private Guid GetCallerId() =>
-        Guid.Parse(User.FindFirstValue("userId")
-            ?? throw new UnauthorizedAccessException("userId claim not found"));
-
-    private Guid? GetCallerOrgId() =>
-        Guid.TryParse(User.FindFirstValue("organizationId"), out var id) ? id : null;
-
+    // Chat authorization uses the standard role claim (Admin/Moderator) rather than orgRole,
+    // so it is kept as a local helper distinct from GetOrgRole().
     private string? GetCallerRole() => User.FindFirstValue(ClaimTypes.Role);
 
     /// <summary>
@@ -39,7 +34,7 @@ public class ChatController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(
-            new GetChatHistoryQuery(requestId, afterId, take, GetCallerId(), GetCallerRole(), GetCallerOrgId()),
+            new GetChatHistoryQuery(requestId, afterId, take, GetUserId(), GetCallerRole(), GetOrganizationId()),
             ct);
         return Ok(result);
     }
@@ -54,7 +49,7 @@ public class ChatController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(
-            new SendChatMessageCommand(requestId, request.Body, GetCallerId(), GetCallerRole(), GetCallerOrgId()),
+            new SendChatMessageCommand(requestId, request.Body, GetUserId(), GetCallerRole(), GetOrganizationId()),
             ct);
         return StatusCode(201, result.Message);
     }
@@ -66,7 +61,7 @@ public class ChatController : ControllerBase
     public async Task<IActionResult> MarkRead(Guid requestId, CancellationToken ct = default)
     {
         var result = await _mediator.Send(
-            new MarkChatThreadReadCommand(requestId, GetCallerId(), GetCallerRole(), GetCallerOrgId()),
+            new MarkChatThreadReadCommand(requestId, GetUserId(), GetCallerRole(), GetOrganizationId()),
             ct);
         return Ok(result);
     }
@@ -77,7 +72,7 @@ public class ChatController : ControllerBase
     [HttpGet("api/me/chat/unread-total")]
     public async Task<IActionResult> GetMyUnreadTotal(CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetMyChatUnreadTotalQuery(GetCallerId()), ct);
+        var result = await _mediator.Send(new GetMyChatUnreadTotalQuery(GetUserId()), ct);
         return Ok(result);
     }
 

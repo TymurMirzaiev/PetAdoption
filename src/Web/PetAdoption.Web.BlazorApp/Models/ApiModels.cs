@@ -89,3 +89,10 @@ public record UpdatePetMedicalRecordRequest(
 public record ChatMessageDto(
     Guid Id, Guid AdoptionRequestId, Guid SenderUserId, string SenderRole,
     string Body, DateTime SentAt, DateTime? ReadByRecipientAt);
+
+public record UpdateProfileRequest(string FullName, string? PhoneNumber, string? Bio);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+public record CreatePetTypeRequest(string Code, string Name);
+public record UpdatePetTypeRequest(string Code, string Name);
+public record CreateAnnouncementRequest(string Title, string Body, DateTime StartDate, DateTime EndDate);
+public record UpdateAnnouncementRequest(string Title, string Body, DateTime StartDate, DateTime EndDate);

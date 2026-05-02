@@ -30,6 +30,9 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<UserServiceDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        // Unit of Work
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<UserServiceDbContext>());
+
         // Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserQueryStore, UserQueryStore>();
@@ -43,13 +46,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddHttpClient<IGoogleTokenValidator, GoogleTokenValidator>();
 
-        // JWT Configuration
+        // JWT Configuration (single options class used by both Infrastructure and Application)
         services.Configure<JwtOptions>(
-            configuration.GetSection("Jwt")
-        );
-
-        // JWT options for Application layer handlers (subset of JwtOptions)
-        services.Configure<JwtApplicationOptions>(
             configuration.GetSection("Jwt")
         );
 
@@ -77,7 +75,6 @@ public static class ServiceCollectionExtensions
 
         // Query Handlers
         services.AddScoped<IQueryHandler<GetUserByIdQuery, UserDto>, GetUserByIdQueryHandler>();
-        services.AddScoped<IQueryHandler<GetUserByEmailQuery, UserDto>, GetUserByEmailQueryHandler>();
         services.AddScoped<IQueryHandler<GetUsersQuery, GetUsersResponse>, GetUsersQueryHandler>();
 
         // Organization Command Handlers

@@ -32,17 +32,7 @@ public class AdoptPetCommandHandler : IRequestHandler<AdoptPetCommand, AdoptPetR
 
     public async Task<AdoptPetResponse> Handle(AdoptPetCommand request, CancellationToken cancellationToken = default)
     {
-        var pet = await _repository.GetById(request.PetId);
-        if (pet == null)
-        {
-            throw new DomainException(
-                PetDomainErrorCode.PetNotFound,
-                $"Pet with ID {request.PetId} was not found.",
-                new Dictionary<string, object>
-                {
-                    { "PetId", request.PetId }
-                });
-        }
+        var pet = await _repository.GetByIdOrThrowAsync(request.PetId);
 
         pet.Adopt();
         await _repository.Update(pet);

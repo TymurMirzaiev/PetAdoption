@@ -20,13 +20,13 @@
     {
         <MudPaper Class="pa-6" Elevation="3">
             <div class="d-flex align-center mb-4">
-                <MudAvatar Color="Color.Primary" Size="Size.Large" Class="mr-4">@_pet.Name[..1]</MudAvatar>
+                <MudAvatar Color="Color.Primary" Size="Size.Large" Class="mr-4">@(_pet.Name.Length > 0 ? _pet.Name[..1] : "?")</MudAvatar>
                 <div>
                     <MudText Typo="Typo.h4">@_pet.Name</MudText>
                     <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@_pet.Type</MudText>
                 </div>
                 <MudSpacer />
-                <MudChip T="string" Color="@StatusColor(_pet.Status)">@_pet.Status</MudChip>
+                <MudChip T="string" Color="@PetDisplayHelpers.PetStatusColor(_pet.Status)">@_pet.Status</MudChip>
             </div>
 
             <PetMediaGallery PetId="@Id" ReadOnly="true" Class="mb-4" />
@@ -37,7 +37,7 @@
             }
             @if (_pet.AgeMonths.HasValue)
             {
-                <MudText Typo="Typo.body1" Class="mb-2"><b>Age:</b> @FormatAge(_pet.AgeMonths.Value)</MudText>
+                <MudText Typo="Typo.body1" Class="mb-2"><b>Age:</b> @PetDisplayHelpers.FormatAge(_pet.AgeMonths.Value)</MudText>
             }
             @if (_pet.Description is not null)
             {
@@ -214,14 +214,4 @@
         finally { _actionLoading = false; }
     }
 
-    private static Color StatusColor(string status) => status switch
-    {
-        "Available" => Color.Success,
-        "Reserved" => Color.Warning,
-        "Adopted" => Color.Info,
-        _ => Color.Default
-    };
-
-    private static string FormatAge(int months) =>
-        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
 }

@@ -4,7 +4,7 @@
 @inject PetApiClient PetApi
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject IJSRuntime JS
+@inject ILocalStorageService LocalStorage
 @inject NavigationManager Nav
 
 <PageTitle>Discover Pets</PageTitle>
@@ -138,7 +138,7 @@
     {
         try
         {
-            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", LocationStorageKey);
+            var stored = await LocalStorage.GetAsync(LocationStorageKey);
             if (!string.IsNullOrEmpty(stored))
             {
                 var parts = stored.Split(',');
@@ -163,11 +163,11 @@
             if (_locationLat.HasValue && _locationLng.HasValue)
             {
                 var value = $"{_locationLat.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{_locationLng.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{_radiusKm}";
-                await JS.InvokeVoidAsync("localStorage.setItem", LocationStorageKey, value);
+                await LocalStorage.SetAsync(LocationStorageKey, value);
             }
             else
             {
-                await JS.InvokeVoidAsync("localStorage.removeItem", LocationStorageKey);
+                await LocalStorage.RemoveAsync(LocationStorageKey);
             }
         }
         catch { }
@@ -348,7 +348,7 @@
     {
         try
         {
-            var seen = await JS.InvokeAsync<string?>("localStorage.getItem", OnboardingSeenKey);
+            var seen = await LocalStorage.GetAsync(OnboardingSeenKey);
             if (string.IsNullOrEmpty(seen))
             {
                 await ShowOnboarding();
@@ -376,7 +376,7 @@
         {
             try
             {
-                await JS.InvokeVoidAsync("localStorage.setItem", OnboardingSeenKey, "true");
+                await LocalStorage.SetAsync(OnboardingSeenKey, "true");
             }
             catch { }
         }

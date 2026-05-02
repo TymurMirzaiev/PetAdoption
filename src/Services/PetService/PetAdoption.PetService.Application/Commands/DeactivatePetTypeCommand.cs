@@ -4,11 +4,9 @@ using PetAdoption.PetService.Domain.Interfaces;
 
 namespace PetAdoption.PetService.Application.Commands;
 
-public record DeactivatePetTypeCommand(Guid Id) : IRequest<DeactivatePetTypeResponse>;
+public record DeactivatePetTypeCommand(Guid Id) : IRequest<Unit>;
 
-public record DeactivatePetTypeResponse(bool Success);
-
-public class DeactivatePetTypeCommandHandler : IRequestHandler<DeactivatePetTypeCommand, DeactivatePetTypeResponse>
+public class DeactivatePetTypeCommandHandler : IRequestHandler<DeactivatePetTypeCommand, Unit>
 {
     private readonly IPetTypeRepository _petTypeRepository;
 
@@ -17,7 +15,7 @@ public class DeactivatePetTypeCommandHandler : IRequestHandler<DeactivatePetType
         _petTypeRepository = petTypeRepository;
     }
 
-    public async Task<DeactivatePetTypeResponse> Handle(DeactivatePetTypeCommand request, CancellationToken ct)
+    public async Task<Unit> Handle(DeactivatePetTypeCommand request, CancellationToken ct)
     {
         var petType = await _petTypeRepository.GetByIdAsync(request.Id, ct);
         if (petType == null)
@@ -31,6 +29,6 @@ public class DeactivatePetTypeCommandHandler : IRequestHandler<DeactivatePetType
 
         await _petTypeRepository.UpdateAsync(petType, ct);
 
-        return new DeactivatePetTypeResponse(true);
+        return Unit.Value;
     }
 }

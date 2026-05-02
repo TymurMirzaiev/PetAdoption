@@ -1,9 +1,8 @@
 namespace PetAdoption.UserService.Application.Commands;
 
 using PetAdoption.UserService.Application.Abstractions;
+using PetAdoption.UserService.Application.Helpers;
 using PetAdoption.UserService.Domain.Interfaces;
-using PetAdoption.UserService.Domain.ValueObjects;
-using PetAdoption.UserService.Domain.Exceptions;
 
 public record PromoteToAdminCommand(string UserId) : ICommand<PromoteToAdminResponse>;
 
@@ -22,13 +21,7 @@ public class PromoteToAdminCommandHandler : ICommandHandler<PromoteToAdminComman
         PromoteToAdminCommand command,
         CancellationToken cancellationToken = default)
     {
-        var userId = UserId.From(command.UserId);
-        var user = await _userRepository.GetByIdAsync(userId);
-
-        if (user == null)
-        {
-            throw new UserNotFoundException(command.UserId);
-        }
+        var user = await UserFetchHelper.GetUserOrThrowAsync(_userRepository, command.UserId);
 
         user.PromoteToAdmin();
         await _userRepository.SaveAsync(user);

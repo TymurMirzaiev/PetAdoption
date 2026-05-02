@@ -15,7 +15,7 @@ public record SetOrganizationAddressCommand(
     string Region,
     string Country,
     string PostalCode,
-    string ReviewerOrgId,
+    Guid? ReviewerOrgId,
     string ReviewerOrgRole) : IRequest<SetOrganizationAddressResponse>;
 
 public record SetOrganizationAddressResponse(
@@ -39,8 +39,7 @@ public class SetOrganizationAddressCommandHandler
         SetOrganizationAddressCommand command, CancellationToken ct)
     {
         // Verify caller is an admin of the target org
-        Guid.TryParse(command.ReviewerOrgId, out var reviewerOrgGuid);
-        OrgAuthorization.EnsureMember(command.OrgId, reviewerOrgGuid == Guid.Empty ? null : reviewerOrgGuid, command.ReviewerOrgRole);
+        OrgAuthorization.EnsureMember(command.OrgId, command.ReviewerOrgId, command.ReviewerOrgRole);
 
         var org = await _orgRepository.GetByIdAsync(command.OrgId, ct)
                   ?? Organization.Create(command.OrgId);

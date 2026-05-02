@@ -7,30 +7,17 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class OrganizationMetricsControllerTests : IAsyncLifetime
+internal class OrganizationMetricsControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-
     private static readonly Guid TestOrganizationId = Guid.NewGuid();
 
-    public OrganizationMetricsControllerTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public OrganizationMetricsControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        // Bootstrap the host so EnsureCreatedAsync + PetTypeSeeder run.
-        using var bootstrapClient = _factory.CreateClient();
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        await _factory.DisposeAsync();
+        // base.InitializeAsync() creates _factory and _client; _client acts as bootstrap
+        base.InitializeAsync();
+        return Task.CompletedTask;
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -51,16 +38,6 @@ public class OrganizationMetricsControllerTests : IAsyncLifetime
         return client;
     }
 
-    private async Task<Guid> SeedPetWithOrgAsync(string name, Guid organizationId)
-    {
-        await using var db = _factory.CreateDbContext();
-        var petTypeId = db.PetTypes.First().Id;
-        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 24, description: null);
-        pet.AssignToOrganization(organizationId);
-        db.Pets.Add(pet);
-        await db.SaveChangesAsync();
-        return pet.Id;
-    }
 
     // ──────────────────────────────────────────────────────────────
     // GET /api/organizations/{orgId}/metrics
@@ -113,7 +90,7 @@ public class OrganizationMetricsControllerTests : IAsyncLifetime
     public async Task GetPetMetrics_AsOwningOrgMember_ReturnsOk()
     {
         // Arrange
-        var petId = await SeedPetWithOrgAsync("MetricsPet", TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "MetricsPet")).Id;
         using var client = CreateClientWithOrg(TestOrganizationId);
 
         // Act
@@ -127,7 +104,7 @@ public class OrganizationMetricsControllerTests : IAsyncLifetime
     public async Task GetPetMetrics_AsDifferentOrg_ReturnsForbidden()
     {
         // Arrange
-        var petId = await SeedPetWithOrgAsync("MetricsPet2", TestOrganizationId);
+        var petId = (await SeedPetWithOrgAsync(TestOrganizationId, "MetricsPet2")).Id;
         using var client = CreateClientWithOrg(Guid.NewGuid());
 
         // Act

@@ -36,5 +36,7 @@ builder.Services.AddHttpClient("UserApiDirect", client =>
 
 builder.Services.AddScoped<PetApiClient>();
 builder.Services.AddScoped<UserApiClient>();
+builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
+builder.Services.AddScoped<IChatUnreadService, ChatUnreadService>();
 
 await builder.Build().RunAsync();

@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.API.Authorization;
+using PetAdoption.PetService.API.Constants;
 using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Application.Commands;
 using PetAdoption.PetService.Application.Queries;
@@ -12,7 +12,7 @@ namespace PetAdoption.PetService.API.Controllers;
 [ApiController]
 [Route("api/adoption-requests")]
 [Authorize]
-public class AdoptionRequestsController : ControllerBase
+public class AdoptionRequestsController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -20,15 +20,6 @@ public class AdoptionRequestsController : ControllerBase
     {
         _mediator = mediator;
     }
-
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue("userId")
-            ?? throw new UnauthorizedAccessException("userId claim not found"));
-
-    private Guid? GetUserOrgId() =>
-        Guid.TryParse(User.FindFirstValue("organizationId"), out var id) ? id : null;
-
-    private string? GetUserOrgRole() => User.FindFirstValue("orgRole");
 
     /// <summary>
     /// Create an adoption request for a pet. User must be authenticated.
@@ -39,7 +30,7 @@ public class AdoptionRequestsController : ControllerBase
     {
         var effectiveMessage = !string.IsNullOrEmpty(body.Message)
             ? body.Message
-            : User.FindFirst("bio")?.Value;
+            : User.FindFirst(ClaimNames.Bio)?.Value;
 
         var result = await _mediator.Send(new CreateAdoptionRequestCommand(
             GetUserId(), body.PetId, effectiveMessage));
@@ -91,7 +82,7 @@ public class AdoptionRequestsController : ControllerBase
     public async Task<IActionResult> ApproveAdoptionRequest(Guid id)
     {
         var result = await _mediator.Send(new ApproveAdoptionRequestCommand(
-            id, GetUserId(), GetUserOrgId(), GetUserOrgRole()));
+            id, GetUserId(), GetOrganizationId(), GetOrgRole()));
         return Ok(result);
     }
 
@@ -105,7 +96,7 @@ public class AdoptionRequestsController : ControllerBase
             return BadRequest("Reason is required.");
 
         var result = await _mediator.Send(new RejectAdoptionRequestCommand(
-            id, GetUserId(), body.Reason, GetUserOrgId(), GetUserOrgRole()));
+            id, GetUserId(), body.Reason, GetOrganizationId(), GetOrgRole()));
         return Ok(result);
     }
 

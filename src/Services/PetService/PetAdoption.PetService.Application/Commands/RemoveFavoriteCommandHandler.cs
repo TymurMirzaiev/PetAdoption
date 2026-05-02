@@ -4,9 +4,7 @@ using PetAdoption.PetService.Application.Abstractions;
 using PetAdoption.PetService.Domain.Exceptions;
 using PetAdoption.PetService.Domain.Interfaces;
 
-public record RemoveFavoriteResponse(bool Success);
-
-public class RemoveFavoriteCommandHandler : IRequestHandler<RemoveFavoriteCommand, RemoveFavoriteResponse>
+public class RemoveFavoriteCommandHandler : IRequestHandler<RemoveFavoriteCommand, Unit>
 {
     private readonly IFavoriteRepository _favoriteRepository;
 
@@ -15,12 +13,12 @@ public class RemoveFavoriteCommandHandler : IRequestHandler<RemoveFavoriteComman
         _favoriteRepository = favoriteRepository;
     }
 
-    public async Task<RemoveFavoriteResponse> Handle(RemoveFavoriteCommand request, CancellationToken cancellationToken = default)
+    public async Task<Unit> Handle(RemoveFavoriteCommand request, CancellationToken cancellationToken = default)
     {
         var existing = await _favoriteRepository.GetByUserAndPetAsync(request.UserId, request.PetId)
             ?? throw new DomainException(PetDomainErrorCode.FavoriteNotFound, "Favorite not found.");
 
         await _favoriteRepository.DeleteAsync(request.UserId, request.PetId);
-        return new RemoveFavoriteResponse(true);
+        return Unit.Value;
     }
 }

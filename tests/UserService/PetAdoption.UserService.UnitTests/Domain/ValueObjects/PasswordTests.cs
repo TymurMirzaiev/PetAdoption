@@ -1,4 +1,4 @@
-namespace PetAdoption.UserService.Tests.Domain.ValueObjects;
+namespace PetAdoption.UserService.UnitTests.Domain.ValueObjects;
 
 using FluentAssertions;
 using PetAdoption.UserService.Domain.ValueObjects;

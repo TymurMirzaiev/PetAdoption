@@ -63,7 +63,7 @@
                     <MudCard Elevation="3">
                         <MudCardHeader>
                             <CardHeaderAvatar>
-                                <MudAvatar Color="Color.Primary">@fav.PetName[..1]</MudAvatar>
+                                <MudAvatar Color="Color.Primary">@(fav.PetName.Length > 0 ? fav.PetName[..1] : "?")</MudAvatar>
                             </CardHeaderAvatar>
                             <CardHeaderContent>
                                 <MudText Typo="Typo.h6">@fav.PetName</MudText>
@@ -77,9 +77,9 @@
                             }
                             @if (fav.AgeMonths.HasValue)
                             {
-                                <MudText Typo="Typo.body2"><b>Age:</b> @FormatAge(fav.AgeMonths.Value)</MudText>
+                                <MudText Typo="Typo.body2"><b>Age:</b> @PetDisplayHelpers.FormatAge(fav.AgeMonths.Value)</MudText>
                             }
-                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(fav.Status)">@fav.Status</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@PetDisplayHelpers.PetStatusColor(fav.Status)">@fav.Status</MudChip>
                         </MudCardContent>
                         <MudCardActions>
                             <MudButton Size="Size.Small" Color="Color.Primary"
@@ -110,34 +110,6 @@
         }
     }
 
-    <MudDialog @bind-Visible="_adoptDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
-        <TitleContent>
-            <MudText Typo="Typo.h6">Adopt @_adoptPetName</MudText>
-        </TitleContent>
-        <DialogContent>
-            @if (!string.IsNullOrWhiteSpace(_userBio) && !_editingAdoptMessage)
-            {
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">Your bio will be sent to the shelter:</MudText>
-                <MudPaper Outlined="true" Class="pa-3 mb-3">
-                    <MudText Typo="Typo.body2">@_userBio</MudText>
-                </MudPaper>
-                <MudLink Typo="Typo.body2" OnClick="@(() => { _editingAdoptMessage = true; _adoptMessage = _userBio; })">Edit message for this pet</MudLink>
-            }
-            else
-            {
-                <MudTextField @bind-Value="_adoptMessage" Label="Your message" Lines="3" Variant="Variant.Outlined" MaxLength="1000" Counter="1000"
-                    HelperText="@(string.IsNullOrWhiteSpace(_userBio) ? "Tip: add a bio in your profile to skip this next time." : null)" />
-                @if (string.IsNullOrWhiteSpace(_userBio))
-                {
-                    <MudLink Href="/profile" Typo="Typo.caption">Add a bio to your profile</MudLink>
-                }
-            }
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="@(() => _adoptDialogVisible = false)">Cancel</MudButton>
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SubmitAdoptionRequest">Send Request</MudButton>
-        </DialogActions>
-    </MudDialog>
 </MudContainer>
 
 @code {
@@ -239,58 +211,40 @@
         catch { Snackbar.Add("Connection error", Severity.Error); }
     }
 
-    private bool _adoptDialogVisible;
-    private string _adoptMessage = "";
-    private Guid _adoptPetId;
-    private string _adoptPetName = "";
-    private string? _userBio;
-    private bool _editingAdoptMessage;
-
     private async Task OpenAdoptionDialog(Guid petId, string petName)
     {
-        _adoptPetId = petId;
-        _adoptPetName = petName;
-        _adoptMessage = "";
-        _editingAdoptMessage = false;
-
         // Read bio from JWT claims
         var authState = await AuthProvider.GetAuthenticationStateAsync();
-        _userBio = authState.User.FindFirst("bio")?.Value;
+        var userBio = authState.User.FindFirst("bio")?.Value;
 
-        _adoptDialogVisible = true;
-    }
-
-    private async Task SubmitAdoptionRequest()
-    {
-        try
+        var parameters = new DialogParameters<AdoptionRequestDialog>
         {
-            // Use bio as message when not editing; server also has claim fallback for non-Blazor clients
-            var message = _editingAdoptMessage
-                ? (string.IsNullOrWhiteSpace(_adoptMessage) ? null : _adoptMessage)
-                : (string.IsNullOrWhiteSpace(_userBio) ? null : _userBio);
-            var response = await PetApi.CreateAdoptionRequestAsync(_adoptPetId, message);
-            if (response.IsSuccessStatusCode)
+            { x => x.PetName, petName },
+            { x => x.UserBio, userBio }
+        };
+        var dialog = await DialogService.ShowAsync<AdoptionRequestDialog>($"Adopt {petName}", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            // result.Data is string? (may be null when no message provided)
+            var message = result.Data as string;
+            try
             {
-                Snackbar.Add($"Adoption request sent for {_adoptPetName}!", Severity.Success);
-                _adoptDialogVisible = false;
+                // Use bio as message when not editing; server also has claim fallback for non-Blazor clients
+                var response = await PetApi.CreateAdoptionRequestAsync(petId, message);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add($"Adoption request sent for {petName}!", Severity.Success);
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to send adoption request", Severity.Error);
+                }
             }
-            else
-            {
-                var error = await response.Content.ReadFromJsonAsync<ApiError>();
-                Snackbar.Add(error?.Message ?? "Failed to send adoption request", Severity.Error);
-            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
         }
-        catch { Snackbar.Add("Connection error", Severity.Error); }
     }
 
-    private static Color StatusColor(string status) => status switch
-    {
-        "Available" => Color.Success,
-        "Reserved" => Color.Warning,
-        "Adopted" => Color.Info,
-        _ => Color.Default
-    };
-
-    private static string FormatAge(int months) =>
-        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
 }

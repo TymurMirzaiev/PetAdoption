@@ -5,12 +5,10 @@ namespace PetAdoption.PetService.Domain.ValueObjects;
 /// <summary>
 /// Value object representing a pet tag. Normalized to lowercase, trimmed, 1-50 chars.
 /// </summary>
-public sealed class PetTag : IEquatable<PetTag>
+public sealed class PetTag : StringValueObject, IEquatable<PetTag>
 {
     public const int MaxLength = 50;
     public const int MinLength = 1;
-
-    public string Value { get; }
 
     public PetTag(string value)
     {
@@ -59,16 +57,7 @@ public sealed class PetTag : IEquatable<PetTag>
         Value = normalized;
     }
 
-    public bool Equals(PetTag? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
-        return Value == other.Value;
-    }
-
-    public override bool Equals(object? obj) => Equals(obj as PetTag);
-    public override int GetHashCode() => Value.GetHashCode();
-    public override string ToString() => Value;
+    public bool Equals(PetTag? other) => other is not null && Value == other.Value;
 
     public static implicit operator string(PetTag tag) => tag.Value;
     public static explicit operator PetTag(string value) => new(value);

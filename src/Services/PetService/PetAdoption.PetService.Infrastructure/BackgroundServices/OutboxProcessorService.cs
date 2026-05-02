@@ -11,7 +11,7 @@ namespace PetAdoption.PetService.Infrastructure.BackgroundServices;
 public class OutboxProcessorService : BackgroundService
 {
     private const int BatchSize = 100;
-    private const int MaxRetryCount = 5;
+    private const int MaxRetryCount = OutboxEvent.MaxRetryCount;
     private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(5);
 
     private readonly IServiceProvider _serviceProvider;
@@ -53,7 +53,7 @@ public class OutboxProcessorService : BackgroundService
         var outboxRepository = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
         var eventPublisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-        var pendingEvents = await outboxRepository.GetPendingEvents(batchSize: BatchSize);
+        var pendingEvents = await outboxRepository.GetPendingEventsAsync(batchSize: BatchSize);
         var eventsList = pendingEvents.ToList();
 
         if (!eventsList.Any())
@@ -76,7 +76,7 @@ public class OutboxProcessorService : BackgroundService
 
                     // Mark as processed
                     outboxEvent.MarkAsProcessed();
-                    await outboxRepository.Update(outboxEvent);
+                    await outboxRepository.UpdateAsync(outboxEvent);
 
                     _logger.LogDebug(
                         "Successfully published outbox event {EventId} of type {EventType}",
@@ -86,16 +86,29 @@ public class OutboxProcessorService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Failed to publish outbox event {EventId} of type {EventType}. Retry count: {RetryCount}",
-                    outboxEvent.Id,
-                    outboxEvent.EventType,
-                    outboxEvent.RetryCount);
-
-                // Record failure
                 outboxEvent.RecordFailure(ex.Message);
-                await outboxRepository.Update(outboxEvent);
+
+                if (outboxEvent.RetryCount >= MaxRetryCount)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Outbox event {EventId} of type {EventType} has permanently failed after {MaxRetries} retries. It will no longer be retried.",
+                        outboxEvent.Id,
+                        outboxEvent.EventType,
+                        MaxRetryCount);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to publish outbox event {EventId} of type {EventType}. Retry count: {RetryCount}/{MaxRetries}",
+                        outboxEvent.Id,
+                        outboxEvent.EventType,
+                        outboxEvent.RetryCount,
+                        MaxRetryCount);
+                }
+
+                await outboxRepository.UpdateAsync(outboxEvent);
             }
         }
 

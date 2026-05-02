@@ -27,8 +27,7 @@ public class GetPetMetricsQueryHandler : IRequestHandler<GetPetMetricsQuery, Get
 
     public async Task<GetPetMetricsResponse> Handle(GetPetMetricsQuery request, CancellationToken ct = default)
     {
-        var pet = await _petRepository.GetById(request.PetId)
-            ?? throw new DomainException(PetDomainErrorCode.PetNotFound, $"Pet {request.PetId} not found.");
+        var pet = await _petRepository.GetByIdOrThrowAsync(request.PetId);
 
         if (pet.OrganizationId is null)
             throw new DomainException(

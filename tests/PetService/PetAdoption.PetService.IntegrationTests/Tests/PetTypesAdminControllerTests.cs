@@ -4,59 +4,27 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using PetAdoption.PetService.API.Controllers;
 using PetAdoption.PetService.IntegrationTests.Builders;
+using PetAdoption.PetService.IntegrationTests.Helpers;
 using PetAdoption.PetService.IntegrationTests.Infrastructure;
 using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class PetTypesAdminControllerTests : IAsyncLifetime
+internal class PetTypesAdminControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-    private HttpClient _client = null!;
+    public PetTypesAdminControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public PetTypesAdminControllerTests(SqlServerFixture sqlFixture)
+    public override Task InitializeAsync()
     {
-        _sqlFixture = sqlFixture;
-    }
-
-    public async Task InitializeAsync()
-    {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        _client = _factory.CreateClient();
+        base.InitializeAsync();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken());
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        return Task.CompletedTask;
     }
 
     // ──────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Seeds a pet type via the admin API and returns its ID.
-    /// </summary>
-    private async Task<Guid> SeedPetTypeAsync(string code, string name)
-    {
-        var request = new CreatePetTypeRequestBuilder()
-            .WithCode(code)
-            .WithName(name)
-            .Build();
-
-        var response = await _client.PostAsJsonAsync("/api/admin/pet-types", request);
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
-        result.Should().NotBeNull();
-        return result!.Id;
-    }
 
     // ──────────────────────────────────────────────────────────────
     // POST /api/admin/pet-types (Create Pet Type)
@@ -341,8 +309,6 @@ public class PetTypesAdminControllerTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────
     // Response DTOs for deserialization
     // ──────────────────────────────────────────────────────────────
-
-    private record CreatePetTypeResponseDto(Guid Id, string Code, string Name);
 
     private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive, DateTime CreatedAt, DateTime? UpdatedAt);
 }

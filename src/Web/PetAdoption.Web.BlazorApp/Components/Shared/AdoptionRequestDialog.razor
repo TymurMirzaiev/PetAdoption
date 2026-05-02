@@ -1,0 +1,43 @@
+<MudDialog>
+    <DialogContent>
+        @if (!string.IsNullOrWhiteSpace(UserBio) && !_editingMessage)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">Your bio will be sent to the shelter:</MudText>
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                <MudText Typo="Typo.body2">@UserBio</MudText>
+            </MudPaper>
+            <MudLink Typo="Typo.body2" OnClick="@(() => { _editingMessage = true; _message = UserBio; })">Edit message for this pet</MudLink>
+        }
+        else
+        {
+            <MudTextField @bind-Value="_message" Label="Your message" Lines="3" Variant="Variant.Outlined"
+                          MaxLength="1000" Counter="1000"
+                          HelperText="@(string.IsNullOrWhiteSpace(UserBio) ? "Tip: add a bio in your profile to skip this next time." : null)" />
+            @if (string.IsNullOrWhiteSpace(UserBio))
+            {
+                <MudLink Href="/profile" Typo="Typo.caption">Add a bio to your profile</MudLink>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Send Request</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string PetName { get; set; } = "";
+    [Parameter] public string? UserBio { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _message = "";
+    private bool _editingMessage;
+
+    private void Submit()
+    {
+        var message = _editingMessage
+            ? (string.IsNullOrWhiteSpace(_message) ? null : _message)
+            : (string.IsNullOrWhiteSpace(UserBio) ? null : UserBio);
+        MudDialog.Close(DialogResult.Ok(message));
+    }
+}

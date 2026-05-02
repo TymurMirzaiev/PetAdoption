@@ -20,8 +20,7 @@ public class AddFavoriteCommandHandler : IRequestHandler<AddFavoriteCommand, Add
 
     public async Task<AddFavoriteResponse> Handle(AddFavoriteCommand request, CancellationToken cancellationToken = default)
     {
-        var pet = await _petRepository.GetById(request.PetId)
-            ?? throw new DomainException(PetDomainErrorCode.PetNotFound, $"Pet {request.PetId} not found.");
+        _ = await _petRepository.GetByIdOrThrowAsync(request.PetId);
 
         var existing = await _favoriteRepository.GetByUserAndPetAsync(request.UserId, request.PetId);
         if (existing is not null)

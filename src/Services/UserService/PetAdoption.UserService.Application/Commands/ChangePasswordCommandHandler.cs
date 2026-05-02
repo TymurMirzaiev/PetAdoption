@@ -1,9 +1,10 @@
 namespace PetAdoption.UserService.Application.Commands;
 
 using PetAdoption.UserService.Application.Abstractions;
+using PetAdoption.UserService.Application.Helpers;
+using PetAdoption.UserService.Domain.Exceptions;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
-using PetAdoption.UserService.Domain.Exceptions;
 
 public class ChangePasswordCommandHandler : ICommandHandler<ChangePasswordCommand, ChangePasswordResponse>
 {
@@ -25,13 +26,7 @@ public class ChangePasswordCommandHandler : ICommandHandler<ChangePasswordComman
         // Validate new password
         Password.ValidatePlainText(command.NewPassword);
 
-        var userId = UserId.From(command.UserId);
-        var user = await _userRepository.GetByIdAsync(userId);
-
-        if (user == null)
-        {
-            throw new UserNotFoundException(command.UserId);
-        }
+        var user = await UserFetchHelper.GetUserOrThrowAsync(_userRepository, command.UserId);
 
         // Verify current password
         if (user.Password is null)

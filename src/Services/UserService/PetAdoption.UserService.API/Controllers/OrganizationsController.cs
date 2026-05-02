@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.Commands.Organizations;
+using PetAdoption.UserService.Application.Constants;
 using PetAdoption.UserService.Application.Queries.Organizations;
 
 namespace PetAdoption.UserService.API.Controllers;
@@ -52,7 +53,6 @@ public class OrganizationsController : ControllerBase
         [FromServices] ICommandHandler<UpdateOrganizationCommand, UpdateOrganizationResponse> handler)
     {
         var result = await handler.HandleAsync(new UpdateOrganizationCommand(id, request.Name, request.Description));
-        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -63,7 +63,6 @@ public class OrganizationsController : ControllerBase
         [FromServices] ICommandHandler<DeactivateOrganizationCommand, DeactivateOrganizationResponse> handler)
     {
         var result = await handler.HandleAsync(new DeactivateOrganizationCommand(id));
-        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -74,7 +73,6 @@ public class OrganizationsController : ControllerBase
         [FromServices] ICommandHandler<ActivateOrganizationCommand, ActivateOrganizationResponse> handler)
     {
         var result = await handler.HandleAsync(new ActivateOrganizationCommand(id));
-        if (!result.Success) return NotFound(result);
         return Ok(result);
     }
 
@@ -117,7 +115,7 @@ public class OrganizationsController : ControllerBase
     public async Task<IActionResult> GetMyOrganizations(
         [FromServices] IQueryHandler<GetMyOrganizationsQuery, GetMyOrganizationsResponse> handler)
     {
-        var userId = User.FindFirstValue("userId")
+        var userId = User.FindFirstValue(ClaimNames.UserId)
             ?? throw new UnauthorizedAccessException("userId claim not found");
         var result = await handler.HandleAsync(new GetMyOrganizationsQuery(userId));
         return Ok(result);

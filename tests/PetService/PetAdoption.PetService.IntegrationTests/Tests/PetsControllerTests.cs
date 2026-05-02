@@ -9,63 +9,21 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class PetsControllerTests : IAsyncLifetime
+internal class PetsControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-    private HttpClient _client = null!;
+    public PetsControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public PetsControllerTests(SqlServerFixture sqlFixture)
+    public override Task InitializeAsync()
     {
-        _sqlFixture = sqlFixture;
-    }
-
-    public async Task InitializeAsync()
-    {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        _client = _factory.CreateClient();
+        base.InitializeAsync();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken());
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        return Task.CompletedTask;
     }
 
     // ──────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Gets a pet type ID, using an already-seeded type or creating a new one.
-    /// The PetTypeSeeder seeds default types (dog, cat, rabbit, bird, fish, hamster) on startup.
-    /// </summary>
-    private async Task<Guid> SeedPetTypeAsync(string code = "dog", string name = "Dog")
-    {
-        var request = new CreatePetTypeRequestBuilder()
-            .WithCode(code)
-            .WithName(name)
-            .Build();
-
-        var response = await _client.PostAsJsonAsync("/api/admin/pet-types", request);
-
-        if (response.StatusCode == HttpStatusCode.Created)
-        {
-            var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
-            return result!.Id;
-        }
-
-        // Type already seeded — look it up
-        var allTypesResponse = await _client.GetAsync("/api/admin/pet-types?includeInactive=true");
-        allTypesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var allTypes = await allTypesResponse.Content.ReadFromJsonAsync<List<PetTypeResponseDto>>();
-        var existing = allTypes!.First(t => t.Code == code);
-        return existing.Id;
-    }
 
     /// <summary>
     /// Creates a pet via the API and returns its ID.
@@ -791,15 +749,11 @@ public class PetsControllerTests : IAsyncLifetime
 
     private record CreatePetResponseDto(Guid Id);
 
-    private record CreatePetTypeResponseDto(Guid Id, string Code, string Name);
-
     private record PetListItemResponseDto(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
 
     private record PetDetailsResponseDto(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
 
     private record StatusChangeResponseDto(bool Success, string? Message, Guid? PetId, string? Status);
-
-    private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 
     private record UpdatePetResponseDto(Guid Id, string Name, string Status, string? Breed, int? AgeMonths, string? Description);
 

@@ -8,6 +8,8 @@ namespace PetAdoption.PetService.Domain;
 /// </summary>
 public class OutboxEvent
 {
+    public const int MaxRetryCount = 5;
+
     public Guid Id { get; private set; }
     public string EventType { get; private set; }
     public string EventData { get; private set; }

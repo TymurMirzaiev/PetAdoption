@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
@@ -9,7 +8,7 @@ namespace PetAdoption.PetService.API.Controllers;
 [ApiController]
 [Route("api/discover")]
 [Authorize]
-public class DiscoverController : ControllerBase
+public class DiscoverController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -17,10 +16,6 @@ public class DiscoverController : ControllerBase
     {
         _mediator = mediator;
     }
-
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue("userId")
-            ?? throw new UnauthorizedAccessException("userId claim not found"));
 
     /// <summary>
     /// Get personalized pet discovery feed. Returns Available pets the user

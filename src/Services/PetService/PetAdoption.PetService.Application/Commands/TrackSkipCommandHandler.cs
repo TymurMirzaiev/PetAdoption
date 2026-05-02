@@ -20,8 +20,7 @@ public class TrackSkipCommandHandler : IRequestHandler<TrackSkipCommand, TrackSk
 
     public async Task<TrackSkipResponse> Handle(TrackSkipCommand request, CancellationToken ct)
     {
-        var pet = await _petRepository.GetById(request.PetId)
-            ?? throw new DomainException(PetDomainErrorCode.PetNotFound, $"Pet {request.PetId} not found.");
+        _ = await _petRepository.GetByIdOrThrowAsync(request.PetId);
 
         var existing = await _skipRepository.GetByUserAndPetAsync(request.UserId, request.PetId);
         if (existing is not null)

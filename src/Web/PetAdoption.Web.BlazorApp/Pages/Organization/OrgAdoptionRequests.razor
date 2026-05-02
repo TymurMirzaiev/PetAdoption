@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject PetApiClient PetApi
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @using PetAdoption.Web.BlazorApp.Components.Chat
 
 <PageTitle>Adoption Requests</PageTitle>
@@ -36,14 +37,14 @@
                     <TitleContent>
                         <div class="d-flex align-center gap-3">
                             <MudText Typo="Typo.body1">@item.PetName</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(item.Status)">@item.Status</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@PetDisplayHelpers.RequestStatusColor(item.Status)">@item.Status</MudChip>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@item.CreatedAt.ToLocalTime().ToString("g")</MudText>
                             @if (item.Status == "Pending")
                             {
                                 <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
                                     OnClick="@(() => ApproveRequest(item.Id))">Approve</MudButton>
                                 <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
-                                    OnClick="@(() => OpenRejectDialog(item.Id, item.PetName))">Reject</MudButton>
+                                    OnClick="@(async () => await OpenRejectDialogAsync(item.Id, item.PetName))">Reject</MudButton>
                             }
                         </div>
                     </TitleContent>
@@ -60,19 +61,6 @@
         }
     }
 
-    <MudDialog @bind-Visible="_rejectDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
-        <TitleContent>
-            <MudText Typo="Typo.h6">Reject Request for @_rejectPetName</MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudTextField @bind-Value="_rejectReason" Label="Rejection reason" Lines="3" Variant="Variant.Outlined" Required="true" MaxLength="1000" Counter="1000" />
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="@(() => _rejectDialogVisible = false)">Cancel</MudButton>
-            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="SubmitReject"
-                Disabled="@string.IsNullOrWhiteSpace(_rejectReason)">Reject</MudButton>
-        </DialogActions>
-    </MudDialog>
 </MudContainer>
 
 @code {
@@ -82,10 +70,6 @@
     private bool _loading = true;
     private string? _statusFilter;
 
-    private bool _rejectDialogVisible;
-    private Guid _rejectRequestId;
-    private string _rejectPetName = "";
-    private string _rejectReason = "";
 
     protected override async Task OnInitializedAsync() => await LoadRequests();
 
@@ -120,40 +104,32 @@
         catch { Snackbar.Add("Connection error", Severity.Error); }
     }
 
-    private void OpenRejectDialog(Guid requestId, string petName)
+    private async Task OpenRejectDialogAsync(Guid requestId, string petName)
     {
-        _rejectRequestId = requestId;
-        _rejectPetName = petName;
-        _rejectReason = "";
-        _rejectDialogVisible = true;
-    }
-
-    private async Task SubmitReject()
-    {
-        try
+        var parameters = new DialogParameters<RejectRequestDialog>
         {
-            var response = await PetApi.RejectAdoptionRequestAsync(_rejectRequestId, _rejectReason);
-            if (response.IsSuccessStatusCode)
+            { x => x.PetName, petName }
+        };
+        var dialog = await DialogService.ShowAsync<RejectRequestDialog>($"Reject adoption for {petName}", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && result.Data is string reason)
+        {
+            try
             {
-                Snackbar.Add("Request rejected", Severity.Info);
-                _rejectDialogVisible = false;
-                await LoadRequests();
+                var response = await PetApi.RejectAdoptionRequestAsync(requestId, reason);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Request rejected", Severity.Info);
+                    await LoadRequests();
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to reject", Severity.Error);
+                }
             }
-            else
-            {
-                var error = await response.Content.ReadFromJsonAsync<ApiError>();
-                Snackbar.Add(error?.Message ?? "Failed to reject", Severity.Error);
-            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
         }
-        catch { Snackbar.Add("Connection error", Severity.Error); }
     }
 
-    private static Color StatusColor(string status) => status switch
-    {
-        "Pending" => Color.Warning,
-        "Approved" => Color.Success,
-        "Rejected" => Color.Error,
-        "Cancelled" => Color.Default,
-        _ => Color.Default
-    };
 }

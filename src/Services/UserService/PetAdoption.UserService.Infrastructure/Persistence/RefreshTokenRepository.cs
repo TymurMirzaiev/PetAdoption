@@ -4,27 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Interfaces;
 
-public class RefreshTokenRepository : IRefreshTokenRepository
+public class RefreshTokenRepository : RepositoryBase, IRefreshTokenRepository
 {
-    private readonly UserServiceDbContext _db;
-
-    public RefreshTokenRepository(UserServiceDbContext db)
+    public RefreshTokenRepository(UserServiceDbContext db) : base(db)
     {
-        _db = db;
     }
 
     public async Task SaveAsync(RefreshToken refreshToken)
     {
-        var entry = _db.Entry(refreshToken);
-        if (entry.State == EntityState.Detached)
-        {
-            var exists = await _db.RefreshTokens.AnyAsync(rt => rt.Id == refreshToken.Id);
-            if (exists)
-                _db.RefreshTokens.Update(refreshToken);
-            else
-                _db.RefreshTokens.Add(refreshToken);
-        }
-
+        await UpsertAsync(_db.RefreshTokens, refreshToken, rt => rt.Id == refreshToken.Id);
         await _db.SaveChangesAsync();
     }
 

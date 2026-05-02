@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
@@ -9,7 +8,7 @@ namespace PetAdoption.PetService.API.Controllers;
 [ApiController]
 [Route("api/skips")]
 [Authorize]
-public class SkipsController : ControllerBase
+public class SkipsController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -17,10 +16,6 @@ public class SkipsController : ControllerBase
     {
         _mediator = mediator;
     }
-
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue("userId")
-            ?? throw new UnauthorizedAccessException("userId claim not found"));
 
     /// <summary>
     /// Track a pet skip (user swiped left / dismissed the pet).

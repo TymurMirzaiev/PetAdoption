@@ -10,11 +10,9 @@ public record SetPrimaryPhotoCommand(
     Guid PetId,
     Guid MediaId,
     Guid? ReviewerOrgId,
-    string? ReviewerOrgRole) : IRequest<SetPrimaryPhotoResponse>;
+    string? ReviewerOrgRole) : IRequest<Unit>;
 
-public record SetPrimaryPhotoResponse(bool Success);
-
-public class SetPrimaryPhotoCommandHandler : IRequestHandler<SetPrimaryPhotoCommand, SetPrimaryPhotoResponse>
+public class SetPrimaryPhotoCommandHandler : IRequestHandler<SetPrimaryPhotoCommand, Unit>
 {
     private readonly IPetRepository _petRepository;
 
@@ -23,14 +21,10 @@ public class SetPrimaryPhotoCommandHandler : IRequestHandler<SetPrimaryPhotoComm
         _petRepository = petRepository;
     }
 
-    public async Task<SetPrimaryPhotoResponse> Handle(
+    public async Task<Unit> Handle(
         SetPrimaryPhotoCommand request, CancellationToken ct = default)
     {
-        var pet = await _petRepository.GetById(request.PetId)
-            ?? throw new DomainException(
-                PetDomainErrorCode.PetNotFound,
-                $"Pet {request.PetId} not found.",
-                new Dictionary<string, object> { { "PetId", request.PetId } });
+        var pet = await _petRepository.GetByIdOrThrowAsync(request.PetId);
 
         OrgAuthorization.EnsureMember(
             pet.OrganizationId ?? Guid.Empty, request.ReviewerOrgId, request.ReviewerOrgRole);
@@ -38,6 +32,6 @@ public class SetPrimaryPhotoCommandHandler : IRequestHandler<SetPrimaryPhotoComm
         pet.SetPrimaryPhoto(request.MediaId);
         await _petRepository.Update(pet);
 
-        return new SetPrimaryPhotoResponse(true);
+        return Unit.Value;
     }
 }

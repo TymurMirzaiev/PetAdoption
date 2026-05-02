@@ -91,7 +91,10 @@
         var petApiBase = Configuration["ApiUrls:PetService"] ?? "http://localhost:8080";
         var token = await AuthProvider.GetAccessToken();
         _connection = new HubConnectionBuilder()
-            .WithUrl($"{petApiBase}/hubs/chat?access_token={token}")
+            .WithUrl($"{petApiBase}/hubs/chat", opts =>
+            {
+                opts.AccessTokenProvider = () => Task.FromResult<string?>(token);
+            })
             .WithAutomaticReconnect()
             .Build();
 

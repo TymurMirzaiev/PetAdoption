@@ -37,17 +37,22 @@ public class OrgDashboardQueryStore : IOrgDashboardQueryStore
         var totalRequests = requestGroups.Sum(g => g.Count);
         var pendingRequests = requestGroups.FirstOrDefault(g => g.Status == AdoptionRequestStatus.Pending)?.Count ?? 0;
 
-        // 3. Total impressions for org pets
-        var totalImpressions = await _db.PetInteractions.AsNoTracking()
-            .Where(pi => pi.Type == InteractionType.Impression
-                && _db.Pets.Any(p => p.Id == pi.PetId && p.OrganizationId == orgId))
-            .SumAsync(pi => (long)1, ct);
+        // 3+4. Total impressions and swipes for org pets via join (avoids correlated subqueries)
+        var orgPetIds = _db.Pets.AsNoTracking()
+            .Where(p => p.OrganizationId == orgId)
+            .Select(p => p.Id);
 
-        // 4. Total swipes for org pets
-        var totalSwipes = await _db.PetInteractions.AsNoTracking()
-            .Where(pi => pi.Type == InteractionType.Swipe
-                && _db.Pets.Any(p => p.Id == pi.PetId && p.OrganizationId == orgId))
-            .SumAsync(pi => (long)1, ct);
+        var interactionCounts = await _db.PetInteractions.AsNoTracking()
+            .Where(pi => orgPetIds.Contains(pi.PetId)
+                && (pi.Type == InteractionType.Impression || pi.Type == InteractionType.Swipe))
+            .GroupBy(pi => pi.Type)
+            .Select(g => new { Type = g.Key, Count = (long)g.Count() })
+            .ToListAsync(ct);
+
+        var totalImpressions = interactionCounts
+            .FirstOrDefault(x => x.Type == InteractionType.Impression)?.Count ?? 0L;
+        var totalSwipes = interactionCounts
+            .FirstOrDefault(x => x.Type == InteractionType.Swipe)?.Count ?? 0L;
 
         return new OrgDashboardData(
             totalPets,

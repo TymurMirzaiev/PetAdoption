@@ -20,8 +20,7 @@ public class TrackInteractionCommandHandler : IRequestHandler<TrackInteractionCo
 
     public async Task<TrackInteractionResponse> Handle(TrackInteractionCommand request, CancellationToken ct = default)
     {
-        _ = await _petRepository.GetById(request.PetId)
-            ?? throw new DomainException(PetDomainErrorCode.PetNotFound, $"Pet {request.PetId} not found.");
+        _ = await _petRepository.GetByIdOrThrowAsync(request.PetId);
 
         var interaction = PetInteraction.Create(request.PetId, request.UserId, request.Type);
         await _repository.AddAsync(interaction);

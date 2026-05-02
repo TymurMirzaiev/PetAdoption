@@ -2,15 +2,15 @@
 @inject IJSRuntime JS
 
 <div class="d-flex flex-column align-center">
-    @if (Pets.Any())
+    @if (_pets.Any())
     {
         <div class="swipe-card-area" id="@_containerId">
             <div class="swipe-hint swipe-hint--adopt" style="opacity: @HintOpacity("adopt")">ADOPT</div>
             <div class="swipe-hint swipe-hint--reject" style="opacity: @HintOpacity("reject")">NOPE</div>
 
-            @for (var i = Math.Min(Pets.Count - 1, 2); i >= 0; i--)
+            @for (var i = Math.Min(_pets.Count - 1, 2); i >= 0; i--)
             {
-                var pet = Pets[i];
+                var pet = _pets[i];
                 var isTop = i == 0;
                 var offset = i * 4;
                 var scale = 1.0 - i * 0.03;
@@ -59,6 +59,13 @@
     [Parameter] public EventCallback<PetListItem> OnFavorite { get; set; }
     [Parameter] public EventCallback<PetListItem> OnSkip { get; set; }
     [Parameter] public EventCallback OnNeedMore { get; set; }
+
+    private List<PetListItem> _pets = [];
+
+    protected override void OnParametersSet()
+    {
+        _pets = Pets?.ToList() ?? [];
+    }
 
     private double _offsetX;
     private double _startX;
@@ -129,18 +136,18 @@
 
     private async Task TriggerAction(bool isFavorite)
     {
-        if (_animating || !Pets.Any()) return;
+        if (_animating || !_pets.Any()) return;
         await PlayAnimationAndRemove(isFavorite, 0);
     }
 
     private async Task PlayAnimationAndRemove(bool isFavorite, double dragOffset)
     {
-        if (!Pets.Any()) return;
+        if (!_pets.Any()) return;
         _animating = true;
         _offsetX = 0;
         StateHasChanged();
 
-        var pet = Pets[0];
+        var pet = _pets[0];
         var action = isFavorite ? "adopt" : "reject";
         var selector = $"#{_containerId}";
 
@@ -153,7 +160,7 @@
             // JS interop can fail if component disposes during animation
         }
 
-        Pets.RemoveAt(0);
+        _pets.RemoveAt(0);
         _animating = false;
         StateHasChanged();
 
@@ -167,7 +174,7 @@
 
     private async Task CheckNeedMore()
     {
-        if (Pets.Count <= 3)
+        if (_pets.Count <= 3)
             await OnNeedMore.InvokeAsync();
     }
 }

@@ -1,3 +1,6 @@
+const string jwtIssuer = "PetAdoption.UserService";
+const string jwtAudience = "PetAdoption.Services";
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Infrastructure
@@ -21,8 +24,8 @@ var petService = builder.AddProject<Projects.PetAdoption_PetService_API>("petser
     .WithReference(rabbitmq)
     .WithEndpoint("http", e => e.Port = 8080)
     .WithEnvironment("Jwt__Secret", jwtSecret)
-    .WithEnvironment("Jwt__Issuer", "PetAdoption.UserService")
-    .WithEnvironment("Jwt__Audience", "PetAdoption.Services")
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience)
     .WaitFor(sql)
     .WaitFor(rabbitmq);
 
@@ -32,8 +35,8 @@ var userService = builder.AddProject<Projects.PetAdoption_UserService_API>("user
     .WithReference(rabbitmq)
     .WithEndpoint("http", e => e.Port = 5001)
     .WithEnvironment("Jwt__Secret", jwtSecret)
-    .WithEnvironment("Jwt__Issuer", "PetAdoption.UserService")
-    .WithEnvironment("Jwt__Audience", "PetAdoption.Services")
+    .WithEnvironment("Jwt__Issuer", jwtIssuer)
+    .WithEnvironment("Jwt__Audience", jwtAudience)
     .WaitFor(sql)
     .WaitFor(rabbitmq);
 

@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Enums;
 using PetAdoption.UserService.Domain.ValueObjects;
 
 namespace PetAdoption.UserService.Infrastructure.Persistence;
 
-public class UserServiceDbContext : DbContext
+public class UserServiceDbContext : DbContext, IUnitOfWork
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -14,6 +15,9 @@ public class UserServiceDbContext : DbContext
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
 
     public UserServiceDbContext(DbContextOptions<UserServiceDbContext> options) : base(options) { }
+
+    Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken) =>
+        base.SaveChangesAsync(cancellationToken);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

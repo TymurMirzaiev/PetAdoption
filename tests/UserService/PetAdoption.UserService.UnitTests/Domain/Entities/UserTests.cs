@@ -1,4 +1,4 @@
-namespace PetAdoption.UserService.Tests.Domain.Entities;
+namespace PetAdoption.UserService.UnitTests.Domain.Entities;
 
 using FluentAssertions;
 using PetAdoption.UserService.Domain.Entities;

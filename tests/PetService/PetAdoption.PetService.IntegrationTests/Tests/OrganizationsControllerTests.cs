@@ -7,24 +7,18 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class OrganizationsControllerTests : IAsyncLifetime
+internal class OrganizationsControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
     private HttpClient _adminClient = null!;
     private HttpClient _nonMemberClient = null!;
 
     private static readonly Guid TestOrgId = Guid.NewGuid();
 
-    public OrganizationsControllerTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public OrganizationsControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
+        base.InitializeAsync();
 
         // Admin client — member of the org with Admin role
         _adminClient = _factory.CreateClient();
@@ -50,14 +44,14 @@ public class OrganizationsControllerTests : IAsyncLifetime
                     { "orgRole", "Admin" }
                 }));
 
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
-        _adminClient.Dispose();
-        _nonMemberClient.Dispose();
-        await _factory.DisposeAsync();
+        _adminClient?.Dispose();
+        _nonMemberClient?.Dispose();
+        await base.DisposeAsync();
     }
 
     // ──────────────────────────────────────────────────────────────

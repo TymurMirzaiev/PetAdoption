@@ -75,7 +75,7 @@ else
         {
             try
             {
-                var response = await PetApi.CreatePetTypeAsync(new { Code = data.Code, Name = data.Name });
+                var response = await PetApi.CreatePetTypeAsync(new CreatePetTypeRequest(data.Code, data.Name));
                 if (response.IsSuccessStatusCode)
                 {
                     Snackbar.Add("Pet type created!", Severity.Success);

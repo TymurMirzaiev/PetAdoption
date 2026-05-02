@@ -33,7 +33,7 @@
                         <div class="d-flex align-center gap-3">
                             <MudText Typo="Typo.body1">@item.PetName</MudText>
                             <MudText Typo="Typo.body2" Color="Color.Secondary">@item.PetType</MudText>
-                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(item.Status)">@item.Status</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@PetDisplayHelpers.RequestStatusColor(item.Status)">@item.Status</MudChip>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@item.CreatedAt.ToLocalTime().ToString("g")</MudText>
                             @if (item.Status == "Pending")
                             {
@@ -90,12 +90,4 @@
         catch { Snackbar.Add("Failed to cancel request", Severity.Error); }
     }
 
-    private static Color StatusColor(string status) => status switch
-    {
-        "Pending" => Color.Warning,
-        "Approved" => Color.Success,
-        "Rejected" => Color.Error,
-        "Cancelled" => Color.Default,
-        _ => Color.Default
-    };
 }

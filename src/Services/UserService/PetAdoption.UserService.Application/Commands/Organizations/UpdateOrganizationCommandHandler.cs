@@ -1,4 +1,5 @@
 using PetAdoption.UserService.Application.Abstractions;
+using PetAdoption.UserService.Domain.Exceptions;
 using PetAdoption.UserService.Domain.Interfaces;
 
 namespace PetAdoption.UserService.Application.Commands.Organizations;
@@ -12,8 +13,7 @@ public class UpdateOrganizationCommandHandler : ICommandHandler<UpdateOrganizati
     public async Task<UpdateOrganizationResponse> HandleAsync(UpdateOrganizationCommand command, CancellationToken cancellationToken = default)
     {
         var org = await _orgRepo.GetByIdAsync(command.Id);
-        if (org is null)
-            return new UpdateOrganizationResponse(false, "Organization not found");
+        if (org is null) throw new OrganizationNotFoundException(command.Id);
 
         org.Update(command.Name, command.Description);
         await _orgRepo.UpdateAsync(org);

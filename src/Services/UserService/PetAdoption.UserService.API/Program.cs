@@ -15,20 +15,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // When running under Aspire, override RabbitMQ host/port from the provided connection string
 builder.Services.PostConfigure<RabbitMqOptions>(options =>
-{
-    var connStr = builder.Configuration.GetConnectionString("rabbitmq");
-    if (connStr is not null && Uri.TryCreate(connStr, UriKind.Absolute, out var uri))
-    {
-        options.Host = uri.Host;
-        options.Port = uri.Port > 0 ? uri.Port : 5672;
-        if (uri.UserInfo is { Length: > 0 } userInfo)
-        {
-            var parts = userInfo.Split(':');
-            options.User = Uri.UnescapeDataString(parts[0]);
-            if (parts.Length > 1) options.Password = Uri.UnescapeDataString(parts[1]);
-        }
-    }
-});
+    ApplyAspireRabbitMqConnectionString(options, builder.Configuration.GetConnectionString("rabbitmq")));
 
 // JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -133,3 +120,18 @@ app.MapDefaultEndpoints();
 app.Logger.LogInformation("UserService API starting...");
 
 app.Run();
+
+static void ApplyAspireRabbitMqConnectionString(RabbitMqOptions options, string? connStr)
+{
+    if (connStr is not null && Uri.TryCreate(connStr, UriKind.Absolute, out var uri))
+    {
+        options.Host = uri.Host;
+        options.Port = uri.Port > 0 ? uri.Port : 5672;
+        if (uri.UserInfo is { Length: > 0 } userInfo)
+        {
+            var parts = userInfo.Split(':');
+            options.User = Uri.UnescapeDataString(parts[0]);
+            if (parts.Length > 1) options.Password = Uri.UnescapeDataString(parts[1]);
+        }
+    }
+}

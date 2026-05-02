@@ -8,7 +8,7 @@ namespace PetAdoption.PetService.API.Controllers;
 
 [ApiController]
 [Authorize]
-public class OrganizationsController : ControllerBase
+public class OrganizationsController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -37,8 +37,8 @@ public class OrganizationsController : ControllerBase
             request.Region,
             request.Country,
             request.PostalCode,
-            User.FindFirst("organizationId")?.Value ?? "",
-            User.FindFirst("orgRole")?.Value ?? ""),
+            GetOrganizationId(),
+            GetOrgRole() ?? ""),
             ct);
 
         return Ok(result);

@@ -8,58 +8,24 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class PetFilterTests : IAsyncLifetime
+internal class PetFilterTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-    private HttpClient _client = null!;
     private Guid _dogTypeId;
     private Guid _catTypeId;
 
-    public PetFilterTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public PetFilterTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        _client = _factory.CreateClient();
+        await base.InitializeAsync();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken(role: "Admin"));
         await SeedTestData();
     }
 
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await _factory.DisposeAsync();
-    }
-
     // ──────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────
-
-    private async Task<Guid> SeedPetTypeAsync(string code, string name)
-    {
-        var request = new CreatePetTypeRequestBuilder()
-            .WithCode(code)
-            .WithName(name)
-            .Build();
-
-        var response = await _client.PostAsJsonAsync("/api/admin/pet-types", request);
-
-        if (response.StatusCode == HttpStatusCode.Created)
-        {
-            var result = await response.Content.ReadFromJsonAsync<PetTypeItem>();
-            return result!.Id;
-        }
-
-        var allTypesResponse = await _client.GetAsync("/api/admin/pet-types?includeInactive=true");
-        var allTypes = await allTypesResponse.Content.ReadFromJsonAsync<List<PetTypeItem>>();
-        return allTypes!.First(t => t.Code == code).Id;
-    }
 
     private async Task SeedTestData()
     {
@@ -82,7 +48,8 @@ public class PetFilterTests : IAsyncLifetime
             .WithAgeMonths(ageMonths)
             .Build();
 
-        await _client.PostAsJsonAsync("/api/pets", request);
+        var response = await _client.PostAsJsonAsync("/api/pets", request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -246,5 +213,4 @@ public class PetFilterTests : IAsyncLifetime
 
     private record PetsResult(List<PetItem> Pets, long Total, int Skip, int Take);
     private record PetItem(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description);
-    private record PetTypeItem(Guid Id, string Code, string Name, bool IsActive);
 }

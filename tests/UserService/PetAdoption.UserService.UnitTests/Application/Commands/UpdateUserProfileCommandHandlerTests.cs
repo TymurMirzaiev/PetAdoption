@@ -1,8 +1,9 @@
-namespace PetAdoption.UserService.Tests.Application.Commands;
+namespace PetAdoption.UserService.UnitTests.Application.Commands;
 
 using FluentAssertions;
 using Moq;
 using PetAdoption.UserService.Application.Commands;
+using PetAdoption.UserService.Application.DTOs;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Exceptions;
 using PetAdoption.UserService.Domain.Interfaces;
@@ -38,11 +39,12 @@ public class UpdateUserProfileCommandHandlerTests
             user.Id.Value,
             "Jane Doe",
             "+9876543210",
-            new UserPreferences
-            {
-                PreferredPetType = "Cat",
-                ReceiveEmailNotifications = false
-            }
+            new UpdatePreferencesDto(
+                PreferredPetType: "Cat",
+                PreferredSizes: null,
+                PreferredAgeRange: null,
+                ReceiveEmailNotifications: false,
+                ReceiveSmsNotifications: false)
         );
 
         _mockUserRepository
@@ -71,11 +73,12 @@ public class UpdateUserProfileCommandHandlerTests
             null
         );
 
-        var preferences = new UserPreferences
-        {
-            PreferredPetType = "Dog",
-            ReceiveEmailNotifications = true
-        };
+        var preferences = new UpdatePreferencesDto(
+            PreferredPetType: "Dog",
+            PreferredSizes: null,
+            PreferredAgeRange: null,
+            ReceiveEmailNotifications: true,
+            ReceiveSmsNotifications: false);
 
         var command = new UpdateUserProfileCommand(
             user.Id.Value,

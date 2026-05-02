@@ -72,7 +72,7 @@
         {
             try
             {
-                var response = await PetApi.CreateAnnouncementAsync(new { data.Title, data.Body, data.StartDate, data.EndDate });
+                var response = await PetApi.CreateAnnouncementAsync(new CreateAnnouncementRequest(data.Title, data.Body, data.StartDate, data.EndDate));
                 if (response.IsSuccessStatusCode)
                 {
                     Snackbar.Add("Announcement created!", Severity.Success);
@@ -109,7 +109,7 @@
         {
             try
             {
-                var response = await PetApi.UpdateAnnouncementAsync(item.Id, new { data.Title, data.Body, data.StartDate, data.EndDate });
+                var response = await PetApi.UpdateAnnouncementAsync(item.Id, new UpdateAnnouncementRequest(data.Title, data.Body, data.StartDate, data.EndDate));
                 if (response.IsSuccessStatusCode)
                 {
                     Snackbar.Add("Updated!", Severity.Success);

@@ -1,4 +1,4 @@
-namespace PetAdoption.UserService.Tests.Application.Commands;
+namespace PetAdoption.UserService.UnitTests.Application.Commands;
 
 using FluentAssertions;
 using Moq;
@@ -27,7 +27,7 @@ public class RefreshTokenCommandHandlerTests
             _mockRefreshTokenRepo.Object,
             _mockUserRepo.Object,
             _mockJwtGenerator.Object,
-            Options.Create(new JwtApplicationOptions()));
+            Options.Create(new JwtOptions()));
     }
 
     // ──────────────────────────────────────────────────────────────

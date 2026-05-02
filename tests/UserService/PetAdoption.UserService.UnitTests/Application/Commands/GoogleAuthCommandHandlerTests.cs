@@ -1,4 +1,4 @@
-namespace PetAdoption.UserService.Tests.Application.Commands;
+namespace PetAdoption.UserService.UnitTests.Application.Commands;
 
 using FluentAssertions;
 using Moq;
@@ -30,7 +30,7 @@ public class GoogleAuthCommandHandlerTests
             _mockUserRepo.Object,
             _mockJwtGenerator.Object,
             _mockRefreshTokenRepo.Object,
-            Options.Create(new JwtApplicationOptions()));
+            Options.Create(new JwtOptions()));
     }
 
     // ──────────────────────────────────────────────────────────────

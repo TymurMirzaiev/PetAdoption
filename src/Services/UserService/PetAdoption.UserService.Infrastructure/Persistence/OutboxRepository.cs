@@ -30,19 +30,19 @@ public class OutboxRepository : IOutboxRepository
 
     public async Task MarkAsProcessedAsync(string id)
     {
-        await _db.OutboxEvents
-            .Where(e => e.Id == id)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(e => e.IsProcessed, true)
-                .SetProperty(e => e.ProcessedAt, DateTime.UtcNow));
+        var outboxEvent = await _db.OutboxEvents.FindAsync(id);
+        if (outboxEvent is null) return;
+
+        outboxEvent.MarkProcessed();
+        await _db.SaveChangesAsync();
     }
 
     public async Task MarkAsFailedAsync(string id, string error)
     {
-        await _db.OutboxEvents
-            .Where(e => e.Id == id)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(e => e.RetryCount, e => e.RetryCount + 1)
-                .SetProperty(e => e.LastError, error));
+        var outboxEvent = await _db.OutboxEvents.FindAsync(id);
+        if (outboxEvent is null) return;
+
+        outboxEvent.MarkFailed(error);
+        await _db.SaveChangesAsync();
     }
 }

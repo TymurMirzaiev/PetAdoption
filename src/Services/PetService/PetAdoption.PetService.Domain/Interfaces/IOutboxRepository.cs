@@ -5,8 +5,8 @@ namespace PetAdoption.PetService.Domain.Interfaces;
 /// </summary>
 public interface IOutboxRepository
 {
-    Task Add(OutboxEvent outboxEvent);
-    Task AddRange(IEnumerable<OutboxEvent> outboxEvents);
-    Task<IEnumerable<OutboxEvent>> GetPendingEvents(int batchSize = 100);
-    Task Update(OutboxEvent outboxEvent);
+    Task AddAsync(OutboxEvent outboxEvent);
+    Task AddRangeAsync(IEnumerable<OutboxEvent> outboxEvents);
+    Task<IEnumerable<OutboxEvent>> GetPendingEventsAsync(int batchSize = 100);
+    Task UpdateAsync(OutboxEvent outboxEvent);
 }

@@ -68,7 +68,7 @@ internal class PetServiceWebAppFactory : WebApplicationFactory<Program>
         Dictionary<string, string>? additionalClaims = null)
     {
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes("test-secret-key-minimum-32-characters-long-for-testing!"));
+            Encoding.UTF8.GetBytes(TestJwtSecret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var claims = new List<Claim>
         {

@@ -3,7 +3,7 @@
 <MudCard Elevation="4" Style="width: 300px; height: 420px;" Class="d-flex flex-column">
     <MudCardHeader>
         <CardHeaderAvatar>
-            <MudAvatar Color="Color.Primary" Size="Size.Large">@Pet.Name[..1]</MudAvatar>
+            <MudAvatar Color="Color.Primary" Size="Size.Large">@(Pet.Name.Length > 0 ? Pet.Name[..1] : "?")</MudAvatar>
         </CardHeaderAvatar>
         <CardHeaderContent>
             <MudText Typo="Typo.h6">@Pet.Name</MudText>
@@ -17,7 +17,7 @@
         }
         @if (Pet.AgeMonths.HasValue)
         {
-            <MudText Typo="Typo.body2"><b>Age:</b> @FormatAge(Pet.AgeMonths.Value)</MudText>
+            <MudText Typo="Typo.body2"><b>Age:</b> @PetDisplayHelpers.FormatAge(Pet.AgeMonths.Value)</MudText>
         }
         @if (Pet.Description is not null)
         {
@@ -37,6 +37,4 @@
     [Parameter] public bool ShowActions { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private static string FormatAge(int months) =>
-        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
 }

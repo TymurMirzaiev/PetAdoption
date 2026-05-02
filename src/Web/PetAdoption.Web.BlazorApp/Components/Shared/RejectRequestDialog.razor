@@ -1,0 +1,19 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_reason" Label="Rejection reason" Lines="3"
+                      Variant="Variant.Outlined" Required="true" MaxLength="1000" Counter="1000" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   Disabled="@string.IsNullOrWhiteSpace(_reason)"
+                   OnClick="@(() => MudDialog.Close(DialogResult.Ok(_reason)))">Reject</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string PetName { get; set; } = "";
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _reason = "";
+}

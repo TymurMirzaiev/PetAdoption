@@ -34,11 +34,7 @@ public class ApproveAdoptionRequestCommandHandler
         OrgAuthorization.EnsureMember(
             adoptionRequest.OrganizationId, request.ReviewerOrgId, request.ReviewerOrgRole);
 
-        var pet = await _petRepository.GetById(adoptionRequest.PetId)
-            ?? throw new DomainException(
-                PetDomainErrorCode.PetNotFound,
-                $"Pet {adoptionRequest.PetId} not found.",
-                new Dictionary<string, object> { { "PetId", adoptionRequest.PetId } });
+        var pet = await _petRepository.GetByIdOrThrowAsync(adoptionRequest.PetId);
 
         if (pet.Status != PetStatus.Available)
             throw new DomainException(PetDomainErrorCode.PetNotAvailable, "Pet is no longer available.");

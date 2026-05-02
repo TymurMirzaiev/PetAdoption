@@ -2,6 +2,7 @@ namespace PetAdoption.Web.BlazorApp.Services;
 
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.WebUtilities;
 using PetAdoption.Web.BlazorApp.Models;
 
 public class PetApiClient
@@ -17,12 +18,17 @@ public class PetApiClient
         string? status = null, Guid? petTypeId = null, int skip = 0, int take = 20,
         int? minAge = null, int? maxAge = null, string? breed = null)
     {
-        var query = $"api/pets?skip={skip}&take={take}";
-        if (status is not null) query += $"&status={status}";
-        if (petTypeId.HasValue) query += $"&petTypeId={petTypeId}";
-        if (minAge.HasValue) query += $"&minAge={minAge}";
-        if (maxAge.HasValue) query += $"&maxAge={maxAge}";
-        if (!string.IsNullOrWhiteSpace(breed)) query += $"&breed={Uri.EscapeDataString(breed)}";
+        var parameters = new Dictionary<string, string?>
+        {
+            ["skip"] = skip.ToString(),
+            ["take"] = take.ToString(),
+            ["status"] = status,
+            ["petTypeId"] = petTypeId?.ToString(),
+            ["minAge"] = minAge?.ToString(),
+            ["maxAge"] = maxAge?.ToString(),
+            ["breed"] = string.IsNullOrWhiteSpace(breed) ? null : breed
+        };
+        var query = QueryHelpers.AddQueryString("api/pets", parameters);
         return await _http.GetFromJsonAsync<PetsResponse>(query);
     }
 
@@ -50,10 +56,10 @@ public class PetApiClient
     public async Task<PetTypesResponse?> GetPetTypesAsync(bool includeInactive = false) =>
         await _http.GetFromJsonAsync<PetTypesResponse>($"api/admin/pet-types?includeInactive={includeInactive}");
 
-    public Task<HttpResponseMessage> CreatePetTypeAsync(object request) =>
+    public Task<HttpResponseMessage> CreatePetTypeAsync(CreatePetTypeRequest request) =>
         _http.PostAsJsonAsync("api/admin/pet-types", request);
 
-    public Task<HttpResponseMessage> UpdatePetTypeAsync(Guid id, object request) =>
+    public Task<HttpResponseMessage> UpdatePetTypeAsync(Guid id, UpdatePetTypeRequest request) =>
         _http.PutAsJsonAsync($"api/admin/pet-types/{id}", request);
 
     public Task<HttpResponseMessage> ActivatePetTypeAsync(Guid id) =>
@@ -67,14 +73,18 @@ public class PetApiClient
         int take = 10, string? breed = null,
         decimal? lat = null, decimal? lng = null, int? radiusKm = null)
     {
-        var query = $"api/discover?take={take}";
-        if (petTypeId.HasValue) query += $"&petTypeId={petTypeId}";
-        if (minAge.HasValue) query += $"&minAge={minAge}";
-        if (maxAge.HasValue) query += $"&maxAge={maxAge}";
-        if (!string.IsNullOrWhiteSpace(breed)) query += $"&breed={Uri.EscapeDataString(breed)}";
-        if (lat.HasValue) query += $"&lat={lat.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-        if (lng.HasValue) query += $"&lng={lng.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
-        if (radiusKm.HasValue) query += $"&radiusKm={radiusKm.Value}";
+        var parameters = new Dictionary<string, string?>
+        {
+            ["take"] = take.ToString(),
+            ["petTypeId"] = petTypeId?.ToString(),
+            ["minAge"] = minAge?.ToString(),
+            ["maxAge"] = maxAge?.ToString(),
+            ["breed"] = string.IsNullOrWhiteSpace(breed) ? null : breed,
+            ["lat"] = lat?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["lng"] = lng?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["radiusKm"] = radiusKm?.ToString()
+        };
+        var query = QueryHelpers.AddQueryString("api/discover", parameters);
         return await _http.GetFromJsonAsync<DiscoverPetsResponse>(query);
     }
 
@@ -94,9 +104,15 @@ public class PetApiClient
         int skip = 0, int take = 10,
         Guid? petTypeId = null, string? status = null, string sortBy = "newest")
     {
-        var query = $"api/favorites?skip={skip}&take={take}&sortBy={sortBy}";
-        if (petTypeId.HasValue) query += $"&petTypeId={petTypeId}";
-        if (status is not null) query += $"&status={status}";
+        var parameters = new Dictionary<string, string?>
+        {
+            ["skip"] = skip.ToString(),
+            ["take"] = take.ToString(),
+            ["sortBy"] = sortBy,
+            ["petTypeId"] = petTypeId?.ToString(),
+            ["status"] = status
+        };
+        var query = QueryHelpers.AddQueryString("api/favorites", parameters);
         return await _http.GetFromJsonAsync<FavoritesResponse>(query);
     }
 
@@ -119,10 +135,10 @@ public class PetApiClient
     public async Task<AnnouncementDetail?> GetAnnouncementAsync(Guid id) =>
         await _http.GetFromJsonAsync<AnnouncementDetail>($"api/announcements/{id}");
 
-    public Task<HttpResponseMessage> CreateAnnouncementAsync(object request) =>
+    public Task<HttpResponseMessage> CreateAnnouncementAsync(CreateAnnouncementRequest request) =>
         _http.PostAsJsonAsync("api/announcements", request);
 
-    public Task<HttpResponseMessage> UpdateAnnouncementAsync(Guid id, object request) =>
+    public Task<HttpResponseMessage> UpdateAnnouncementAsync(Guid id, UpdateAnnouncementRequest request) =>
         _http.PutAsJsonAsync($"api/announcements/{id}", request);
 
     public Task<HttpResponseMessage> DeleteAnnouncementAsync(Guid id) =>
@@ -131,9 +147,14 @@ public class PetApiClient
     // Organization-scoped pet management
     public async Task<OrgPetsResponse?> GetOrgPetsAsync(Guid orgId, string? status = null, string? tags = null, int skip = 0, int take = 20)
     {
-        var query = $"api/organizations/{orgId}/pets?skip={skip}&take={take}";
-        if (status is not null) query += $"&status={status}";
-        if (tags is not null) query += $"&tags={Uri.EscapeDataString(tags)}";
+        var parameters = new Dictionary<string, string?>
+        {
+            ["skip"] = skip.ToString(),
+            ["take"] = take.ToString(),
+            ["status"] = status,
+            ["tags"] = tags
+        };
+        var query = QueryHelpers.AddQueryString($"api/organizations/{orgId}/pets", parameters);
         return await _http.GetFromJsonAsync<OrgPetsResponse>(query);
     }
 
@@ -181,10 +202,14 @@ public class PetApiClient
         Guid orgId, DateTime? from = null, DateTime? to = null,
         string? sortBy = null, bool descending = true)
     {
-        var query = $"api/organizations/{orgId}/metrics?descending={descending}";
-        if (from.HasValue) query += $"&from={from.Value:yyyy-MM-ddTHH:mm:ss}";
-        if (to.HasValue) query += $"&to={to.Value:yyyy-MM-ddTHH:mm:ss}";
-        if (sortBy is not null) query += $"&sortBy={sortBy}";
+        var parameters = new Dictionary<string, string?>
+        {
+            ["descending"] = descending.ToString().ToLowerInvariant(),
+            ["from"] = from?.ToString("yyyy-MM-ddTHH:mm:ss"),
+            ["to"] = to?.ToString("yyyy-MM-ddTHH:mm:ss"),
+            ["sortBy"] = sortBy
+        };
+        var query = QueryHelpers.AddQueryString($"api/organizations/{orgId}/metrics", parameters);
         return await _http.GetFromJsonAsync<OrgMetricsResponse>(query);
     }
 
@@ -196,13 +221,15 @@ public class PetApiClient
     public async Task<OrgDashboardResponse?> GetOrgDashboardAsync(Guid orgId) =>
         await _http.GetFromJsonAsync<OrgDashboardResponse>($"api/organizations/{orgId}/dashboard");
 
-    public async Task<OrgDashboardTrendsResponse?> GetOrgDashboardTrendsAsync(Guid orgId, DateTime? from, DateTime? to)
+    public async Task<HttpResponseMessage> GetOrgDashboardTrendsAsync(Guid orgId, DateTime? from, DateTime? to)
     {
-        var query = $"api/organizations/{orgId}/dashboard/trends";
-        var sep = "?";
-        if (from.HasValue) { query += $"{sep}from={from.Value:O}"; sep = "&"; }
-        if (to.HasValue) query += $"{sep}to={to.Value:O}";
-        return await _http.GetFromJsonAsync<OrgDashboardTrendsResponse>(query);
+        var parameters = new Dictionary<string, string?>
+        {
+            ["from"] = from?.ToString("O"),
+            ["to"] = to?.ToString("O")
+        };
+        var query = QueryHelpers.AddQueryString($"api/organizations/{orgId}/dashboard/trends", parameters);
+        return await _http.GetAsync(query);
     }
 
     // Pet media

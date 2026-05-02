@@ -8,23 +8,15 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class OrgDashboardControllerTests : IAsyncLifetime
+internal class OrgDashboardControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-    private HttpClient _client = null!;
     private static readonly Guid TestOrgId = Guid.NewGuid();
 
-    public OrgDashboardControllerTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public OrgDashboardControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        _client = _factory.CreateClient();
+        base.InitializeAsync();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken(
                 userId: "test-org-user",
@@ -34,13 +26,7 @@ public class OrgDashboardControllerTests : IAsyncLifetime
                     { "organizationId", TestOrgId.ToString() },
                     { "orgRole", "Admin" }
                 }));
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        return Task.CompletedTask;
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -188,24 +174,6 @@ public class OrgDashboardControllerTests : IAsyncLifetime
     // Helpers
     // ──────────────────────────────────────────────────────────────
 
-    private async Task<Guid> SeedPetTypeAsync()
-    {
-        var adminClient = _factory.CreateClient();
-        adminClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken());
-
-        var response = await adminClient.PostAsJsonAsync("/api/admin/pet-types", new { Code = "dog", Name = "Dog" });
-        if (response.StatusCode == HttpStatusCode.Created)
-        {
-            var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
-            return result!.Id;
-        }
-
-        var allTypesResponse = await adminClient.GetAsync("/api/admin/pet-types?includeInactive=true");
-        var allTypes = await allTypesResponse.Content.ReadFromJsonAsync<List<PetTypeResponseDto>>();
-        return allTypes!.First(t => t.Code == "dog").Id;
-    }
-
     private async Task SeedOrgPetsAsync(Guid petTypeId, int availableCount, int adoptedCount)
     {
         await using var db = _factory.CreateDbContext();
@@ -250,6 +218,4 @@ public class OrgDashboardControllerTests : IAsyncLifetime
 
     private record TrendPointDto(DateTime WeekStart, string Label, int Count);
 
-    private record CreatePetTypeResponseDto(Guid Id);
-    private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 }

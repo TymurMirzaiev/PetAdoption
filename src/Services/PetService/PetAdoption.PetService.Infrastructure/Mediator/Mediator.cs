@@ -1,25 +1,7 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using PetAdoption.PetService.Application.Abstractions;
 
 namespace PetAdoption.PetService.Infrastructure.Mediator;
-
-internal sealed class LoggingRequestHandler<TRequest, TResponse>(
-    IRequestHandler<TRequest, TResponse> innerHandler,
-    ILogger<LoggingRequestHandler<TRequest, TResponse>> logger) : IRequestHandler<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
-{
-    public async Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Begin pipeline behavior {Request}", request.GetType().Name);
-
-        var response = await innerHandler.Handle(request, cancellationToken);
-
-        logger.LogInformation("End pipeline behavior {Request}", request.GetType().Name);
-
-        return response;
-    }
-}
 
 public class Mediator(IServiceProvider provider) : IMediator
 {
@@ -51,5 +33,3 @@ public class Mediator(IServiceProvider provider) : IMediator
         return handler.Handle((dynamic)request, ct);
     }
 }
-
-public readonly struct Unit { public static readonly Unit Value = new(); }

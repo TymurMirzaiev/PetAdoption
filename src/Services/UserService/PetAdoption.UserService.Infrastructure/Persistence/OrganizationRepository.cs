@@ -13,6 +13,9 @@ public class OrganizationRepository : IOrganizationRepository
     public async Task<Organization?> GetByIdAsync(Guid id) =>
         await _db.Organizations.FindAsync(id);
 
+    public async Task<IEnumerable<Organization>> GetByIdsAsync(IEnumerable<Guid> ids) =>
+        await _db.Organizations.Where(o => ids.Contains(o.Id)).ToListAsync();
+
     public async Task<Organization?> GetBySlugAsync(string slug) =>
         await _db.Organizations.FirstOrDefaultAsync(o => o.Slug == slug);
 

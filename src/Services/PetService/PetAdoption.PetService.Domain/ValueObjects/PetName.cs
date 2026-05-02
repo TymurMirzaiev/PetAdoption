@@ -5,12 +5,10 @@ namespace PetAdoption.PetService.Domain.ValueObjects;
 /// <summary>
 /// Value object representing a pet's name with validation rules.
 /// </summary>
-public sealed class PetName : IEquatable<PetName>
+public sealed class PetName : StringValueObject, IEquatable<PetName>
 {
     public const int MaxLength = 100;
     public const int MinLength = 1;
-
-    public string Value { get; }
 
     public PetName(string value)
     {
@@ -58,19 +56,7 @@ public sealed class PetName : IEquatable<PetName>
         Value = trimmedValue;
     }
 
-    // Equality implementation for value object
-    public bool Equals(PetName? other)
-    {
-        if (other is null) return false;
-        if (ReferenceEquals(this, other)) return true;
-        return Value == other.Value;
-    }
-
-    public override bool Equals(object? obj) => Equals(obj as PetName);
-
-    public override int GetHashCode() => Value.GetHashCode();
-
-    public override string ToString() => Value;
+    public bool Equals(PetName? other) => other is not null && Value == other.Value;
 
     // Implicit conversion from string for convenience
     public static implicit operator string(PetName petName) => petName.Value;

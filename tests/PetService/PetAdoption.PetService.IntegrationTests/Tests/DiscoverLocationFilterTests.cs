@@ -3,16 +3,14 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using PetAdoption.PetService.IntegrationTests.Builders;
+using PetAdoption.PetService.IntegrationTests.Helpers;
 using PetAdoption.PetService.IntegrationTests.Infrastructure;
 using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class DiscoverLocationFilterTests : IAsyncLifetime
+internal class DiscoverLocationFilterTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
     private HttpClient _adminClient = null!;
     private HttpClient _userClient = null!;
 
@@ -32,14 +30,11 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
     private static readonly Guid FarOrgId = Guid.NewGuid();
     private static readonly Guid TestUserId = Guid.NewGuid();
 
-    public DiscoverLocationFilterTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public DiscoverLocationFilterTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
+        await base.InitializeAsync();
 
         _adminClient = _factory.CreateClient();
         _adminClient.DefaultRequestHeaders.Authorization =
@@ -59,11 +54,11 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
         await SeedOrgsAndPets();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
-        _adminClient.Dispose();
-        _userClient.Dispose();
-        await _factory.DisposeAsync();
+        _adminClient?.Dispose();
+        _userClient?.Dispose();
+        await base.DisposeAsync();
     }
 
     private async Task SeedOrgsAndPets()
@@ -231,7 +226,6 @@ public class DiscoverLocationFilterTests : IAsyncLifetime
 
     private record DiscoverPetDto(Guid Id, string Name, string Type, string Status, string? Breed, int? AgeMonths, string? Description, List<string>? Tags);
     private record DiscoverResponseDto(List<DiscoverPetDto> Pets, bool HasMore);
-    private record CreatePetTypeResponseDto(Guid Id, string Code, string Name);
     private record PetTypeListResponseDto(List<PetTypeItemDto> Items);
     private record PetTypeItemDto(Guid Id, string Code, string Name, bool IsActive);
 }

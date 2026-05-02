@@ -6,6 +6,7 @@ using PetAdoption.PetService.API.Authorization;
 using PetAdoption.PetService.API.Hubs;
 using PetAdoption.PetService.API.Services;
 using PetAdoption.PetService.Application.Options;
+using PetAdoption.PetService.Application.Commands;
 using PetAdoption.PetService.Application.Queries;
 using PetAdoption.PetService.Application.Services;
 using PetAdoption.PetService.Domain.Interfaces;
@@ -26,20 +27,7 @@ builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("Ra
 
 // When running under Aspire, override RabbitMQ host/port from the provided connection string
 builder.Services.PostConfigure<RabbitMqOptions>(options =>
-{
-    var connStr = builder.Configuration.GetConnectionString("rabbitmq");
-    if (connStr is not null && Uri.TryCreate(connStr, UriKind.Absolute, out var uri))
-    {
-        options.Host = uri.Host;
-        options.Port = uri.Port > 0 ? uri.Port : 5672;
-        if (uri.UserInfo is { Length: > 0 } userInfo)
-        {
-            var parts = userInfo.Split(':');
-            options.User = Uri.UnescapeDataString(parts[0]);
-            if (parts.Length > 1) options.Password = Uri.UnescapeDataString(parts[1]);
-        }
-    }
-});
+    ApplyAspireRabbitMqConnectionString(options, builder.Configuration.GetConnectionString("rabbitmq")));
 
 // SQL Server via EF Core
 var connectionString = builder.Configuration.GetConnectionString("SqlServer")
@@ -81,7 +69,7 @@ builder.Services.AddHostedService<RabbitMqTopologySetup>();
 builder.Services.AddHostedService<OutboxProcessorService>();
 
 // Register mediator with Application assembly to auto-discover handlers
-builder.Services.AddMediator(typeof(GetAllPetsQueryHandler).Assembly);
+builder.Services.AddMediator(typeof(CreatePetCommandHandler).Assembly);
 
 builder.Services.AddControllers();
 
@@ -220,3 +208,18 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.Run();
+
+static void ApplyAspireRabbitMqConnectionString(RabbitMqOptions options, string? connStr)
+{
+    if (connStr is not null && Uri.TryCreate(connStr, UriKind.Absolute, out var uri))
+    {
+        options.Host = uri.Host;
+        options.Port = uri.Port > 0 ? uri.Port : 5672;
+        if (uri.UserInfo is { Length: > 0 } userInfo)
+        {
+            var parts = userInfo.Split(':');
+            options.User = Uri.UnescapeDataString(parts[0]);
+            if (parts.Length > 1) options.Password = Uri.UnescapeDataString(parts[1]);
+        }
+    }
+}

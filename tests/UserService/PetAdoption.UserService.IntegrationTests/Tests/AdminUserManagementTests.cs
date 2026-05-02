@@ -2,9 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Enums;
-using PetAdoption.UserService.IntegrationTests.Builders;
+using PetAdoption.UserService.IntegrationTests.Helpers;
 using PetAdoption.UserService.IntegrationTests.Infrastructure;
 using Xunit;
 
@@ -36,60 +35,32 @@ public class AdminUserManagementTests : IAsyncLifetime
         _factory = new UserServiceWebAppFactory(_sqlFixture.ConnectionString);
         _unauthenticatedClient = _factory.CreateClient();
 
-        // 1. Register admin user via API
-        var adminRegisterClient = _factory.CreateClient();
-        var adminRegisterResponse = await adminRegisterClient.PostAsJsonAsync("/api/users/register", new
-        {
-            Email = AdminEmail,
-            FullName = "Admin User",
-            Password = AdminPassword
-        });
-        adminRegisterResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var adminRegResult = await adminRegisterResponse.Content.ReadFromJsonAsync<RegisterResponse>();
-        _adminUserId = adminRegResult!.UserId;
+        // Set up admin user (register → promote → login)
+        (_adminClient, _adminUserId) = await AuthSetupHelper.CreatePromotedUserAsync(
+            _factory, UserRole.Admin, AdminEmail, "Admin User", AdminPassword);
 
-        // 2. Promote to admin via direct database update
-        await using var db = _factory.CreateDbContext();
-        var user = await db.Users.FirstAsync(u => u.Id == Domain.ValueObjects.UserId.From(_adminUserId));
-        // Use raw SQL to update enum since the entity uses private setters
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"UPDATE Users SET Role = {(int)UserRole.Admin} WHERE Id = {_adminUserId}");
-
-        // 3. Login as admin to get admin JWT
-        _adminClient = _factory.CreateClient();
-        var adminLoginResponse = await _adminClient.PostAsJsonAsync("/api/users/login", new
-        {
-            Email = AdminEmail,
-            Password = AdminPassword
-        });
-        adminLoginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var adminLoginResult = await adminLoginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
-        _adminClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", adminLoginResult!.Token);
-
-        // 4. Register regular user via API
-        var regularRegisterClient = _factory.CreateClient();
-        var regularRegisterResponse = await regularRegisterClient.PostAsJsonAsync("/api/users/register", new
+        // Register and login regular user (no promotion needed)
+        using var registerClient = _factory.CreateClient();
+        var regResponse = await registerClient.PostAsJsonAsync("/api/users/register", new
         {
             Email = RegularEmail,
             FullName = "Regular User",
             Password = RegularPassword
         });
-        regularRegisterResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var regularRegResult = await regularRegisterResponse.Content.ReadFromJsonAsync<RegisterResponse>();
-        _regularUserId = regularRegResult!.UserId;
+        regResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var regResult = await regResponse.Content.ReadFromJsonAsync<RegisterResponse>();
+        _regularUserId = regResult!.UserId;
 
-        // 5. Login as regular user
         _regularClient = _factory.CreateClient();
-        var regularLoginResponse = await _regularClient.PostAsJsonAsync("/api/users/login", new
+        var loginResponse = await _regularClient.PostAsJsonAsync("/api/users/login", new
         {
             Email = RegularEmail,
             Password = RegularPassword
         });
-        regularLoginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var regularLoginResult = await regularLoginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var loginResult = await loginResponse.Content.ReadFromJsonAsync<LoginResponseDto>();
         _regularClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", regularLoginResult!.Token);
+            new AuthenticationHeaderValue("Bearer", loginResult!.Token);
     }
 
     public async Task DisposeAsync()
@@ -319,22 +290,6 @@ public class AdminUserManagementTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────
     // Response DTOs for deserialization
     // ──────────────────────────────────────────────────────────────
-
-    private record RegisterResponse(
-        bool Success,
-        string UserId,
-        string Email,
-        string FullName,
-        string Role);
-
-    private record LoginResponseDto(
-        bool Success,
-        string Token,
-        string UserId,
-        string Email,
-        string FullName,
-        string Role,
-        int ExpiresIn);
 
     private record GetUsersResponseDto(
         List<UserListItemDto> Users,

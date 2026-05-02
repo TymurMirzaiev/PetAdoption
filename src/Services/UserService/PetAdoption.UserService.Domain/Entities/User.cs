@@ -104,39 +104,27 @@ public class User
         if (Status == UserStatus.Suspended)
             throw new InvalidOperationException("Cannot update profile of suspended user");
 
-        var hasChanges = false;
-
         if (fullName != null)
-        {
             FullName = FullName.From(fullName);
-            hasChanges = true;
-        }
 
         // Always update phone so callers can clear it by passing null
         PhoneNumber = PhoneNumber.FromOptional(phoneNumber);
-        hasChanges = true;
 
         // Always update bio so callers can clear it by passing null
         Bio = Bio.FromOptional(bio);
 
         if (preferences != null)
-        {
             Preferences = preferences;
-            hasChanges = true;
-        }
 
-        if (hasChanges)
-        {
-            UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
-            AddDomainEvent(new UserProfileUpdatedEvent(
-                Id.Value,
-                fullName,
-                phoneNumber,
-                Bio?.Value,
-                UpdatedAt
-            ));
-        }
+        AddDomainEvent(new UserProfileUpdatedEvent(
+            Id.Value,
+            fullName,
+            phoneNumber,
+            Bio?.Value,
+            UpdatedAt
+        ));
     }
 
     /// <summary>

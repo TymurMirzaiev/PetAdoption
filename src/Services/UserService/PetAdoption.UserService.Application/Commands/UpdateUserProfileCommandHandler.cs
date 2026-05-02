@@ -1,9 +1,9 @@
 namespace PetAdoption.UserService.Application.Commands;
 
 using PetAdoption.UserService.Application.Abstractions;
+using PetAdoption.UserService.Application.Helpers;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
-using PetAdoption.UserService.Domain.Exceptions;
 
 public class UpdateUserProfileCommandHandler : ICommandHandler<UpdateUserProfileCommand, UpdateUserProfileResponse>
 {
@@ -18,18 +18,23 @@ public class UpdateUserProfileCommandHandler : ICommandHandler<UpdateUserProfile
         UpdateUserProfileCommand command,
         CancellationToken cancellationToken = default)
     {
-        var userId = UserId.From(command.UserId);
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await UserFetchHelper.GetUserOrThrowAsync(_userRepository, command.UserId);
 
-        if (user == null)
-        {
-            throw new UserNotFoundException(command.UserId);
-        }
+        var preferences = command.Preferences is { } dto
+            ? new UserPreferences
+            {
+                PreferredPetType = dto.PreferredPetType,
+                PreferredSizes = dto.PreferredSizes,
+                PreferredAgeRange = dto.PreferredAgeRange,
+                ReceiveEmailNotifications = dto.ReceiveEmailNotifications,
+                ReceiveSmsNotifications = dto.ReceiveSmsNotifications
+            }
+            : (UserPreferences?)null;
 
         user.UpdateProfile(
             command.FullName,
             command.PhoneNumber,
-            command.Preferences,
+            preferences,
             command.Bio
         );
 

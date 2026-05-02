@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject PetApiClient PetApi
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Org Dashboard</PageTitle>
 
@@ -192,7 +193,7 @@ else
                         <RowTemplate>
                             <MudTd>@context.PetName</MudTd>
                             <MudTd>
-                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="@PetDisplayHelpers.RequestStatusColor(context.Status)">@context.Status</MudChip>
                             </MudTd>
                             <MudTd>@TruncateMessage(context.Message)</MudTd>
                             <MudTd>@RelativeTime(context.CreatedAt)</MudTd>
@@ -202,7 +203,7 @@ else
                                     <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
                                         OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
                                     <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
-                                        OnClick="@(() => OpenRejectDialog(context.Id, context.PetName))">Reject</MudButton>
+                                        OnClick="@(async () => await OpenRejectDialogAsync(context.Id, context.PetName))">Reject</MudButton>
                                 }
                             </MudTd>
                         </RowTemplate>
@@ -212,20 +213,6 @@ else
         </MudItem>
     </MudGrid>
 }
-
-<MudDialog @bind-Visible="_rejectDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Reject Request for @_rejectPetName</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudTextField @bind-Value="_rejectReason" Label="Rejection reason" Lines="3" Variant="Variant.Outlined" Required="true" MaxLength="1000" Counter="1000" />
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="@(() => _rejectDialogVisible = false)">Cancel</MudButton>
-        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="SubmitReject"
-            Disabled="@string.IsNullOrWhiteSpace(_rejectReason)">Reject</MudButton>
-    </DialogActions>
-</MudDialog>
 
 @code {
     [Parameter] public Guid OrgId { get; set; }
@@ -247,10 +234,6 @@ else
     private DateTime? _trendsFrom = DateTime.UtcNow.AddDays(-84);
     private DateTime? _trendsTo = DateTime.UtcNow;
 
-    private bool _rejectDialogVisible;
-    private Guid _rejectRequestId;
-    private string _rejectPetName = "";
-    private string _rejectReason = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -301,7 +284,15 @@ else
         _trendsError = null;
         try
         {
-            var response = await PetApi.GetOrgDashboardTrendsAsync(OrgId, _trendsFrom, _trendsTo);
+            var httpResponse = await PetApi.GetOrgDashboardTrendsAsync(OrgId, _trendsFrom, _trendsTo);
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                var error = await httpResponse.Content.ReadFromJsonAsync<ApiError>();
+                _trendsError = error?.Message ?? "Failed to load trends data.";
+                Snackbar.Add(_trendsError, Severity.Error);
+                return;
+            }
+            var response = await httpResponse.Content.ReadFromJsonAsync<OrgDashboardTrendsResponse>();
             if (response is not null)
             {
                 _trendsLabels = response.AdoptionsByWeek.Select(p => p.Label).ToArray();
@@ -323,11 +314,9 @@ else
                 ];
             }
         }
-        catch (Exception ex)
+        catch
         {
-            _trendsError = ex.Message.Contains("End date must be after start date")
-                ? "End date must be after start date."
-                : "Failed to load trends data.";
+            _trendsError = "Failed to load trends data.";
             Snackbar.Add(_trendsError, Severity.Error);
         }
         finally
@@ -361,32 +350,32 @@ else
         catch { Snackbar.Add("Connection error", Severity.Error); }
     }
 
-    private void OpenRejectDialog(Guid requestId, string petName)
+    private async Task OpenRejectDialogAsync(Guid requestId, string petName)
     {
-        _rejectRequestId = requestId;
-        _rejectPetName = petName;
-        _rejectReason = "";
-        _rejectDialogVisible = true;
-    }
-
-    private async Task SubmitReject()
-    {
-        try
+        var parameters = new DialogParameters<RejectRequestDialog>
         {
-            var response = await PetApi.RejectAdoptionRequestAsync(_rejectRequestId, _rejectReason);
-            if (response.IsSuccessStatusCode)
+            { x => x.PetName, petName }
+        };
+        var dialog = await DialogService.ShowAsync<RejectRequestDialog>($"Reject adoption for {petName}", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false } && result.Data is string reason)
+        {
+            try
             {
-                Snackbar.Add("Request rejected", Severity.Info);
-                _rejectDialogVisible = false;
-                await LoadRecentRequestsAsync();
+                var response = await PetApi.RejectAdoptionRequestAsync(requestId, reason);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Request rejected", Severity.Info);
+                    await LoadRecentRequestsAsync();
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ApiError>();
+                    Snackbar.Add(error?.Message ?? "Failed to reject", Severity.Error);
+                }
             }
-            else
-            {
-                var error = await response.Content.ReadFromJsonAsync<ApiError>();
-                Snackbar.Add(error?.Message ?? "Failed to reject", Severity.Error);
-            }
+            catch { Snackbar.Add("Connection error", Severity.Error); }
         }
-        catch { Snackbar.Add("Connection error", Severity.Error); }
     }
 
     private static string TruncateMessage(string? message)
@@ -403,12 +392,4 @@ else
         return $"{(int)diff.TotalMinutes} minute{((int)diff.TotalMinutes == 1 ? "" : "s")} ago";
     }
 
-    private static Color StatusColor(string status) => status switch
-    {
-        "Pending" => Color.Warning,
-        "Approved" => Color.Success,
-        "Rejected" => Color.Error,
-        "Cancelled" => Color.Default,
-        _ => Color.Default
-    };
 }

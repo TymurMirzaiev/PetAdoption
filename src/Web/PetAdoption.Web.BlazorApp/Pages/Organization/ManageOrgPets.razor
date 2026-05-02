@@ -21,7 +21,7 @@
             <CellTemplate>
                 @if (context.Item.AgeMonths.HasValue)
                 {
-                    @FormatAge(context.Item.AgeMonths.Value)
+                    @PetDisplayHelpers.FormatAge(context.Item.AgeMonths.Value)
                 }
             </CellTemplate>
         </TemplateColumn>
@@ -44,7 +44,7 @@
         </TemplateColumn>
         <TemplateColumn Title="Status">
             <CellTemplate>
-                <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Item.Status)">@context.Item.Status</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="@PetDisplayHelpers.PetStatusColor(context.Item.Status)">@context.Item.Status</MudChip>
             </CellTemplate>
         </TemplateColumn>
         <TemplateColumn Title="Actions" StickyRight="true">
@@ -176,14 +176,4 @@
         }
     }
 
-    private static Color StatusColor(string status) => status switch
-    {
-        "Available" => Color.Success,
-        "Reserved" => Color.Warning,
-        "Adopted" => Color.Info,
-        _ => Color.Default
-    };
-
-    private static string FormatAge(int months) =>
-        months >= 12 ? $"{months / 12}y {months % 12}m" : $"{months}m";
 }

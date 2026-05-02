@@ -2,19 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
-using PetAdoption.PetService.Domain;
-using PetAdoption.PetService.IntegrationTests.Builders;
 using PetAdoption.PetService.IntegrationTests.Infrastructure;
 using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class ChatControllerTests : IAsyncLifetime
+internal class ChatControllerTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-
     private static readonly Guid TestOrgId = Guid.NewGuid();
     private static readonly string ShelterUserId = Guid.NewGuid().ToString();
     private static readonly string AdopterUserId = Guid.NewGuid().ToString();
@@ -22,14 +16,11 @@ public class ChatControllerTests : IAsyncLifetime
     private HttpClient _shelterClient = null!;
     private HttpClient _adopterClient = null!;
 
-    public ChatControllerTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public ChatControllerTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
+        base.InitializeAsync();
 
         _shelterClient = _factory.CreateClient();
         _shelterClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
@@ -48,42 +39,20 @@ public class ChatControllerTests : IAsyncLifetime
                 userId: AdopterUserId,
                 role: "User"));
 
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
-        _shelterClient.Dispose();
-        _adopterClient.Dispose();
-        await _factory.DisposeAsync();
+        _shelterClient?.Dispose();
+        _adopterClient?.Dispose();
+        await base.DisposeAsync();
     }
 
     // ──────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────
 
-    private async Task<Guid> SeedPetTypeAsync(string code = "chat_dog")
-    {
-        var request = new CreatePetTypeRequestBuilder().WithCode(code).WithName("Chat Dog").Build();
-        var response = await _shelterClient.PostAsJsonAsync("/api/admin/pet-types", request);
-        if (response.StatusCode == HttpStatusCode.Created)
-        {
-            var result = await response.Content.ReadFromJsonAsync<PetTypeResponseDto>();
-            return result!.Id;
-        }
-        var allTypes = await _shelterClient.GetFromJsonAsync<List<PetTypeResponseDto>>("/api/admin/pet-types?includeInactive=true");
-        return allTypes!.First(t => t.Code == code).Id;
-    }
-
-    private async Task<Guid> SeedPetWithOrgAsync(string name, Guid petTypeId)
-    {
-        await using var db = _factory.CreateDbContext();
-        var pet = Pet.Create(name, petTypeId, breed: null, ageMonths: 12, description: null);
-        pet.AssignToOrganization(TestOrgId);
-        db.Pets.Add(pet);
-        await db.SaveChangesAsync();
-        return pet.Id;
-    }
 
     private async Task<Guid> CreateAdoptionRequestAsync(Guid petId)
     {
@@ -101,8 +70,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task GetHistory_WhenShelterSendsAndAdopterReads_ReturnsMessages()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_rt");
-        var petId = await SeedPetWithOrgAsync("RoundTripDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_rt", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "RoundTripDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         await _shelterClient.PostAsJsonAsync(
@@ -124,8 +93,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task GetHistory_CrossUserAccess_ReturnsForbidden()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_cross");
-        var petId = await SeedPetWithOrgAsync("CrossUserDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_cross", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "CrossUserDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         using var strangerClient = _factory.CreateClient();
@@ -143,8 +112,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task GetHistory_AnonymousRequest_ReturnsUnauthorized()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_anon");
-        var petId = await SeedPetWithOrgAsync("AnonDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_anon", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "AnonDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         using var anonClient = _factory.CreateClient();
@@ -164,8 +133,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task Send_OnRejectedRequest_ReturnsConflict_ChatThreadClosed()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_rej");
-        var petId = await SeedPetWithOrgAsync("RejectedDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_rej", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "RejectedDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         // Reject the request
@@ -190,8 +159,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task GetHistory_WithAfterId_ReturnsPaginatedResults()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_page");
-        var petId = await SeedPetWithOrgAsync("PageDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_page", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "PageDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         // Send 3 messages
@@ -226,8 +195,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task MarkRead_SetsReadByRecipientAt()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_read");
-        var petId = await SeedPetWithOrgAsync("ReadDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_read", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "ReadDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         // Shelter sends a message
@@ -258,8 +227,8 @@ public class ChatControllerTests : IAsyncLifetime
     public async Task GetHistory_OnClosedThread_ReturnsOk()
     {
         // Arrange
-        var petTypeId = await SeedPetTypeAsync("chat_dog_closed");
-        var petId = await SeedPetWithOrgAsync("ClosedDog", petTypeId);
+        var petTypeId = await SeedPetTypeAsync("chat_dog_closed", "Chat Dog");
+        var petId = (await SeedPetWithOrgAsync(TestOrgId, "ClosedDog", petTypeId)).Id;
         var requestId = await CreateAdoptionRequestAsync(petId);
 
         // Send a message before closing
@@ -295,5 +264,4 @@ public class ChatControllerTests : IAsyncLifetime
 
     private record ErrorDto(string ErrorCode, string Message);
 
-    private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
 }

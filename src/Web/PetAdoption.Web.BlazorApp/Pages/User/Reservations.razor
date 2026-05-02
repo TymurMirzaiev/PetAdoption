@@ -14,7 +14,7 @@
     {
         <MudProgressLinear Indeterminate="true" />
     }
-    else if (!_pets.Any())
+    else if (!_requests.Any())
     {
         <MudText Typo="Typo.h6" Color="Color.Secondary" Align="Align.Center" Class="mt-8">
             No reservations yet.
@@ -23,30 +23,27 @@
     else
     {
         <MudGrid>
-            @foreach (var pet in _pets)
+            @foreach (var req in _requests)
             {
                 <MudItem xs="12" sm="6" md="4">
                     <MudCard Elevation="3">
                         <MudCardHeader>
                             <CardHeaderAvatar>
-                                <MudAvatar Color="Color.Warning">@pet.Name[..1]</MudAvatar>
+                                <MudAvatar Color="Color.Warning">@(req.PetName.Length > 0 ? req.PetName[..1] : "?")</MudAvatar>
                             </CardHeaderAvatar>
                             <CardHeaderContent>
-                                <MudText Typo="Typo.h6">@pet.Name</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@pet.Type</MudText>
+                                <MudText Typo="Typo.h6">@req.PetName</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@req.PetType</MudText>
                             </CardHeaderContent>
                         </MudCardHeader>
                         <MudCardContent>
-                            @if (pet.Breed is not null)
-                            {
-                                <MudText Typo="Typo.body2"><b>Breed:</b> @pet.Breed</MudText>
-                            }
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Pending</MudChip>
                         </MudCardContent>
                         <MudCardActions>
                             <MudButton Size="Size.Small" Color="Color.Primary"
-                                OnClick="@(() => Navigation.NavigateTo($"/pets/{pet.Id}"))">View</MudButton>
+                                OnClick="@(() => Navigation.NavigateTo($"/pets/{req.PetId}"))">View</MudButton>
                             <MudButton Size="Size.Small" Color="Color.Error"
-                                OnClick="@(() => CancelReservation(pet.Id))">Cancel</MudButton>
+                                OnClick="@(() => CancelRequest(req.Id))">Cancel</MudButton>
                         </MudCardActions>
                     </MudCard>
                 </MudItem>
@@ -56,7 +53,7 @@
 </MudContainer>
 
 @code {
-    private List<PetListItem> _pets = [];
+    private List<AdoptionRequestItem> _requests = [];
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync() => await LoadReservations();
@@ -66,21 +63,23 @@
         _loading = true;
         try
         {
-            var response = await PetApi.GetPetsAsync(status: "Reserved");
-            _pets = response?.Pets?.ToList() ?? [];
+            var response = await PetApi.GetMyAdoptionRequestsAsync(take: 100);
+            _requests = response?.Items?
+                .Where(r => r.Status == "Pending")
+                .ToList() ?? [];
         }
         catch { Snackbar.Add("Failed to load reservations", Severity.Error); }
         finally { _loading = false; }
     }
 
-    private async Task CancelReservation(Guid petId)
+    private async Task CancelRequest(Guid requestId)
     {
         try
         {
-            var response = await PetApi.CancelReservationAsync(petId);
+            var response = await PetApi.CancelAdoptionRequestAsync(requestId);
             if (response.IsSuccessStatusCode)
             {
-                _pets.RemoveAll(p => p.Id == petId);
+                _requests.RemoveAll(r => r.Id == requestId);
                 Snackbar.Add("Reservation cancelled", Severity.Info);
             }
             else

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
@@ -10,7 +9,7 @@ namespace PetAdoption.PetService.API.Controllers;
 [ApiController]
 [Route("api/pets")]
 [Authorize]
-public class InteractionsController : ControllerBase
+public class InteractionsController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -18,10 +17,6 @@ public class InteractionsController : ControllerBase
     {
         _mediator = mediator;
     }
-
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue("userId")
-            ?? throw new UnauthorizedAccessException("userId claim not found"));
 
     [HttpPost("{petId:guid}/interactions")]
     public async Task<IActionResult> TrackInteraction(Guid petId, [FromBody] TrackInteractionRequest request)

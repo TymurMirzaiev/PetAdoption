@@ -91,7 +91,9 @@ public class RabbitMqPublisher : IEventPublisher, IAsyncDisposable
             nameof(PetReservedEvent) => RabbitMqTopology.RoutingKeys.PetReserved,
             nameof(PetAdoptedEvent) => RabbitMqTopology.RoutingKeys.PetAdopted,
             nameof(PetReservationCancelledEvent) => RabbitMqTopology.RoutingKeys.ReservationCancelled,
-            _ => string.Empty
+            var name => throw new InvalidOperationException(
+                $"No routing key registered for event type '{name}'. " +
+                $"Register the event in {nameof(RabbitMqPublisher)}.{nameof(GetRoutingKey)}.")
         };
     }
 }

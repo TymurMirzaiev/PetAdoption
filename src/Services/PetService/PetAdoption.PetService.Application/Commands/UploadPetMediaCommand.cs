@@ -46,11 +46,7 @@ public class UploadPetMediaCommandHandler : IRequestHandler<UploadPetMediaComman
                 $"Content type '{request.ContentType}' is not allowed. Allowed types: {string.Join(", ", AllowedContentTypes)}.",
                 new Dictionary<string, object> { { "ContentType", request.ContentType } });
 
-        var pet = await _petRepository.GetById(request.PetId)
-            ?? throw new DomainException(
-                PetDomainErrorCode.PetNotFound,
-                $"Pet {request.PetId} not found.",
-                new Dictionary<string, object> { { "PetId", request.PetId } });
+        var pet = await _petRepository.GetByIdOrThrowAsync(request.PetId);
 
         OrgAuthorization.EnsureMember(
             pet.OrganizationId ?? Guid.Empty, request.ReviewerOrgId, request.ReviewerOrgRole);

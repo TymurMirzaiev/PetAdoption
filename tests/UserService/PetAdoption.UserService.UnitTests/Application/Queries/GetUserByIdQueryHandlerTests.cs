@@ -1,4 +1,4 @@
-namespace PetAdoption.UserService.Tests.Application.Queries;
+namespace PetAdoption.UserService.UnitTests.Application.Queries;
 
 using FluentAssertions;
 using Moq;

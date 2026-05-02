@@ -30,10 +30,10 @@ public class UserApiClient
     public async Task<UserProfile?> GetMyProfileAsync() =>
         await _http.GetFromJsonAsync<UserProfile>("api/users/me");
 
-    public Task<HttpResponseMessage> UpdateProfileAsync(object request) =>
+    public Task<HttpResponseMessage> UpdateProfileAsync(UpdateProfileRequest request) =>
         _http.PutAsJsonAsync("api/users/me", request);
 
-    public Task<HttpResponseMessage> ChangePasswordAsync(object request) =>
+    public Task<HttpResponseMessage> ChangePasswordAsync(ChangePasswordRequest request) =>
         _http.PostAsJsonAsync("api/users/me/change-password", request);
 
     public async Task<UsersResponse?> GetUsersAsync(int skip = 0, int take = 50) =>

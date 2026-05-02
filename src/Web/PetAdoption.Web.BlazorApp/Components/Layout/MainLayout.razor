@@ -1,7 +1,7 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject JwtAuthenticationStateProvider AuthProvider
-@inject PetApiClient PetApi
+@inject IChatUnreadService ChatUnreadService
 @implements IDisposable
 
 <MudLayout>
@@ -20,7 +20,7 @@
                 {
                     <MudButton Color="Color.Inherit" Href="@($"/org/{orgId}/dashboard")">Dashboard</MudButton>
                     <MudButton Color="Color.Inherit" Href="@($"/org/{orgId}/pets")">Org Pets</MudButton>
-                    <MudBadge Content="@(_orgUnread > 0 ? _orgUnread.ToString() : null)" Color="Color.Error" Overlap="true" Bordered="true">
+                    <MudBadge Content="@(ChatUnreadService.OrgUnreadCount > 0 ? ChatUnreadService.OrgUnreadCount.ToString() : null)" Color="Color.Error" Overlap="true" Bordered="true">
                         <MudButton Color="Color.Inherit" Href="@($"/organization/{orgId}/adoption-requests")">Adoption Requests</MudButton>
                     </MudBadge>
                     <MudButton Color="Color.Inherit" Href="@($"/org/{orgId}/metrics")">Metrics</MudButton>
@@ -28,7 +28,7 @@
                 <MudButton Color="Color.Inherit" Href="/discover">Discover</MudButton>
                 <MudButton Color="Color.Inherit" Href="/favorites">Favorites</MudButton>
                 <MudButton Color="Color.Inherit" Href="/reservations">Reservations</MudButton>
-                <MudBadge Content="@(_myUnread > 0 ? _myUnread.ToString() : null)" Color="Color.Error" Overlap="true" Bordered="true">
+                <MudBadge Content="@(ChatUnreadService.MyUnreadCount > 0 ? ChatUnreadService.MyUnreadCount.ToString() : null)" Color="Color.Error" Overlap="true" Bordered="true">
                     <MudButton Color="Color.Inherit" Href="/my-adoption-requests">My Requests</MudButton>
                 </MudBadge>
                 <MudButton Color="Color.Inherit" Href="/profile">Profile</MudButton>
@@ -50,41 +50,26 @@
 </MudLayout>
 
 @code {
-    private int _myUnread;
-    private int _orgUnread;
-    private Timer? _pollTimer;
-    private string? _orgId;
-
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated == true)
         {
-            _orgId = authState.User.FindFirst("organizationId")?.Value;
-            await PollUnreadAsync();
-            _pollTimer = new Timer(_ => InvokeAsync(async () =>
-            {
-                await PollUnreadAsync();
-                StateHasChanged();
-            }), null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
-        }
-    }
-
-    private async Task PollUnreadAsync()
-    {
-        try { _myUnread = await PetApi.GetMyChatUnreadTotalAsync(); } catch { }
-        if (!string.IsNullOrEmpty(_orgId) && Guid.TryParse(_orgId, out var oid))
-        {
-            try { _orgUnread = await PetApi.GetOrgChatUnreadTotalAsync(oid); } catch { }
+            var orgId = authState.User.FindFirst("organizationId")?.Value;
+            ChatUnreadService.OnChange += StateHasChanged;
+            ChatUnreadService.StartPolling(orgId);
         }
     }
 
     private async Task LogoutAsync()
     {
-        _pollTimer?.Dispose();
         await AuthProvider.Logout();
         Navigation.NavigateTo("/");
     }
 
-    public void Dispose() => _pollTimer?.Dispose();
+    public void Dispose()
+    {
+        ChatUnreadService.OnChange -= StateHasChanged;
+        ChatUnreadService.Dispose();
+    }
 }

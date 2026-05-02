@@ -21,13 +21,20 @@ public class GetMyOrganizationsQueryHandler : IQueryHandler<GetMyOrganizationsQu
     public async Task<GetMyOrganizationsResponse> HandleAsync(GetMyOrganizationsQuery query, CancellationToken cancellationToken = default)
     {
         var memberships = await _memberRepo.GetByUserAsync(query.UserId);
-        var items = new List<MyOrganizationItem>();
-        foreach (var m in memberships)
-        {
-            var org = await _orgRepo.GetByIdAsync(m.OrganizationId);
-            if (org is not null)
-                items.Add(new MyOrganizationItem(org.Id, org.Name, org.Slug, m.Role.ToString(), m.JoinedAt));
-        }
+        var membershipList = memberships.ToList();
+
+        var orgIds = membershipList.Select(m => m.OrganizationId);
+        var orgs = (await _orgRepo.GetByIdsAsync(orgIds)).ToDictionary(o => o.Id);
+
+        var items = membershipList
+            .Where(m => orgs.ContainsKey(m.OrganizationId))
+            .Select(m =>
+            {
+                var org = orgs[m.OrganizationId];
+                return new MyOrganizationItem(org.Id, org.Name, org.Slug, m.Role.ToString(), m.JoinedAt);
+            })
+            .ToList();
+
         return new GetMyOrganizationsResponse(items);
     }
 }

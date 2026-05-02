@@ -5,15 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using PetAdoption.UserService.Domain.Entities;
 using PetAdoption.UserService.Domain.Interfaces;
 using PetAdoption.UserService.Domain.ValueObjects;
-using PetAdoption.UserService.Domain.Events;
+using PetAdoption.UserService.Infrastructure.Messaging;
 
-public class UserRepository : IUserRepository
+public class UserRepository : RepositoryBase, IUserRepository
 {
-    private readonly UserServiceDbContext _db;
-
-    public UserRepository(UserServiceDbContext db)
+    public UserRepository(UserServiceDbContext db) : base(db)
     {
-        _db = db;
     }
 
     public async Task<User?> GetByIdAsync(UserId id)
@@ -33,15 +30,7 @@ public class UserRepository : IUserRepository
 
     public async Task SaveAsync(User user)
     {
-        var entry = _db.Entry(user);
-        if (entry.State == EntityState.Detached)
-        {
-            var exists = await _db.Users.AnyAsync(u => u.Id == user.Id);
-            if (exists)
-                _db.Users.Update(user);
-            else
-                _db.Users.Add(user);
-        }
+        await UpsertAsync(_db.Users, user, u => u.Id == user.Id);
 
         // Save domain events to outbox
         foreach (var domainEvent in user.DomainEvents)
@@ -50,7 +39,7 @@ public class UserRepository : IUserRepository
             {
                 EventType = domainEvent.GetType().Name,
                 EventData = JsonSerializer.Serialize(domainEvent),
-                RoutingKey = GetRoutingKey(domainEvent),
+                RoutingKey = UserRabbitMqTopology.GetRoutingKey(domainEvent),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -60,14 +49,4 @@ public class UserRepository : IUserRepository
         await _db.SaveChangesAsync();
         user.ClearDomainEvents();
     }
-
-    private string GetRoutingKey(DomainEventBase domainEvent) => domainEvent switch
-    {
-        UserRegisteredEvent => "user.registered.v1",
-        UserProfileUpdatedEvent => "user.profile-updated.v1",
-        UserSuspendedEvent => "user.suspended.v1",
-        UserPasswordChangedEvent => "user.password-changed.v1",
-        UserRoleChangedEvent => "user.role-changed.v1",
-        _ => throw new ArgumentException($"Unknown event type {domainEvent.GetType()}")
-    };
 }

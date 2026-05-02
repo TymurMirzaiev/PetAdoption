@@ -1,8 +1,8 @@
 namespace PetAdoption.UserService.Domain.ValueObjects;
 
-public class Bio
+public record Bio
 {
-    public string Value { get; }
+    public string Value { get; init; }
 
     private Bio(string value) => Value = value;
 

@@ -12,7 +12,7 @@ namespace PetAdoption.PetService.API.Controllers;
 [Route("api/organizations/{orgId}/pets")]
 [Authorize]
 [ServiceFilter(typeof(OrgAuthorizationFilter))]
-public class OrgPetsController : ControllerBase
+public class OrgPetsController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -76,12 +76,9 @@ public class OrgPetsController : ControllerBase
     public async Task<ActionResult<UploadPetMediaResponse>> UploadMedia(
         Guid orgId, Guid petId, IFormFile file)
     {
-        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
-        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
-
         var result = await _mediator.Send(new UploadPetMediaCommand(
             orgId, petId, file.OpenReadStream(), file.ContentType, file.FileName,
-            reviewerOrgId, reviewerOrgRole));
+            GetOrganizationId(), GetOrgRole()));
 
         return Ok(result);
     }
@@ -90,11 +87,8 @@ public class OrgPetsController : ControllerBase
     [HttpDelete("{petId}/media/{mediaId}")]
     public async Task<IActionResult> DeleteMedia(Guid orgId, Guid petId, Guid mediaId)
     {
-        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
-        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
-
         await _mediator.Send(new DeletePetMediaCommand(
-            orgId, petId, mediaId, reviewerOrgId, reviewerOrgRole));
+            orgId, petId, mediaId, GetOrganizationId(), GetOrgRole()));
 
         return NoContent();
     }
@@ -104,11 +98,8 @@ public class OrgPetsController : ControllerBase
     public async Task<IActionResult> ReorderMedia(
         Guid orgId, Guid petId, [FromBody] ReorderPetPhotosRequest request)
     {
-        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
-        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
-
         await _mediator.Send(new ReorderPetPhotosCommand(
-            orgId, petId, request.OrderedIds, reviewerOrgId, reviewerOrgRole));
+            orgId, petId, request.OrderedIds, GetOrganizationId(), GetOrgRole()));
 
         return NoContent();
     }
@@ -117,11 +108,8 @@ public class OrgPetsController : ControllerBase
     [HttpPut("{petId}/media/{mediaId}/primary")]
     public async Task<IActionResult> SetPrimaryMedia(Guid orgId, Guid petId, Guid mediaId)
     {
-        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
-        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
-
         await _mediator.Send(new SetPrimaryPhotoCommand(
-            orgId, petId, mediaId, reviewerOrgId, reviewerOrgRole));
+            orgId, petId, mediaId, GetOrganizationId(), GetOrgRole()));
 
         return NoContent();
     }
@@ -131,9 +119,6 @@ public class OrgPetsController : ControllerBase
     public async Task<ActionResult<UpdatePetMedicalRecordResponse>> UpdateMedicalRecord(
         Guid orgId, Guid petId, [FromBody] UpdatePetMedicalRecordRequest request)
     {
-        var reviewerOrgId = Guid.TryParse(User.FindFirst("organizationId")?.Value, out var oid) ? oid : (Guid?)null;
-        var reviewerOrgRole = User.FindFirst("orgRole")?.Value;
-
         var vaccinationInputs = (request.Vaccinations ?? [])
             .Select(v => new VaccinationInput(v.VaccineType, v.AdministeredOn, v.NextDueOn, v.Notes));
 
@@ -143,7 +128,7 @@ public class OrgPetsController : ControllerBase
             request.HistoryNotes, request.LastVetVisit,
             vaccinationInputs,
             request.Allergies ?? [],
-            reviewerOrgId, reviewerOrgRole));
+            GetOrganizationId(), GetOrgRole()));
 
         return Ok(result);
     }

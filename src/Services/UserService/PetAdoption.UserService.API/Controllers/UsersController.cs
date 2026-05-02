@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.UserService.Application.Abstractions;
 using PetAdoption.UserService.Application.Commands;
+using PetAdoption.UserService.Application.Constants;
 using PetAdoption.UserService.Application.DTOs;
 using PetAdoption.UserService.Application.Queries;
 using PetAdoption.UserService.Domain.Interfaces;
-using PetAdoption.UserService.Domain.ValueObjects;
 
 [ApiController]
 [Route("api/users")]
@@ -87,7 +87,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetMyProfile(
         [FromServices] IQueryHandler<GetUserByIdQuery, UserDto> handler)
     {
-        var userId = User.FindFirstValue("userId")
+        var userId = User.FindFirstValue(ClaimNames.UserId)
             ?? throw new UnauthorizedAccessException("User ID not found in token");
 
         var query = new GetUserByIdQuery(userId);
@@ -105,7 +105,7 @@ public class UsersController : ControllerBase
         [FromBody] UpdateProfileRequest request,
         [FromServices] ICommandHandler<UpdateUserProfileCommand, UpdateUserProfileResponse> handler)
     {
-        var userId = User.FindFirstValue("userId")
+        var userId = User.FindFirstValue(ClaimNames.UserId)
             ?? throw new UnauthorizedAccessException("User ID not found in token");
 
         var command = new UpdateUserProfileCommand(
@@ -129,7 +129,7 @@ public class UsersController : ControllerBase
         [FromBody] ChangePasswordRequest request,
         [FromServices] ICommandHandler<ChangePasswordCommand, ChangePasswordResponse> handler)
     {
-        var userId = User.FindFirstValue("userId")
+        var userId = User.FindFirstValue(ClaimNames.UserId)
             ?? throw new UnauthorizedAccessException("User ID not found in token");
 
         var command = new ChangePasswordCommand(
@@ -148,7 +148,7 @@ public class UsersController : ControllerBase
         [FromBody] LogoutRequest request,
         [FromServices] IRefreshTokenRepository refreshTokenRepo)
     {
-        var currentUserId = User.FindFirstValue("userId")
+        var currentUserId = User.FindFirstValue(ClaimNames.UserId)
             ?? throw new UnauthorizedAccessException("User ID not found in token");
 
         var token = await refreshTokenRepo.GetByTokenAsync(request.RefreshToken);
@@ -255,7 +255,7 @@ public record LoginRequest(string Email, string Password);
 public record UpdateProfileRequest(
     string? FullName,
     string? PhoneNumber,
-    UserPreferences? Preferences,
+    UpdatePreferencesDto? Preferences,
     string? Bio = null
 );
 

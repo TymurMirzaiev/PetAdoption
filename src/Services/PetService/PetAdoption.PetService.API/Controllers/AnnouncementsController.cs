@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PetAdoption.PetService.Application.Abstractions;
@@ -9,7 +8,7 @@ namespace PetAdoption.PetService.API.Controllers;
 
 [ApiController]
 [Route("api/announcements")]
-public class AnnouncementsController : ControllerBase
+public class AnnouncementsController : PetServiceControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -22,12 +21,8 @@ public class AnnouncementsController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Create([FromBody] CreateAnnouncementRequest request)
     {
-        var userIdStr = User.FindFirstValue("userId");
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized();
-
         var result = await _mediator.Send(new CreateAnnouncementCommand(
-            request.Title, request.Body, request.StartDate, request.EndDate, userId));
+            request.Title, request.Body, request.StartDate, request.EndDate, GetUserId()));
         return StatusCode(201, result);
     }
 

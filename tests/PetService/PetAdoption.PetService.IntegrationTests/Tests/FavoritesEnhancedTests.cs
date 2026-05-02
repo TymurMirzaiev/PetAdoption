@@ -8,58 +8,23 @@ using Xunit;
 
 namespace PetAdoption.PetService.IntegrationTests.Tests;
 
-[Collection("SqlServer")]
-public class FavoritesEnhancedTests : IAsyncLifetime
+internal class FavoritesEnhancedTests : IntegrationTestBase
 {
-    private readonly SqlServerFixture _sqlFixture;
-    private PetServiceWebAppFactory _factory = null!;
-    private HttpClient _client = null!;
-
     private static readonly string TestUserId = Guid.NewGuid().ToString();
 
-    public FavoritesEnhancedTests(SqlServerFixture sqlFixture)
-    {
-        _sqlFixture = sqlFixture;
-    }
+    public FavoritesEnhancedTests(SqlServerFixture sqlFixture) : base(sqlFixture) { }
 
-    public async Task InitializeAsync()
+    public override Task InitializeAsync()
     {
-        _factory = new PetServiceWebAppFactory(_sqlFixture.ConnectionString);
-        _client = _factory.CreateClient();
+        base.InitializeAsync();
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", PetServiceWebAppFactory.GenerateTestToken(userId: TestUserId));
-        await Task.CompletedTask;
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        return Task.CompletedTask;
     }
 
     // ──────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────
-
-    private async Task<Guid> SeedPetTypeAsync(string code, string name)
-    {
-        var request = new CreatePetTypeRequestBuilder()
-            .WithCode(code)
-            .WithName(name)
-            .Build();
-
-        var response = await _client.PostAsJsonAsync("/api/admin/pet-types", request);
-
-        if (response.StatusCode == HttpStatusCode.Created)
-        {
-            var result = await response.Content.ReadFromJsonAsync<CreatePetTypeResponseDto>();
-            return result!.Id;
-        }
-
-        var allTypesResponse = await _client.GetAsync("/api/admin/pet-types?includeInactive=true");
-        var allTypes = await allTypesResponse.Content.ReadFromJsonAsync<List<PetTypeResponseDto>>();
-        return allTypes!.First(t => t.Code == code).Id;
-    }
 
     private async Task<Guid> CreatePetAsync(string name, Guid petTypeId)
     {
@@ -328,8 +293,6 @@ public class FavoritesEnhancedTests : IAsyncLifetime
     // ──────────────────────────────────────────────────────────────
 
     private record CreatePetResponseDto(Guid Id);
-    private record CreatePetTypeResponseDto(Guid Id, string Code, string Name);
-    private record PetTypeResponseDto(Guid Id, string Code, string Name, bool IsActive);
     private record FavoriteItemDto(Guid FavoriteId, Guid PetId, string PetName, string PetType, string? Breed, int? AgeMonths, string Status, DateTime CreatedAt);
     private record GetFavoritesResponseDto(List<FavoriteItemDto> Items, long TotalCount, int Page, int PageSize);
     private record CheckFavoriteResultDto(bool IsFavorited);

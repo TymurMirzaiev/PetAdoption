@@ -150,10 +150,83 @@ public static class PetDomainErrorCode
     /// </summary>
     public const string InvalidRejectionReason = "invalid_rejection_reason";
 
+    // Chat errors
+
+    /// <summary>
+    /// Chat thread is closed because the adoption request is in a terminal state.
+    /// </summary>
+    public const string ChatThreadClosed = "chat_thread_closed";
+
+    /// <summary>
+    /// Chat message body is invalid (empty or exceeds 2000 characters).
+    /// </summary>
+    public const string InvalidChatMessageBody = "invalid_chat_message_body";
+
+    /// <summary>
+    /// Caller is not a participant of the chat thread.
+    /// </summary>
+    public const string ChatAccessDenied = "chat_access_denied";
+
     // Authorization errors
 
     /// <summary>
     /// Caller is not authorized to act on resources owned by the target organization.
     /// </summary>
     public const string NotAuthorizedForOrg = "not_authorized_for_org";
+
+    // Media errors
+
+    /// <summary>
+    /// Media item was not found.
+    /// </summary>
+    public const string MediaNotFound = "media_not_found";
+
+    /// <summary>
+    /// A video already exists for this pet (only one allowed).
+    /// </summary>
+    public const string VideoAlreadyExists = "video_already_exists";
+
+    /// <summary>
+    /// The provided media order does not match existing photo IDs.
+    /// </summary>
+    public const string InvalidMediaOrder = "invalid_media_order";
+
+    /// <summary>
+    /// Operation requires a photo but a video was provided.
+    /// </summary>
+    public const string MediaNotPhoto = "media_not_photo";
+
+    // Medical record errors
+
+    /// <summary>
+    /// Microchip ID is invalid (wrong length or non-alphanumeric characters).
+    /// </summary>
+    public const string InvalidMicrochipId = "invalid_microchip_id";
+
+    /// <summary>
+    /// Medical notes are invalid (empty or too long).
+    /// </summary>
+    public const string InvalidMedicalNotes = "invalid_medical_notes";
+
+    /// <summary>
+    /// Allergy value is invalid (empty or too long).
+    /// </summary>
+    public const string InvalidAllergy = "invalid_allergy";
+
+    /// <summary>
+    /// Vaccination data is invalid (missing required fields or invalid dates).
+    /// </summary>
+    public const string InvalidVaccination = "invalid_vaccination";
+
+    // Organization address errors
+
+    /// <summary>
+    /// Organization address is invalid (lat/lng out of range, required fields missing, etc.).
+    /// </summary>
+    public const string InvalidOrganizationAddress = "invalid_organization_address";
+
+    /// <summary>
+    /// Location filter parameters are invalid (partial lat/lng/radiusKm combination).
+    /// </summary>
+    public const string InvalidLocationFilter = "invalid_location_filter";
 }

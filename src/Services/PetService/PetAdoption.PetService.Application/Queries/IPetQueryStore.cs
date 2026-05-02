@@ -32,5 +32,9 @@ public interface IPetQueryStore
         int? minAgeMonths,
         int? maxAgeMonths,
         int take,
-        string? breedSearch = null);
+        string? breedSearch = null,
+        decimal? lat = null,
+        decimal? lng = null,
+        int? radiusKm = null,
+        int? candidatePoolSize = null);
 }

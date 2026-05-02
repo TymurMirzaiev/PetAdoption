@@ -23,7 +23,14 @@ public class PetQueryStore : IPetQueryStore
 
     public async Task<Pet?> GetById(Guid id)
     {
-        return await _db.Pets.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+        return await _db.Pets
+            .AsNoTracking()
+            .Include("_media")
+            .Include(p => p.MedicalRecord)
+            .ThenInclude(mr => mr!.Vaccinations)
+            .Include(p => p.MedicalRecord)
+            .ThenInclude(mr => mr!.Allergies)
+            .FirstOrDefaultAsync(p => p.Id == id);
     }
 
     public async Task<IEnumerable<Pet>> GetByIds(IEnumerable<Guid> ids)
@@ -84,7 +91,11 @@ public class PetQueryStore : IPetQueryStore
         int? minAgeMonths,
         int? maxAgeMonths,
         int take,
-        string? breedSearch = null)
+        string? breedSearch = null,
+        decimal? lat = null,
+        decimal? lng = null,
+        int? radiusKm = null,
+        int? candidatePoolSize = null)
     {
         var query = _db.Pets.AsNoTracking()
             .Where(p => p.Status == PetStatus.Available);
@@ -113,9 +124,41 @@ public class PetQueryStore : IPetQueryStore
             query = query.Where(p => p.Breed != null && EF.Functions.Like((string)p.Breed, $"%{trimmed}%"));
         }
 
+        // Location filter: bounding-box pre-filter on Organizations, then Haversine fine-filter in memory
+        if (lat.HasValue && lng.HasValue && radiusKm.HasValue)
+        {
+            var latRange = radiusKm.Value / 111.0m;
+            var lngRange = radiusKm.Value / (111.0m * (decimal)Math.Cos((double)(lat.Value * (decimal)Math.PI / 180)));
+
+            var orgIds = await _db.Organizations
+                .Where(o => o.Address != null
+                    && o.Address.Lat >= lat.Value - latRange && o.Address.Lat <= lat.Value + latRange
+                    && o.Address.Lng >= lng.Value - lngRange && o.Address.Lng <= lng.Value + lngRange)
+                .Select(o => new { o.Id, o.Address!.Lat, o.Address.Lng })
+                .ToListAsync();
+
+            var radiusKmDbl = (double)radiusKm.Value;
+            var latDbl = (double)lat.Value;
+            var lngDbl = (double)lng.Value;
+            const double R = 6371;
+
+            var nearbyOrgIds = orgIds.Where(o =>
+            {
+                var dlat = ((double)o.Lat - latDbl) * Math.PI / 180;
+                var dlng = ((double)o.Lng - lngDbl) * Math.PI / 180;
+                var a = Math.Sin(dlat / 2) * Math.Sin(dlat / 2)
+                    + Math.Cos(latDbl * Math.PI / 180) * Math.Cos((double)o.Lat * Math.PI / 180)
+                    * Math.Sin(dlng / 2) * Math.Sin(dlng / 2);
+                return 2 * R * Math.Asin(Math.Sqrt(a)) <= radiusKmDbl;
+            }).Select(o => o.Id).ToHashSet();
+
+            query = query.Where(p => p.OrganizationId.HasValue && nearbyOrgIds.Contains(p.OrganizationId.Value));
+        }
+
         var total = await query.LongCountAsync();
         // Order by Id (Guid.NewGuid is uniformly distributed) for a deterministic-yet-varied feed.
-        var pets = await query.OrderBy(p => p.Id).Take(take).ToListAsync();
+        var finalTake = candidatePoolSize ?? take;
+        var pets = await query.OrderBy(p => p.Id).Take(finalTake).ToListAsync();
 
         return (pets, total);
     }

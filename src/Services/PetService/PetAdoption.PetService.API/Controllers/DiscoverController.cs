@@ -32,7 +32,10 @@ public class DiscoverController : ControllerBase
         [FromQuery] int? minAge = null,
         [FromQuery] int? maxAge = null,
         [FromQuery] int take = 10,
-        [FromQuery] string? breed = null)
+        [FromQuery] string? breed = null,
+        [FromQuery] decimal? lat = null,
+        [FromQuery] decimal? lng = null,
+        [FromQuery] int? radiusKm = null)
     {
         take = Math.Min(take, 50);
 
@@ -42,7 +45,10 @@ public class DiscoverController : ControllerBase
             minAge,
             maxAge,
             take,
-            breed));
+            breed,
+            lat,
+            lng,
+            radiusKm));
 
         return Ok(result);
     }

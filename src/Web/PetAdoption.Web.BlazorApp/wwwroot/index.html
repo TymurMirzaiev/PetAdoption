@@ -39,6 +39,12 @@
         };
     </script>
     <script src="js/swipe-animations.js"></script>
+    <script>
+        window.scrollToBottom = function (elementId) {
+            var el = document.getElementById(elementId);
+            if (el) el.scrollTop = el.scrollHeight;
+        };
+    </script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

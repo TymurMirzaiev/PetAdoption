@@ -1,0 +1,187 @@
+@using Microsoft.AspNetCore.SignalR.Client
+@using PetAdoption.Web.BlazorApp.Auth
+@using PetAdoption.Web.BlazorApp.Models
+@using PetAdoption.Web.BlazorApp.Services
+@inject PetApiClient PetApi
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<MudPaper Elevation="0" Outlined="true" Class="pa-3">
+    <MudText Typo="Typo.subtitle1" Class="mb-2">Messages</MudText>
+
+    <div id="chat-container-@AdoptionRequestId" style="overflow-y:auto;max-height:400px;" class="mb-2">
+        @if (_messages.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-2">No messages yet. Start the conversation!</MudText>
+        }
+        else
+        {
+            @foreach (var msg in _messages)
+            {
+                <div class="d-flex @(IsOwnMessage(msg) ? "justify-end" : "justify-start") mb-1">
+                    <div style="max-width:75%;">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @msg.SenderRole • @msg.SentAt.ToLocalTime().ToString("HH:mm")
+                            @if (msg.ReadByRecipientAt.HasValue)
+                            { <span> ✓</span> }
+                        </MudText>
+                        <MudPaper Elevation="1" Class="@(IsOwnMessage(msg) ? "pa-2 mud-theme-primary" : "pa-2")">
+                            <MudText Typo="Typo.body2">@msg.Body</MudText>
+                        </MudPaper>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    @if (ReadOnly)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            This conversation is closed.
+        </MudText>
+    }
+    else
+    {
+        <div class="d-flex gap-2 mt-2">
+            <MudTextField @bind-Value="_inputText"
+                          Placeholder="Type a message..."
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          FullWidth="true"
+                          OnKeyDown="@HandleKeyDown"
+                          Disabled="@_sending" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SendMessageAsync"
+                       Disabled="@(string.IsNullOrWhiteSpace(_inputText) || _sending)">
+                Send
+            </MudButton>
+        </div>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public Guid AdoptionRequestId { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+
+    private readonly List<ChatMessageDto> _messages = new();
+    private string _inputText = "";
+    private bool _sending;
+    private HubConnection? _connection;
+    private Guid? _currentUserId;
+    private CancellationTokenSource? _markReadDebounce;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load history
+        try
+        {
+            var history = await PetApi.GetChatHistoryAsync(AdoptionRequestId, take: 50);
+            _messages.AddRange(history);
+        }
+        catch { /* ignore — panel still usable */ }
+
+        // Get current user id for message alignment
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var userIdStr = authState.User.FindFirst("userId")?.Value;
+        if (Guid.TryParse(userIdStr, out var uid)) _currentUserId = uid;
+
+        // Build hub connection
+        var petApiBase = Configuration["ApiUrls:PetService"] ?? "http://localhost:8080";
+        var token = await AuthProvider.GetAccessToken();
+        _connection = new HubConnectionBuilder()
+            .WithUrl($"{petApiBase}/hubs/chat?access_token={token}")
+            .WithAutomaticReconnect()
+            .Build();
+
+        _connection.On<ChatMessageDto>("MessageReceived", msg =>
+        {
+            _messages.Add(msg);
+            InvokeAsync(async () =>
+            {
+                StateHasChanged();
+                await ScrollToBottomAsync();
+                ScheduleMarkRead();
+            });
+        });
+
+        try
+        {
+            await _connection.StartAsync();
+            await _connection.InvokeAsync("JoinThread", AdoptionRequestId);
+            ScheduleMarkRead();
+        }
+        catch { /* hub unavailable — REST still works */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await ScrollToBottomAsync();
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_inputText) || _sending) return;
+        _sending = true;
+        var body = _inputText;
+        _inputText = "";
+        try
+        {
+            await PetApi.SendChatMessageAsync(AdoptionRequestId, body);
+            // The hub broadcast will add the message via MessageReceived event
+        }
+        catch { _inputText = body; /* restore on failure */ }
+        finally
+        {
+            _sending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendMessageAsync();
+    }
+
+    private void ScheduleMarkRead()
+    {
+        _markReadDebounce?.Cancel();
+        _markReadDebounce = new CancellationTokenSource();
+        var ct = _markReadDebounce.Token;
+        _ = Task.Delay(500, ct).ContinueWith(async _ =>
+        {
+            if (!ct.IsCancellationRequested)
+                await PetApi.MarkChatThreadReadAsync(AdoptionRequestId);
+        }, ct, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+    }
+
+    private bool IsOwnMessage(ChatMessageDto msg) =>
+        _currentUserId.HasValue && msg.SenderUserId == _currentUserId.Value;
+
+    private async Task ScrollToBottomAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("scrollToBottom", $"chat-container-{AdoptionRequestId}");
+        }
+        catch { /* ignore JS errors */ }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _markReadDebounce?.Cancel();
+        if (_connection is not null)
+        {
+            try
+            {
+                await _connection.InvokeAsync("LeaveThread", AdoptionRequestId);
+                await _connection.StopAsync();
+            }
+            catch { /* ignore */ }
+            await _connection.DisposeAsync();
+        }
+    }
+}

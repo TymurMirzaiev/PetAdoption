@@ -1,0 +1,179 @@
+@inject PetApiClient PetApi
+@inject ISnackbar Snackbar
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="pet-media-gallery">
+    @if (_loading)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">No media uploaded yet.</MudText>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @foreach (var item in _items)
+            {
+                <div style="position: relative; width: 120px;">
+                    @if (item.MediaType == "Video")
+                    {
+                        <video src="@item.Url" style="width:120px;height:90px;object-fit:cover;" controls />
+                    }
+                    else
+                    {
+                        <img src="@item.Url" alt="Pet photo"
+                             style="width:120px;height:90px;object-fit:cover;border-radius:4px;border: @(item.IsPrimary ? "2px solid gold" : "1px solid #ccc")" />
+                    }
+
+                    @if (!ReadOnly && item.MediaType == "Photo" && !item.IsPrimary)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Outlined.Star" Size="Size.Small"
+                            Style="position:absolute;top:0;right:0;background:rgba(0,0,0,0.5);color:white;"
+                            OnClick="@(() => SetPrimary(item.Id))"
+                            Title="Set as primary" />
+                    }
+                    @if (!ReadOnly)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                            Style="position:absolute;bottom:0;right:0;background:rgba(0,0,0,0.5);"
+                            OnClick="@(() => DeleteMedia(item.Id))" />
+                    }
+                    @if (!ReadOnly && item.MediaType == "Photo")
+                    {
+                        <div class="d-flex" style="position:absolute;bottom:0;left:0;">
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
+                                Style="background:rgba(0,0,0,0.5);color:white;"
+                                OnClick="@(() => MoveUp(item.Id))"
+                                Disabled="@(_items.Where(i => i.MediaType == "Photo").OrderBy(i => i.SortOrder).FirstOrDefault()?.Id == item.Id)" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                Style="background:rgba(0,0,0,0.5);color:white;"
+                                OnClick="@(() => MoveDown(item.Id))"
+                                Disabled="@(_items.Where(i => i.MediaType == "Photo").OrderBy(i => i.SortOrder).LastOrDefault()?.Id == item.Id)" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    @if (!ReadOnly)
+    {
+        <div class="d-flex align-center gap-2">
+            <InputFile id="@($"mediaUpload-{PetId}")" OnChange="OnFileSelected" accept="image/jpeg,image/png,image/webp,video/mp4" style="display:none" />
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Upload"
+                OnClick="@(() => { })"
+                HtmlTag="label" HtmlAttributes="@(new Dictionary<string, object> { { "for", $"mediaUpload-{PetId}" } })"
+                Disabled="_uploading">
+                @(_uploading ? "Uploading..." : "Upload Photo/Video")
+            </MudButton>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid PetId { get; set; }
+    [Parameter] public Guid OrgId { get; set; }
+    [Parameter] public bool ReadOnly { get; set; } = true;
+
+    private List<PetMediaItem> _items = new();
+    private bool _loading = true;
+    private bool _uploading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PetId != Guid.Empty)
+            await LoadMedia();
+    }
+
+    private async Task LoadMedia()
+    {
+        _loading = true;
+        try
+        {
+            var result = await PetApi.GetPetMediaAsync(PetId);
+            _items = result.ToList();
+        }
+        catch { Snackbar.Add("Failed to load media", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _uploading = true;
+        try
+        {
+            var response = await PetApi.UploadPetMediaAsync(OrgId, PetId, e.File);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Media uploaded!", Severity.Success);
+                await LoadMedia();
+            }
+            else
+                Snackbar.Add("Upload failed", Severity.Error);
+        }
+        catch { Snackbar.Add("Upload error", Severity.Error); }
+        finally { _uploading = false; }
+    }
+
+    private async Task DeleteMedia(Guid mediaId)
+    {
+        try
+        {
+            var response = await PetApi.DeletePetMediaAsync(OrgId, PetId, mediaId);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Media deleted", Severity.Info);
+                await LoadMedia();
+            }
+            else
+                Snackbar.Add("Delete failed", Severity.Error);
+        }
+        catch { Snackbar.Add("Delete error", Severity.Error); }
+    }
+
+    private async Task SetPrimary(Guid mediaId)
+    {
+        try
+        {
+            var response = await PetApi.SetPrimaryPhotoAsync(OrgId, PetId, mediaId);
+            if (response.IsSuccessStatusCode)
+                await LoadMedia();
+            else
+                Snackbar.Add("Failed to set primary", Severity.Error);
+        }
+        catch { Snackbar.Add("Error", Severity.Error); }
+    }
+
+    private async Task MoveUp(Guid mediaId)
+    {
+        var photos = _items.Where(i => i.MediaType == "Photo").OrderBy(i => i.SortOrder).ToList();
+        var idx = photos.FindIndex(i => i.Id == mediaId);
+        if (idx <= 0) return;
+        (photos[idx], photos[idx - 1]) = (photos[idx - 1], photos[idx]);
+        await ReorderPhotos(photos.Select(p => p.Id).ToList());
+    }
+
+    private async Task MoveDown(Guid mediaId)
+    {
+        var photos = _items.Where(i => i.MediaType == "Photo").OrderBy(i => i.SortOrder).ToList();
+        var idx = photos.FindIndex(i => i.Id == mediaId);
+        if (idx < 0 || idx >= photos.Count - 1) return;
+        (photos[idx], photos[idx + 1]) = (photos[idx + 1], photos[idx]);
+        await ReorderPhotos(photos.Select(p => p.Id).ToList());
+    }
+
+    private async Task ReorderPhotos(IReadOnlyList<Guid> orderedIds)
+    {
+        try
+        {
+            var response = await PetApi.ReorderPetPhotosAsync(OrgId, PetId, orderedIds);
+            if (response.IsSuccessStatusCode)
+                await LoadMedia();
+            else
+                Snackbar.Add("Reorder failed", Severity.Error);
+        }
+        catch { Snackbar.Add("Reorder error", Severity.Error); }
+    }
+}

@@ -108,8 +108,29 @@ public class ExceptionHandlingMiddleware
             PetDomainErrorCode.AdoptionRequestNotPending => HttpStatusCode.Conflict,
             PetDomainErrorCode.AdoptionRequestAlreadyExists => HttpStatusCode.Conflict,
 
+            // Chat errors
+            PetDomainErrorCode.ChatThreadClosed => HttpStatusCode.Conflict,
+            PetDomainErrorCode.InvalidChatMessageBody => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.ChatAccessDenied => HttpStatusCode.Forbidden,
+
             // Authorization
             PetDomainErrorCode.NotAuthorizedForOrg => HttpStatusCode.Forbidden,
+
+            // Organization address / location errors
+            PetDomainErrorCode.InvalidOrganizationAddress => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.InvalidLocationFilter => HttpStatusCode.BadRequest,
+
+            // Media errors
+            PetDomainErrorCode.MediaNotFound => HttpStatusCode.NotFound,
+            PetDomainErrorCode.VideoAlreadyExists => HttpStatusCode.Conflict,
+            PetDomainErrorCode.InvalidMediaOrder => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.MediaNotPhoto => HttpStatusCode.Conflict,
+
+            // Medical record errors
+            PetDomainErrorCode.InvalidMicrochipId => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.InvalidMedicalNotes => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.InvalidAllergy => HttpStatusCode.BadRequest,
+            PetDomainErrorCode.InvalidVaccination => HttpStatusCode.BadRequest,
 
             // Unknown/default
             _ => HttpStatusCode.InternalServerError

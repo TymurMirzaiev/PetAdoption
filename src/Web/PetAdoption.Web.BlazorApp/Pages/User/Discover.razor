@@ -11,6 +11,23 @@
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
 
+    @* Location Chip *@
+    <div class="d-flex align-center mb-3 gap-2">
+        <MudChip T="string"
+                 Icon="@Icons.Material.Filled.LocationOn"
+                 Color="@(_locationActive ? Color.Primary : Color.Default)"
+                 Variant="@(_locationActive ? Variant.Filled : Variant.Outlined)"
+                 OnClick="OpenLocationDialog">
+            @(_locationActive ? $"Within {_radiusKm} km" : "Set location")
+        </MudChip>
+        @if (_locationActive)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="ClearLocation" />
+        }
+    </div>
+
     @* Filter Panel *@
     <MudExpansionPanels Class="mb-4">
         <MudExpansionPanel Text="Filters">
@@ -96,6 +113,7 @@
     private bool _loading = true;
     private bool _hasMore = true;
     private const string OnboardingSeenKey = "petadoption_onboarding_seen";
+    private const string LocationStorageKey = "petadoption_discover_location";
 
     // Filter state
     private Guid? _selectedTypeId;
@@ -103,9 +121,93 @@
     private int? _maxAge;
     private string? _breedSearch;
 
+    // Location state
+    private decimal? _locationLat;
+    private decimal? _locationLng;
+    private int _radiusKm = 50;
+    private bool _locationActive => _locationLat.HasValue && _locationLng.HasValue && _radiusKm > 0;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadPetTypes();
+        await RestoreLocationFromStorage();
+        await LoadPets();
+    }
+
+    private async Task RestoreLocationFromStorage()
+    {
+        try
+        {
+            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", LocationStorageKey);
+            if (!string.IsNullOrEmpty(stored))
+            {
+                var parts = stored.Split(',');
+                if (parts.Length == 3
+                    && decimal.TryParse(parts[0], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lat)
+                    && decimal.TryParse(parts[1], System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var lng)
+                    && int.TryParse(parts[2], out var radius) && radius > 0)
+                {
+                    _locationLat = lat;
+                    _locationLng = lng;
+                    _radiusKm = radius;
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task SaveLocationToStorage()
+    {
+        try
+        {
+            if (_locationLat.HasValue && _locationLng.HasValue)
+            {
+                var value = $"{_locationLat.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{_locationLng.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{_radiusKm}";
+                await JS.InvokeVoidAsync("localStorage.setItem", LocationStorageKey, value);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("localStorage.removeItem", LocationStorageKey);
+            }
+        }
+        catch { }
+    }
+
+    private async Task OpenLocationDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["InitialLat"] = _locationLat,
+            ["InitialLng"] = _locationLng,
+            ["InitialRadius"] = _radiusKm
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<LocationDialog>("Set Location", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: LocationDialogResult locationResult })
+        {
+            if (locationResult.RadiusKm > 0 && locationResult.Lat.HasValue && locationResult.Lng.HasValue)
+            {
+                _locationLat = locationResult.Lat;
+                _locationLng = locationResult.Lng;
+                _radiusKm = locationResult.RadiusKm;
+            }
+            else
+            {
+                _locationLat = null;
+                _locationLng = null;
+            }
+            await SaveLocationToStorage();
+            await LoadPets();
+        }
+    }
+
+    private async Task ClearLocation()
+    {
+        _locationLat = null;
+        _locationLng = null;
+        await SaveLocationToStorage();
         await LoadPets();
     }
 
@@ -138,7 +240,10 @@
                 minAge: _minAge,
                 maxAge: _maxAge,
                 take: 10,
-                breed: _breedSearch);
+                breed: _breedSearch,
+                lat: _locationActive ? _locationLat : null,
+                lng: _locationActive ? _locationLng : null,
+                radiusKm: _locationActive ? _radiusKm : null);
             if (response?.Pets is not null)
             {
                 var newPets = response.Pets.ToList();

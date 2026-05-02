@@ -1,0 +1,97 @@
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mr-2" />
+            Set Location Filter
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Filter pets to those within a certain distance from your location.
+            </MudText>
+
+            @if (_lat.HasValue && _lng.HasValue)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">
+                    Location set: @_lat.Value.ToString("F4"), @_lng.Value.ToString("F4")
+                </MudAlert>
+            }
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.MyLocation"
+                       OnClick="UseMyLocation"
+                       Disabled="_geoLoading">
+                @(_geoLoading ? "Getting location..." : "Use my location")
+            </MudButton>
+
+            <MudText Typo="Typo.subtitle2">
+                Search radius: @(_radius == 0 ? "No filter" : $"{_radius} km")
+            </MudText>
+            <MudSlider T="int" @bind-Value="_radius" Min="0" Max="500" Step="10"
+                       Color="Color.Primary" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Apply">Apply</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public decimal? InitialLat { get; set; }
+    [Parameter] public decimal? InitialLng { get; set; }
+    [Parameter] public int InitialRadius { get; set; } = 50;
+
+    private decimal? _lat;
+    private decimal? _lng;
+    private int _radius;
+    private bool _geoLoading;
+
+    protected override void OnInitialized()
+    {
+        _lat = InitialLat;
+        _lng = InitialLng;
+        _radius = InitialRadius > 0 ? InitialRadius : 50;
+    }
+
+    private async Task UseMyLocation()
+    {
+        _geoLoading = true;
+        try
+        {
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/geolocation.js");
+            var pos = await module.InvokeAsync<GeoPosition>("getMyPosition");
+            _lat = (decimal)pos.Lat;
+            _lng = (decimal)pos.Lng;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Location permission denied — enter coordinates manually. ({ex.Message})", Severity.Warning);
+        }
+        finally
+        {
+            _geoLoading = false;
+        }
+    }
+
+    private void Apply()
+    {
+        MudDialog.Close(DialogResult.Ok(new LocationDialogResult(_lat, _lng, _radius)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class GeoPosition
+    {
+        public double Lat { get; set; }
+        public double Lng { get; set; }
+    }
+}

@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject PetApiClient PetApi
 @inject ISnackbar Snackbar
+@using PetAdoption.Web.BlazorApp.Components.Chat
 
 <PageTitle>My Adoption Requests</PageTitle>
 
@@ -24,38 +25,36 @@
     }
     else
     {
-        <MudTable Items="_requests" Hover="true" Elevation="3">
-            <HeaderContent>
-                <MudTh>Pet</MudTh>
-                <MudTh>Type</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Submitted</MudTh>
-                <MudTh>Reviewed</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.PetName</MudTd>
-                <MudTd>@context.PetType</MudTd>
-                <MudTd>
-                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
-                </MudTd>
-                <MudTd>@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
-                <MudTd>@(context.ReviewedAt?.ToLocalTime().ToString("g") ?? "-")</MudTd>
-                <MudTd>
-                    @if (context.Status == "Pending")
-                    {
-                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
-                            OnClick="@(() => CancelRequest(context.Id))">Cancel</MudButton>
-                    }
-                    @if (context.Status == "Rejected" && context.RejectionReason is not null)
-                    {
-                        <MudTooltip Text="@context.RejectionReason">
-                            <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Warning" />
-                        </MudTooltip>
-                    }
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        @foreach (var item in _requests)
+        {
+            <MudExpansionPanels Class="mb-2">
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <div class="d-flex align-center gap-3">
+                            <MudText Typo="Typo.body1">@item.PetName</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@item.PetType</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(item.Status)">@item.Status</MudChip>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@item.CreatedAt.ToLocalTime().ToString("g")</MudText>
+                            @if (item.Status == "Pending")
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                                    OnClick="@(() => CancelRequest(item.Id))">Cancel</MudButton>
+                            }
+                            @if (item.Status == "Rejected" && item.RejectionReason is not null)
+                            {
+                                <MudTooltip Text="@item.RejectionReason">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Warning" />
+                                </MudTooltip>
+                            }
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <ChatPanel AdoptionRequestId="@item.Id"
+                                   ReadOnly="@(item.Status == "Rejected" || item.Status == "Cancelled")" />
+                    </ChildContent>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        }
     }
 </MudContainer>
 

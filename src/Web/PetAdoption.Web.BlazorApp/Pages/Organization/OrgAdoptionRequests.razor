@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject PetApiClient PetApi
 @inject ISnackbar Snackbar
+@using PetAdoption.Web.BlazorApp.Components.Chat
 
 <PageTitle>Adoption Requests</PageTitle>
 
@@ -28,32 +29,35 @@
     }
     else
     {
-        <MudTable Items="_requests" Hover="true" Elevation="3">
-            <HeaderContent>
-                <MudTh>Pet</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Message</MudTh>
-                <MudTh>Submitted</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.PetName</MudTd>
-                <MudTd>
-                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
-                </MudTd>
-                <MudTd>@(context.Message ?? "-")</MudTd>
-                <MudTd>@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
-                <MudTd>
-                    @if (context.Status == "Pending")
-                    {
-                        <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
-                            OnClick="@(() => ApproveRequest(context.Id))">Approve</MudButton>
-                        <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
-                            OnClick="@(() => OpenRejectDialog(context.Id, context.PetName))">Reject</MudButton>
-                    }
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        @foreach (var item in _requests)
+        {
+            <MudExpansionPanels Class="mb-2">
+                <MudExpansionPanel>
+                    <TitleContent>
+                        <div class="d-flex align-center gap-3">
+                            <MudText Typo="Typo.body1">@item.PetName</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(item.Status)">@item.Status</MudChip>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@item.CreatedAt.ToLocalTime().ToString("g")</MudText>
+                            @if (item.Status == "Pending")
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
+                                    OnClick="@(() => ApproveRequest(item.Id))">Approve</MudButton>
+                                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                                    OnClick="@(() => OpenRejectDialog(item.Id, item.PetName))">Reject</MudButton>
+                            }
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        @if (!string.IsNullOrEmpty(item.Message))
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-2">Applicant note: @item.Message</MudText>
+                        }
+                        <ChatPanel AdoptionRequestId="@item.Id"
+                                   ReadOnly="@(item.Status == "Rejected" || item.Status == "Cancelled")" />
+                    </ChildContent>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        }
     }
 
     <MudDialog @bind-Visible="_rejectDialogVisible" Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true })">
